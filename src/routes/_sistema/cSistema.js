@@ -4,16 +4,21 @@ const sistemaData = {
         nombre: 'EKO BUSINESS S.A.C.',
         telefono: '01 432 865',
         correo: 'comercial@sunka.com',
+        direcciones: 'Calle 7 Mz 5 Urb Los Productores',
         igv_porcentaje: 18,
-        direcciones: [
-            { id: 1, nombre: 'PLANTA', direccion: 'Calle 7 Mz 5 Urb Los Productores', principal: true }
-        ],
     },
     documentos_identidad: [
         { id: 6, nombre: 'RUC' },
         { id: 1, nombre: 'DNI' },
         { id: 4, nombre: 'CARNET DE EXTRANJERÍA' },
         { id: 7, nombre: 'PASAPORTE' }
+    ],
+    colaborador_cargos: [
+        { id: 'ADMINISTRADOR' },
+        { id: 'CAJERO' },
+        { id: 'MOZO' },
+        { id: 'CONTADOR' },
+        { id: 'REPARTIDOR' },
     ],
     unidades: [
         { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
