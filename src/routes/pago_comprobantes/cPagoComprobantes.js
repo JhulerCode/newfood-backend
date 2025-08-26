@@ -27,8 +27,6 @@ const update = async (req, res) => {
             res.json({ code: 0, data })
         }
         else {
-            await transaction.commit()
-
             res.json({ code: 1, msg: 'No se actualizó ningún registro' })
         }
     }

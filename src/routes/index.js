@@ -9,6 +9,8 @@ import pagoMetodos from './pago_metodo/rPagoMetodos.js'
 import impresoras from './impresoras/rImpresoras.js'
 import cajas from './cajas/rCajas.js'
 import produccionAreas from './produccion_areas/rProduccionAreas.js'
+import salones from './salones/rSalones.js'
+import mesas from './mesas/rMesas.js'
 
 function routes(app) {
     app.get('/', (req, res) => {
@@ -27,6 +29,8 @@ function routes(app) {
     app.use('/api/impresoras', impresoras)
     app.use('/api/cajas', cajas)
     app.use('/api/produccion_areas', produccionAreas)
+    app.use('/api/salones', salones)
+    app.use('/api/mesas', mesas)
 }
 
 export default routes

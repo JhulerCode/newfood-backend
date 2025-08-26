@@ -1,4 +1,4 @@
-import { PagoMetodo } from '../../database/models/PagoMetodo.js'
+import { Salon } from '../../database/models/Salon.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -6,13 +6,13 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            nombre, color, activo,
+            nombre, activo,
         } = req.body
 
         // ----- ACTUALIZAR -----//
-        const nuevo = await PagoMetodo.create(
+        const nuevo = await Salon.create(
             {
-                nombre, color, activo,
+                nombre, activo,
                 createdBy: colaborador
             }
         )
@@ -30,13 +30,13 @@ const update = async (req, res) => {
         const { id } = req.params
         const { colaborador } = req.user
         const {
-            nombre, color, activo,
+            nombre, activo,
         } = req.body
 
         // ----- ACTUALIZAR -----//
-        const [affectedRows] = await PagoMetodo.update(
+        const [affectedRows] = await Salon.update(
             {
-                nombre, color, activo,
+                nombre, activo,
                 updatedBy: colaborador
             },
             {
@@ -59,7 +59,7 @@ const update = async (req, res) => {
 }
 
 async function loadOne(id) {
-    let data = await PagoMetodo.findByPk(id)
+    let data = await Salon.findByPk(id)
 
     if (data) {
         data = data.toJSON()
@@ -91,7 +91,7 @@ const find = async (req, res) => {
             }
         }
 
-        let data = await PagoMetodo.findAll(findProps)
+        let data = await Salon.findAll(findProps)
 
         if (data.length > 0) {
             data = data.map(a => a.toJSON())
@@ -114,7 +114,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await PagoMetodo.findByPk(id)
+        const data = await Salon.findByPk(id)
 
         res.json({ code: 0, data })
     }
@@ -128,7 +128,7 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // ----- ACTUALIZAR -----//
-        const deletedCount = await PagoMetodo.destroy({ where: { id } })
+        const deletedCount = await Salon.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
 

@@ -1,4 +1,4 @@
-import { PagoMetodo } from '../../database/models/PagoMetodo.js'
+import { Mesa } from '../../database/models/Mesa.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -6,13 +6,13 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            nombre, color, activo,
+            nombre, activo, salon,
         } = req.body
 
         // ----- ACTUALIZAR -----//
-        const nuevo = await PagoMetodo.create(
+        const nuevo = await Mesa.create(
             {
-                nombre, color, activo,
+                nombre, activo, salon,
                 createdBy: colaborador
             }
         )
@@ -30,13 +30,18 @@ const update = async (req, res) => {
         const { id } = req.params
         const { colaborador } = req.user
         const {
-            nombre, color, activo,
+            nombre, activo, salon,
         } = req.body
 
+        console.log(id)
+        console.log(nombre)
+        console.log(activo)
+        console.log(salon)
+
         // ----- ACTUALIZAR -----//
-        const [affectedRows] = await PagoMetodo.update(
+        const [affectedRows] = await Mesa.update(
             {
-                nombre, color, activo,
+                nombre, activo, salon,
                 updatedBy: colaborador
             },
             {
@@ -59,7 +64,7 @@ const update = async (req, res) => {
 }
 
 async function loadOne(id) {
-    let data = await PagoMetodo.findByPk(id)
+    let data = await Mesa.findByPk(id)
 
     if (data) {
         data = data.toJSON()
@@ -91,7 +96,7 @@ const find = async (req, res) => {
             }
         }
 
-        let data = await PagoMetodo.findAll(findProps)
+        let data = await Mesa.findAll(findProps)
 
         if (data.length > 0) {
             data = data.map(a => a.toJSON())
@@ -114,7 +119,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await PagoMetodo.findByPk(id)
+        const data = await Mesa.findByPk(id)
 
         res.json({ code: 0, data })
     }
@@ -128,7 +133,7 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // ----- ACTUALIZAR -----//
-        const deletedCount = await PagoMetodo.destroy({ where: { id } })
+        const deletedCount = await Mesa.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
 
