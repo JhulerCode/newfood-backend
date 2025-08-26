@@ -2,15 +2,16 @@ import signin from './_signin/signin.js'
 import sistema from './_sistema/rSistema.js'
 import verifyToken from '../middlewares/verifyToken.js'
 
+import articulo_categorias from './articulo_categorias/rArticuloCategorias.js'
+import cajas from './cajas/rCajas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
 import empresa from './empresa/rEmpresa.js'
-import pagoComprobantes from './pago_comprobantes/rPagoComprobantes.js'
-import pagoMetodos from './pago_metodo/rPagoMetodos.js'
 import impresoras from './impresoras/rImpresoras.js'
-import cajas from './cajas/rCajas.js'
-import produccionAreas from './produccion_areas/rProduccionAreas.js'
-import salones from './salones/rSalones.js'
 import mesas from './mesas/rMesas.js'
+import pago_comprobantes from './pago_comprobantes/rPagoComprobantes.js'
+import pago_metodos from './pago_metodo/rPagoMetodos.js'
+import produccion_areas from './produccion_areas/rProduccionAreas.js'
+import salones from './salones/rSalones.js'
 
 function routes(app) {
     app.get('/', (req, res) => {
@@ -18,19 +19,19 @@ function routes(app) {
     })
 
     app.use('/signin', signin)
-
     app.use('/api', verifyToken)
-
     app.use('/api/sistema', sistema)
+
+    app.use('/api/articulo_categorias', articulo_categorias)
+    app.use('/api/cajas', cajas)
     app.use('/api/colaboradores', colaboradores)
     app.use('/api/empresa', empresa)
-    app.use('/api/pago_comprobantes', pagoComprobantes)
-    app.use('/api/pago_metodos', pagoMetodos)
     app.use('/api/impresoras', impresoras)
-    app.use('/api/cajas', cajas)
-    app.use('/api/produccion_areas', produccionAreas)
-    app.use('/api/salones', salones)
     app.use('/api/mesas', mesas)
+    app.use('/api/pago_comprobantes', pago_comprobantes)
+    app.use('/api/pago_metodos', pago_metodos)
+    app.use('/api/produccion_areas', produccion_areas)
+    app.use('/api/salones', salones)
 }
 
 export default routes

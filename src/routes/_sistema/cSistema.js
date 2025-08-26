@@ -28,9 +28,13 @@ const sistemaData = {
         { id: true, nombre: 'SI' },
         { id: false, nombre: 'NO' }
     ],
+    articulo_tipos: [
+        { id: 1, nombre: 'INSUMO' },
+        { id: 2, nombre: 'PRODUCTO' },
+    ]
 
 
-    
+
     // pedido_estados: [
     //     { id: '0', nombre: 'ANULADO' },
     //     { id: '1', nombre: 'ABIERTO' },
@@ -76,7 +80,7 @@ const sistemaData = {
     //     { id: '1', nombre: 'POR VENCER' },
     //     { id: '2', nombre: 'VIGENTE' },
     // ],
-    
+
     // caja_apertura_estados: [
     //     { id: '1', nombre: 'ABIERTO' },
     //     { id: '2', nombre: 'CERRADO' },
@@ -6390,7 +6394,7 @@ export const calidad_formatos = [
                 seek: true,
                 sort: true,
             },
-            
+
             {
                 id: 'uno',
                 title: 'Descarte de TBC (Baciloscopía de BK)',
