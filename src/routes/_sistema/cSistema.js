@@ -1,12 +1,4 @@
 const sistemaData = {
-    empresa: {
-        ruc: 20601670560,
-        nombre: 'EKO BUSINESS S.A.C.',
-        telefono: '01 432 865',
-        correo: 'comercial@sunka.com',
-        direcciones: 'Calle 7 Mz 5 Urb Los Productores',
-        igv_porcentaje: 18,
-    },
     documentos_identidad: [
         { id: 6, nombre: 'RUC' },
         { id: 1, nombre: 'DNI' },
@@ -24,6 +16,9 @@ const sistemaData = {
         { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
         { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
     ],
+
+
+    
     pedido_estados: [
         { id: '0', nombre: 'ANULADO' },
         { id: '1', nombre: 'ABIERTO' },
