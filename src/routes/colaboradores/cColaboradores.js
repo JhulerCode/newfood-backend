@@ -175,11 +175,12 @@ async function loadOne(id) {
 
         const generosMap = cSistema.arrayMap('generos')
         const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
         const estadosMap = cSistema.arrayMap('estados')
 
         data.sexo1 = generosMap[data.sexo]
         data.doc_tipo1 = documentos_identidadMap[data.doc_tipo]
-        data.activo1 = estadosMap[data.activo]
+        data.activo1 = activo_estadosMap[data.activo]
         data.has_signin1 = estadosMap[data.has_signin]
     }
 
@@ -213,12 +214,13 @@ const find = async (req, res) => {
 
             const generosMap = cSistema.arrayMap('generos')
             const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+            const activo_estadosMap = cSistema.arrayMap('activo_estados')
             const estadosMap = cSistema.arrayMap('estados')
 
             for (const a of data) {
                 if (qry.cols.includes('sexo')) a.sexo1 = generosMap[a.sexo]
                 if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = documentos_identidadMap[a.doc_tipo]
-                if (qry.cols.includes('activo')) a.activo1 = estadosMap[a.activo]
+                if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
                 if (qry.cols.includes('has_signin')) a.has_signin1 = estadosMap[a.has_signin]
             }
         }

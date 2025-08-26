@@ -6,6 +6,7 @@ import colaboradores from './colaboradores/rColaboradores.js'
 import empresa from './empresa/rEmpresa.js'
 import pagoComprobantes from './pago_comprobantes/rPagoComprobantes.js'
 import pagoMetodos from './pago_metodo/rPagoMetodos.js'
+import impresoras from './impresoras/rImpresoras.js'
 
 function routes(app) {
     app.get('/', (req, res) => {
@@ -21,6 +22,7 @@ function routes(app) {
     app.use('/api/empresa', empresa)
     app.use('/api/pago_comprobantes', pagoComprobantes)
     app.use('/api/pago_metodos', pagoMetodos)
+    app.use('/api/impresoras', impresoras)
 }
 
 export default routes

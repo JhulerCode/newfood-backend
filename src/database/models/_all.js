@@ -1,3 +1,6 @@
 import { Colaborador } from './Colaborador.js'
 import { Empresa } from './Empresa.js'
 import { Socio } from './Socio.js'
+import { PagoComprobante } from './PagoComprobante.js'
+import { PagoMetodo } from './PagoMetodo.js'
+import { Impresora } from './Impresora.js'
