@@ -5,6 +5,7 @@ import verifyToken from '../middlewares/verifyToken.js'
 import colaboradores from './colaboradores/rColaboradores.js'
 import empresa from './empresa/rEmpresa.js'
 import pagoComprobantes from './pago_comprobantes/rPagoComprobantes.js'
+import pagoMetodos from './pago_metodo/rPagoMetodos.js'
 
 function routes(app) {
     app.get('/', (req, res) => {
@@ -19,6 +20,7 @@ function routes(app) {
     app.use('/api/colaboradores', colaboradores)
     app.use('/api/empresa', empresa)
     app.use('/api/pago_comprobantes', pagoComprobantes)
+    app.use('/api/pago_metodos', pagoMetodos)
 }
 
 export default routes

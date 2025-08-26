@@ -12,92 +12,85 @@ const sistemaData = {
         { id: 'CONTADOR' },
         { id: 'REPARTIDOR' },
     ],
+    generos: [
+        { id: 'M', nombre: 'MASCULINO' },
+        { id: 'F', nombre: 'FEMENINO' }
+    ],
+    activo_estados: [
+        { id: true, nombre: 'ACTIVO' },
+        { id: false, nombre: 'INACTIVO' }
+    ],
     unidades: [
         { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
         { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
-    ],
-
-
-    
-    pedido_estados: [
-        { id: '0', nombre: 'ANULADO' },
-        { id: '1', nombre: 'ABIERTO' },
-        { id: '2', nombre: 'CERRADO' }
-    ],
-    transaccion_tipos: [
-        { id: '1', nombre: 'COMPRA', operacion: 1 },
-        { id: '2', nombre: 'PRODUCCIÓN SALIDA', operacion: -1 },
-        { id: '3', nombre: 'PRODUCCIÓN DEVOLUCIÓN', operacion: 1 },
-        { id: '4', nombre: 'PRODUCCIÓN ENTRADA', operacion: 1 },
-        { id: '5', nombre: 'VENTA', operacion: -1 },
-        { id: '6', nombre: 'AJUSTE ENTRADA', operacion: 1 },
-        { id: '7', nombre: 'AJUSTE SALIDA', operacion: -1 },
-    ],
-    transaccion_estados: [
-        { id: '0', nombre: 'ANULADO' },
-        { id: '1', nombre: 'ABIERTO' },
-        { id: '2', nombre: 'CERRADO' }
-    ],
-    igv_afectaciones: [
-        { id: '10', nombre: 'Gravado - Operación Onerosa' },
-        { id: '20', nombre: 'Exonerado - Operación Onerosa' },
-        { id: '30', nombre: 'Inafecto - Operación Onerosa' }
-    ],
-    pago_condiciones: [
-        { id: 1, nombre: 'CONTADO' },
-        { id: 2, nombre: 'CRÉDITO 30 DÍAS' },
-        { id: 3, nombre: 'CRÉDITO 60 DÍAS' }
-    ],
-    produccion_tipos: [
-        { id: 1, nombre: 'FILTRANTE' },
-        { id: 2, nombre: 'GRANEL' },
-        { id: 3, nombre: 'PIRAMIDAL' }
-    ],
-    produccion_orden_estados: [
-        { id: '0', nombre: 'ANULADO' },
-        { id: '1', nombre: 'ABIERTO' },
-        { id: '2', nombre: 'CERRADO' }
-    ],
-    documentos_estados: [
-        { id: '0', nombre: 'VENCIDO' },
-        { id: '0.1', nombre: 'VENCE HOY' },
-        { id: '1', nombre: 'POR VENCER' },
-        { id: '2', nombre: 'VIGENTE' },
     ],
     estados: [
         { id: true, nombre: 'SI' },
         { id: false, nombre: 'NO' }
     ],
-    generos: [
-        { id: 'M', nombre: 'MASCULINO' },
-        { id: 'F', nombre: 'FEMENINO' }
-    ],
-    caja_apertura_estados: [
-        { id: '1', nombre: 'ABIERTO' },
-        { id: '2', nombre: 'CERRADO' },
-    ],
-    cuarentena_productos_estados: [
-        { id: '0', nombre: 'ANULADO' },
-        { id: '1', nombre: 'PENDIENTE' },
-        { id: '2', nombre: 'ACEPTADO' }
-    ],
 
-    conformidad_estados: [
-        { id: '1', nombre: 'CONFORME' },
-        { id: '2', nombre: 'NO CONFORME' },
-    ],
-    cf_re_bpm_20_colores: [
-        { id: '1', nombre: 'BLANCO' },
-        { id: '2', nombre: 'AMARILLO' },
-    ],
-    cf_re_bpm_20_estados: [
-        { id: '1', nombre: 'OPERATIVO' },
-        { id: '2', nombre: 'INOPERATIVO' },
-    ],
-    cf_re_bpm_31_tipos: [
-        { id: '1', nombre: 'EJERCICIO' },
-        { id: '2', nombre: 'CASO REAL' },
-    ]
+
+    
+    // pedido_estados: [
+    //     { id: '0', nombre: 'ANULADO' },
+    //     { id: '1', nombre: 'ABIERTO' },
+    //     { id: '2', nombre: 'CERRADO' }
+    // ],
+    // transaccion_tipos: [
+    //     { id: '1', nombre: 'COMPRA', operacion: 1 },
+    //     { id: '2', nombre: 'PRODUCCIÓN SALIDA', operacion: -1 },
+    //     { id: '3', nombre: 'PRODUCCIÓN DEVOLUCIÓN', operacion: 1 },
+    //     { id: '4', nombre: 'PRODUCCIÓN ENTRADA', operacion: 1 },
+    //     { id: '5', nombre: 'VENTA', operacion: -1 },
+    //     { id: '6', nombre: 'AJUSTE ENTRADA', operacion: 1 },
+    //     { id: '7', nombre: 'AJUSTE SALIDA', operacion: -1 },
+    // ],
+    // transaccion_estados: [
+    //     { id: '0', nombre: 'ANULADO' },
+    //     { id: '1', nombre: 'ABIERTO' },
+    //     { id: '2', nombre: 'CERRADO' }
+    // ],
+    // igv_afectaciones: [
+    //     { id: '10', nombre: 'Gravado - Operación Onerosa' },
+    //     { id: '20', nombre: 'Exonerado - Operación Onerosa' },
+    //     { id: '30', nombre: 'Inafecto - Operación Onerosa' }
+    // ],
+    // pago_condiciones: [
+    //     { id: 1, nombre: 'CONTADO' },
+    //     { id: 2, nombre: 'CRÉDITO 30 DÍAS' },
+    //     { id: 3, nombre: 'CRÉDITO 60 DÍAS' }
+    // ],
+    // produccion_tipos: [
+    //     { id: 1, nombre: 'FILTRANTE' },
+    //     { id: 2, nombre: 'GRANEL' },
+    //     { id: 3, nombre: 'PIRAMIDAL' }
+    // ],
+    // produccion_orden_estados: [
+    //     { id: '0', nombre: 'ANULADO' },
+    //     { id: '1', nombre: 'ABIERTO' },
+    //     { id: '2', nombre: 'CERRADO' }
+    // ],
+    // documentos_estados: [
+    //     { id: '0', nombre: 'VENCIDO' },
+    //     { id: '0.1', nombre: 'VENCE HOY' },
+    //     { id: '1', nombre: 'POR VENCER' },
+    //     { id: '2', nombre: 'VIGENTE' },
+    // ],
+    
+    // caja_apertura_estados: [
+    //     { id: '1', nombre: 'ABIERTO' },
+    //     { id: '2', nombre: 'CERRADO' },
+    // ],
+    // cuarentena_productos_estados: [
+    //     { id: '0', nombre: 'ANULADO' },
+    //     { id: '1', nombre: 'PENDIENTE' },
+    //     { id: '2', nombre: 'ACEPTADO' }
+    // ],
+
+    // conformidad_estados: [
+    //     { id: '1', nombre: 'CONFORME' },
+    //     { id: '2', nombre: 'NO CONFORME' },
+    // ],
 }
 
 export const calidad_formatos = [

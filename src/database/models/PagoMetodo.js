@@ -6,7 +6,7 @@ export const PagoMetodo = sequelize.define('pago_metodos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     nombre: { type: DataTypes.STRING }, //required
     color: { type: DataTypes.STRING }, //required
-    estado: { type: DataTypes.STRING }, //required
+    activo: { type: DataTypes.BOOLEAN }, //required
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
