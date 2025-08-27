@@ -1,9 +1,9 @@
 const sistemaData = {
     documentos_identidad: [
-        { id: 6, nombre: 'RUC' },
-        { id: 1, nombre: 'DNI' },
-        { id: 4, nombre: 'CARNET DE EXTRANJERÍA' },
-        { id: 7, nombre: 'PASAPORTE' }
+        { id: '6', nombre: 'RUC' },
+        { id: '1', nombre: 'DNI' },
+        { id: '4', nombre: 'CARNET DE EXTRANJERÍA' },
+        { id: '7', nombre: 'PASAPORTE' }
     ],
     colaborador_cargos: [
         { id: 'ADMINISTRADOR' },
@@ -20,18 +20,23 @@ const sistemaData = {
         { id: true, nombre: 'ACTIVO' },
         { id: false, nombre: 'INACTIVO' }
     ],
-    unidades: [
-        { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
-        { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
-    ],
     estados: [
         { id: true, nombre: 'SI' },
         { id: false, nombre: 'NO' }
     ],
+    unidades: [
+        { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
+        { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
+    ],
     articulo_tipos: [
-        { id: 1, nombre: 'INSUMO' },
-        { id: 2, nombre: 'PRODUCTO' },
-    ]
+        { id: '1', nombre: 'INSUMO' },
+        { id: '2', nombre: 'PRODUCTO' },
+    ],
+    igv_afectaciones: [
+        { id: '10', nombre: 'Gravado - Operación Onerosa' },
+        { id: '20', nombre: 'Exonerado - Operación Onerosa' },
+        { id: '30', nombre: 'Inafecto - Operación Onerosa' }
+    ],
 
 
 
@@ -54,11 +59,7 @@ const sistemaData = {
     //     { id: '1', nombre: 'ABIERTO' },
     //     { id: '2', nombre: 'CERRADO' }
     // ],
-    // igv_afectaciones: [
-    //     { id: '10', nombre: 'Gravado - Operación Onerosa' },
-    //     { id: '20', nombre: 'Exonerado - Operación Onerosa' },
-    //     { id: '30', nombre: 'Inafecto - Operación Onerosa' }
-    // ],
+    
     // pago_condiciones: [
     //     { id: 1, nombre: 'CONTADO' },
     //     { id: 2, nombre: 'CRÉDITO 30 DÍAS' },

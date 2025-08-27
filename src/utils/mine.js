@@ -27,16 +27,16 @@ function applyFilters(filters) {
                 whereClause[key] = { [Op.ne]: val };
                 break;
             case 'Contiene':
-                whereClause[key] = { [Op.like]: `%${val}%` };
+                whereClause[key] = { [Op.iLike]: `%${val}%` };
                 break;
             case 'No contiene':
                 whereClause[key] = { [Op.notLike]: `%${val}%` };
                 break;
             case 'Empieza con':
-                whereClause[key] = { [Op.like]: `${val}%` };
+                whereClause[key] = { [Op.iLike]: `${val}%` };
                 break;
             case 'Termina con':
-                whereClause[key] = { [Op.like]: `%${val}` };
+                whereClause[key] = { [Op.iLike]: `%${val}` };
                 break;
             case 'Está vacío':
                 whereClause[key] = { [Op.is]: null };
