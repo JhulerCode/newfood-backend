@@ -9,7 +9,6 @@ export const Socio = sequelize.define('socios', {
     doc_tipo: { type: DataTypes.STRING }, //required
     doc_numero: { type: DataTypes.STRING }, //required
     nombres: { type: DataTypes.STRING }, //required
-    apellidos: { type: DataTypes.STRING }, //required
 
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },

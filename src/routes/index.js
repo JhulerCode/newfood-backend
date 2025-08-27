@@ -13,6 +13,7 @@ import pago_comprobantes from './pago_comprobantes/rPagoComprobantes.js'
 import pago_metodos from './pago_metodo/rPagoMetodos.js'
 import produccion_areas from './produccion_areas/rProduccionAreas.js'
 import receta_insumos from './receta_insumos/rRecetaInsumos.js'
+import socios from './socios/rSocios.js'
 import salones from './salones/rSalones.js'
 
 function routes(app) {
@@ -35,6 +36,7 @@ function routes(app) {
     app.use('/api/pago_metodos', pago_metodos)
     app.use('/api/produccion_areas', produccion_areas)
     app.use('/api/receta_insumos', receta_insumos)
+    app.use('/api/socios', socios)
     app.use('/api/salones', salones)
 }
 
