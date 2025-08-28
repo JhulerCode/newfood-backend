@@ -8,6 +8,7 @@ import cajas from './cajas/rCajas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
 import empresa from './empresa/rEmpresa.js'
 import impresoras from './impresoras/rImpresoras.js'
+import kardex from './kardex/rKardex.js'
 import mesas from './mesas/rMesas.js'
 import pago_comprobantes from './pago_comprobantes/rPagoComprobantes.js'
 import pago_metodos from './pago_metodo/rPagoMetodos.js'
@@ -33,6 +34,7 @@ function routes(app) {
     app.use('/api/colaboradores', colaboradores)
     app.use('/api/empresa', empresa)
     app.use('/api/impresoras', impresoras)
+    app.use('/api/kardex', kardex)
     app.use('/api/mesas', mesas)
     app.use('/api/pago_comprobantes', pago_comprobantes)
     app.use('/api/pago_metodos', pago_metodos)

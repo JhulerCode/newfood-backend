@@ -49,6 +49,8 @@ const sistemaData = {
     kardex_tipos: [
         { id: '1', nombre: 'COMPRA', operacion: 1 },
         { id: '2', nombre: 'VENTA', operacion: -1 },
+        { id: '3', nombre: 'AJUSTE ENTRADA', operacion: 1 },
+        { id: '4', nombre: 'AJUSTE SALIDA', operacion: -1 },
     ],
     
 

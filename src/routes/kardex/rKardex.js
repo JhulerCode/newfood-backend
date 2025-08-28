@@ -1,0 +1,37 @@
+import { Router } from "express"
+import controller from "./cKardex.js"
+import verifyPermiso from '../../middlewares/verifyPermiso.js'
+
+const router = Router()
+
+router.get(
+    '/',
+    verifyPermiso([
+        'vInsumos:kardex',
+        'vProductos:kardex',
+    ]),
+    controller.find
+)
+
+router.post(
+    '/',
+    verifyPermiso([
+    ]),
+    controller.create
+)
+
+router.patch(
+    '/:id',
+    verifyPermiso([
+    ]),
+    controller.update
+)
+
+router.delete(
+    '/:id',
+    verifyPermiso([
+    ]),
+    controller.delet
+)
+
+export default router
