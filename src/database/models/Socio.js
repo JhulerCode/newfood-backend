@@ -19,15 +19,6 @@ export const Socio = sequelize.define('socios', {
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
-
-    nombres_apellidos: {
-        type: DataTypes.VIRTUAL,
-        get() {
-            const nombres = this.nombres || ''
-            const apellidos = this.apellidos || ''
-            return `${nombres} ${apellidos}`.trim()
-        }
-    }
 })
 
 Colaborador.hasMany(Socio, {foreignKey:'createdBy', onDelete:'RESTRICT'})

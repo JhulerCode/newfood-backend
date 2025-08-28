@@ -11,7 +11,7 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            tipo, doc_tipo, doc_numero, nombres, apellidos,
+            tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
         } = req.body
@@ -21,7 +21,7 @@ const create = async (req, res) => {
 
         // ----- CREAR ----- //
         const nuevo = await Socio.create({
-            tipo, doc_tipo, doc_numero, nombres, apellidos,
+            tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
             createdBy: colaborador
@@ -41,7 +41,7 @@ const update = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
         const {
-            tipo, doc_tipo, doc_numero, nombres, apellidos,
+            tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
         } = req.body
@@ -52,7 +52,7 @@ const update = async (req, res) => {
         // ----- ACTUALIZAR ----- //
         const [affectedRows] = await Socio.update(
             {
-                tipo, doc_tipo, doc_numero, nombres, apellidos,
+                tipo, doc_tipo, doc_numero, nombres,
                 telefono, correo, direccion, referencia,
                 activo,
                 updatedBy: colaborador
@@ -96,7 +96,7 @@ const find = async (req, res) => {
 
         const findProps = {
             attributes: ['id'],
-            order: [[Sequelize.literal(`TRIM(CONCAT(COALESCE(nombres, ''), ' ', COALESCE(apellidos, '')))`), 'ASC']],
+            order: [['nombres', 'ASC']],
             where: {},
             include: []
         }

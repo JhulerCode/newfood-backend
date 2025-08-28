@@ -24,6 +24,7 @@ export const Articulo = sequelize.define('articulos', {
     combo_articulos: { type: DataTypes.JSON },
 
     precio_venta: { type: DataTypes.DOUBLE },
+    stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
