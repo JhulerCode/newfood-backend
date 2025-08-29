@@ -8,6 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vSalones:listar',
+        'vPedidos:listar',
     ]),
     controller.find
 )

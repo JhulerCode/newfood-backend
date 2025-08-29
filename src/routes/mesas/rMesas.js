@@ -36,4 +36,16 @@ router.delete(
     controller.delet
 )
 
+router.post(
+    '/unir',
+    verifyPermiso(['vPedidos:unirMesas']),
+    controller.unir
+)
+
+router.post(
+    '/desunir',
+    verifyPermiso(['vPedidos:unirMesas']),
+    controller.desunir
+)
+
 export default router

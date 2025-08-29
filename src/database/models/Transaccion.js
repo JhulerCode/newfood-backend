@@ -4,6 +4,9 @@ import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
 import { Colaborador } from './Colaborador.js'
 import { PagoComprobante } from './PagoComprobante.js'
+import { PagoMetodo } from './PagoMetodo.js'
+import { Mesa } from './Mesa.js'
+import { Salon } from './Salon.js'
 
 export const Transaccion = sequelize.define('transacciones', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -23,6 +26,15 @@ export const Transaccion = sequelize.define('transacciones', {
 
     anulado_motivo: { type: DataTypes.STRING },
 
+    pago_metodo: { type: DataTypes.STRING },
+    venta_codigo: { type: DataTypes.STRING },
+    venta_canal: { type: DataTypes.STRING },
+    venta_salon: { type: DataTypes.STRING },
+    venta_mesa: { type: DataTypes.STRING },
+    socio_datos: { type: DataTypes.JSON },
+    venta_entregado: { type: DataTypes.BOOLEAN },
+    pago_con: { type: DataTypes.DECIMAL(10, 2) },
+
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -32,6 +44,15 @@ Transaccion.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })
 
 PagoComprobante.hasMany(Transaccion, { foreignKey: 'pago_comprobante', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(PagoComprobante, { foreignKey: 'pago_comprobante', as: 'pago_comprobante1' })
+
+Salon.hasMany(Transaccion, { foreignKey: 'venta_salon', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(Salon, { foreignKey: 'venta_salon', as: 'venta_salon1' })
+
+Mesa.hasMany(Transaccion, { foreignKey: 'venta_mesa', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(Mesa, { foreignKey: 'venta_mesa', as: 'venta_mesa1' })
+
+PagoMetodo.hasMany(Transaccion, { foreignKey: 'pago_metodo', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(PagoMetodo, { foreignKey: 'pago_metodo', as: 'pago_metodo1' })
 
 Colaborador.hasMany(Transaccion, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
@@ -55,6 +76,10 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
     observacion: { type: DataTypes.STRING },
 
     transaccion: { type: DataTypes.STRING }, //required //linked
+
+    has_receta: { type: DataTypes.BOOLEAN },
+    is_combo: { type: DataTypes.BOOLEAN },
+    combo_articulo: { type: DataTypes.JSON },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }

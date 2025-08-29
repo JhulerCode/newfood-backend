@@ -1,6 +1,9 @@
+import sequelize from '../../database/sequelize.js'
+import { Op } from 'sequelize'
 import { Mesa } from '../../database/models/Mesa.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
 
 const create = async (req, res) => {
     try {
@@ -144,10 +147,183 @@ const delet = async (req, res) => {
     }
 }
 
+const unir = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador } = req.user
+        const mesasUnir = req.body
+
+        const unidos = []
+        const unidosId = []
+        let principal
+
+        for (const a of mesasUnir) {
+            if (a.unidos && a.unidos.length > 0) {
+                for (const b of a.unidos) {
+                    unidos.push(b)
+                    unidosId.push(b.id)
+                }
+            }
+
+            if (a.principal != true) {
+                unidos.push(a)
+                unidosId.push(a.id)
+            }
+            else {
+                principal = a
+            }
+        }
+
+        console.log(unidos)
+        console.log(unidosId)
+        console.log(principal)
+
+        // throw error
+
+        await Mesa.update({
+            unida: false,
+            unidos,
+            updatedBy: colaborador
+        }, {
+            where: { id: principal.id },
+            transaction
+        })
+
+        await Mesa.update({
+            unida: true,
+            unidos: [],
+            updatedBy: colaborador
+        }, {
+            where: {
+                id: { [Op.in]: unidosId }
+            },
+            transaction
+        })
+
+        const pedidos = await Transaccion.findAll({
+            where: {
+                venta_mesa: {
+                    [Op.in]: mesasUnir.map(a => a.id)
+                },
+                estado: '1'
+            }
+        })
+
+        if (pedidos.length > 0) {
+            const pedidosId = pedidos.map(a => a.id)
+
+            ///// ----- DEFINIR PEDIDO PRINCIPAL ----- /////
+            const i = pedidos.findIndex(a => a.venta_mesa == principal.id)
+            const pedidoId = i !== -1 ? pedidos[i].id : pedidos[0].id
+
+            ///// ----- ACTUALIZAR ITEMS ----- /////
+            await TransaccionItem.update({
+                transaccion: pedidoId,
+                updatedBy: colaborador
+            }, {
+                where: {
+                    transaccion: { [Op.in]: pedidosId }
+                },
+                transaction
+            })
+
+            ///// ----- ELIMINAR LOS OTROS PEDIDOS ----- /////
+            const pedidosSecundarios = pedidosId.filter(a => a != pedidoId)
+            await Transaccion.destroy({
+                where: {
+                    id: { [Op.in]: pedidosSecundarios }
+                },
+                transaction
+            })
+            // if (pedidosSecundarios > 0) {
+            //     await Transaccion.update({
+            //         estado: '0',
+            //         anulado_motivo: `Unido a otra mesa`,
+            //         updatedBy: colaborador
+            //     }, {
+            //         where: {
+            //             id: { [Op.in]: pedidosSecundarios }
+            //         },
+            //         transaction
+            //     })
+            // }
+
+            ///// ----- ACTUALIZAR MESA EN PEDIDO PRINCIPAL ----- /////
+            await Transaccion.update({
+                venta_mesa: principal.id,
+                updatedBy: colaborador
+            }, {
+                where: {
+                    id: pedidoId
+                },
+                transaction
+            })
+        }
+
+        await transaction.commit()
+
+        res.json({ code: 0 })
+    }
+    catch (error) {
+        await transaction.rollback()
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const desunir = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { id, unidos } = req.body
+
+        const transaction = await sequelize.transaction()
+
+        try {
+            for (const a of unidos) {
+                await Mesa.update(
+                    {
+                        unida: false,
+                        updatedBy: colaborador
+                    },
+                    {
+                        where: { id: a.id },
+                        transaction
+                    }
+                )
+            }
+
+            await Mesa.update(
+                {
+                    unidos: [],
+                    updatedBy: colaborador
+                },
+                {
+                    where: { id },
+                    transaction
+                }
+            )
+
+            await transaction.commit()
+
+            res.json({ code: 0 })
+        }
+        catch (error) {
+            await transaction.rollback()
+            throw error
+        }
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 export default {
     find,
     findById,
     create,
     update,
     delet,
+
+    unir,
+    desunir,
 }

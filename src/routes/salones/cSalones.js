@@ -1,4 +1,5 @@
 import { Salon } from '../../database/models/Salon.js'
+import { Mesa } from '../../database/models/Mesa.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -78,10 +79,24 @@ const find = async (req, res) => {
         const findProps = {
             attributes: ['id'],
             order: [['nombre', 'ASC']],
-            where: {}
+            where: {},
+            include: [],
         }
 
+        const include1 = {
+            mesas: {
+                model: Mesa,
+                as: 'mesas',
+                attributes: ['id', 'nombre', 'activo', 'unida', 'unidos'],
+            },
+        }
         if (qry) {
+            if (qry.incl) {
+                for (const a of qry.incl) {
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
+                }
+            }
+
             if (qry.fltr) {
                 Object.assign(findProps.where, applyFilters(qry.fltr))
             }

@@ -1,10 +1,13 @@
 import sequelize from '../../database/sequelize.js'
+import { fn, col } from 'sequelize'
 import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
 import { Socio } from '../../database/models/Socio.js'
 import { Articulo } from '../../database/models/Articulo.js'
 import { Kardex } from '../../database/models/Kardex.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import { Colaborador } from '../../database/models/Colaborador.js'
+import { Mesa } from '../../database/models/Mesa.js'
 
 const includes = {
     socio1: {
@@ -12,6 +15,16 @@ const includes = {
         as: 'socio1',
         attributes: ['id', 'nombres']
     },
+    createdBy1: {
+        model: Colaborador,
+        as: 'createdBy1',
+        attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
+    },
+    venta_mesa1: {
+        model: Mesa,
+        as: 'venta_mesa1',
+        attributes: ['id', 'nombre']
+    }
 }
 
 const create = async (req, res) => {
@@ -24,6 +37,8 @@ const create = async (req, res) => {
             pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
             observacion, estado,
+            anulado_motivo,
+            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
 
@@ -33,6 +48,8 @@ const create = async (req, res) => {
             pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
             observacion, estado,
+            anulado_motivo,
+            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
             createdBy: colaborador
         }, { transaction })
 
@@ -46,41 +63,46 @@ const create = async (req, res) => {
             igv_porcentaje: a.igv_porcentaje,
             observacion: a.observacion,
             transaccion: nuevo.id,
+            has_receta: a.has_receta,
+            is_combo: a.is_combo,
+            combo_articulo: a.combo_articulo,
             createdBy: colaborador
         }))
 
         await TransaccionItem.bulkCreate(items, { transaction })
 
-        // ----- GUARAR KARDEX ----- //
-        const kardexItems = transaccion_items.map(a => ({
-            tipo, fecha,
-            articulo: a.articulo,
-            cantidad: a.cantidad,
-            pu: a.pu,
-            igv_afectacion: a.igv_afectacion,
-            igv_porcentaje: a.igv_porcentaje,
-            observacion: a.observacion,
-            estado,
-            transaccion: nuevo.id,
-            createdBy: colaborador
-        }))
+        if (tipo == 1) {
+            // ----- GUARAR KARDEX ----- //
+            const kardexItems = transaccion_items.map(a => ({
+                tipo, fecha,
+                articulo: a.articulo,
+                cantidad: a.cantidad,
+                pu: a.pu,
+                igv_afectacion: a.igv_afectacion,
+                igv_porcentaje: a.igv_porcentaje,
+                observacion: a.observacion,
+                estado,
+                transaccion: nuevo.id,
+                createdBy: colaborador
+            }))
 
-        await Kardex.bulkCreate(kardexItems, { transaction })
+            await Kardex.bulkCreate(kardexItems, { transaction })
 
-        // ----- ACTUALIZAR STOCK ----- //
-        const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
-        const tipoInfo = transaccion_tiposMap[tipo]
+            // ----- ACTUALIZAR STOCK ----- //
+            const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
+            const tipoInfo = transaccion_tiposMap[tipo]
 
-        for (const a of transaccion_items) {
-            await Articulo.update(
-                {
-                    stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '+' : '-'} ${a.cantidad}`)
-                },
-                {
-                    where: { id: a.articulo },
-                    transaction
-                }
-            )
+            for (const a of transaccion_items) {
+                await Articulo.update(
+                    {
+                        stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '+' : '-'} ${a.cantidad}`)
+                    },
+                    {
+                        where: { id: a.articulo },
+                        transaction
+                    }
+                )
+            }
         }
 
         await transaction.commit()
@@ -97,6 +119,8 @@ const create = async (req, res) => {
 }
 
 const update = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador } = req.user
         const { id } = req.params
@@ -105,6 +129,8 @@ const update = async (req, res) => {
             pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
             observacion, estado,
+            anulado_motivo,
+            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
 
@@ -113,28 +139,62 @@ const update = async (req, res) => {
             pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
             observacion, estado,
+            anulado_motivo,
+            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
             updatedBy: colaborador
         }, {
             where: { id },
+            transaction
         })
 
         if (affectedRows > 0) {
+            if (tipo == 2) {
+                // ----- ELIMINAR ITEMS ----- //
+                await TransaccionItem.destroy({
+                    where: { transaccion: id },
+                    transaction
+                })
+
+                // ----- GUARDAR ITEMS ----- //
+                const items = transaccion_items.map(a => ({
+                    tipo, fecha,
+                    articulo: a.articulo,
+                    cantidad: a.cantidad,
+                    pu: a.pu,
+                    igv_afectacion: a.igv_afectacion,
+                    igv_porcentaje: a.igv_porcentaje,
+                    observacion: a.observacion,
+                    transaccion: id,
+                    has_receta: a.has_receta,
+                    is_combo: a.is_combo,
+                    combo_articulo: a.combo_articulo,
+                    createdBy: colaborador
+                }))
+
+                await TransaccionItem.bulkCreate(items, { transaction })
+            }
+
+            await transaction.commit()
+
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
         else {
+            await transaction.commit()
 
             res.json({ code: 1, msg: 'No se actualizó ningún registro' })
         }
     }
     catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
 async function loadOne(id) {
     let data = await Transaccion.findByPk(id, {
-        include: [includes.socio1]
+        include: [includes.socio1, includes.createdBy1]
     })
 
     if (data) {
@@ -162,21 +222,25 @@ const find = async (req, res) => {
         }
 
         if (qry) {
+            if (qry.incl) {
+                for (const a of qry.incl) {
+                    if (qry.incl.includes(a)) findProps.include.push(includes[a])
+                }
+            }
+
             if (qry.fltr) {
                 Object.assign(findProps.where, applyFilters(qry.fltr))
             }
 
             if (qry.cols) {
-                findProps.attributes = findProps.attributes.concat(qry.cols)
+                const excludeCols = [
+                    'timeAgo',
+                ]
+                const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
+                findProps.attributes = findProps.attributes.concat(cols1)
 
                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
                 if (qry.cols.includes('socio')) findProps.include.push(includes.socio1)
-            }
-
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes[a])
-                }
             }
         }
 
@@ -223,6 +287,11 @@ const findById = async (req, res) => {
                     as: 'socio1',
                     attributes: ['id', 'nombres']
                 },
+                {
+                    model: Mesa,
+                    as: 'venta_mesa1',
+                    attributes: ['id', 'nombre']
+                }
             ]
         })
 
@@ -297,78 +366,126 @@ const delet = async (req, res) => {
 }
 
 const anular = async (req, res) => {
-    const transaction = await sequelize.transaction()
+    // const transaction = await sequelize.transaction()
 
     try {
         const { colaborador } = req.user
         const { id } = req.params
         const { anulado_motivo, item } = req.body
 
-        const transaccion_itemsPast = await TransaccionItem.findAll({
-            where: { transaccion: id },
-        })
+        // const transaccion_itemsPast = await TransaccionItem.findAll({
+        //     where: { transaccion: id },
+        // })
 
-        const transaccionPast = await Transaccion.findByPk(id)
+        // const transaccionPast = await Transaccion.findByPk(id)
 
-        await TransaccionItem.destroy({
-            where: { transaccion: id },
-            transaction
-        })
+        // await TransaccionItem.destroy({
+        //     where: { transaccion: id },
+        //     transaction
+        // })
 
-        await Transaccion.destroy({
-            where: { id },
-            transaction
-        })
-        let transaccionData = transaccionPast.toJSON()
+        // await Transaccion.destroy({
+        //     where: { id },
+        //     transaction
+        // })
+        // let transaccionData = transaccionPast.toJSON()
 
-        if (item.tipo == 5) {
-            for (const a of transaccion_itemsPast) {
-                await TransaccionItem.update(
-                    {
-                        stock: sequelize.literal(`COALESCE(stock, 0) + ${a.cantidad}`)
-                    },
-                    {
-                        where: { id: a.lote_padre },
-                        transaction
-                    }
-                )
-            }
-        }
+        // if (item.tipo == 5) {
+        //     for (const a of transaccion_itemsPast) {
+        //         await TransaccionItem.update(
+        //             {
+        //                 stock: sequelize.literal(`COALESCE(stock, 0) + ${a.cantidad}`)
+        //             },
+        //             {
+        //                 where: { id: a.lote_padre },
+        //                 transaction
+        //             }
+        //         )
+        //     }
+        // }
 
-        if (transaccionData.socio_pedido) {
-            for (const a of transaccion_itemsPast) {
-                await SocioPedidoItem.update(
-                    {
-                        entregado: sequelize.literal(`COALESCE(entregado, 0) - ${a.cantidad}`)
-                    },
-                    {
-                        where: { articulo: a.articulo, socio_pedido: transaccionData.socio_pedido },
-                        transaction
-                    }
-                )
-            }
-        }
+        // if (transaccionData.socio_pedido) {
+        //     for (const a of transaccion_itemsPast) {
+        //         await SocioPedidoItem.update(
+        //             {
+        //                 entregado: sequelize.literal(`COALESCE(entregado, 0) - ${a.cantidad}`)
+        //             },
+        //             {
+        //                 where: { articulo: a.articulo, socio_pedido: transaccionData.socio_pedido },
+        //                 transaction
+        //             }
+        //         )
+        //     }
+        // }
 
         // ----- GUARDAR EL ANULADO ----- //
-        transaccionData.estado = 0
-        transaccionData.anulado_motivo = anulado_motivo
-        transaccionData.updatedBy = colaborador
-        const transaccionNew = await Transaccion.create(transaccionData, { transaction })
+        // transaccionData.estado = 0
+        // transaccionData.anulado_motivo = anulado_motivo
+        // transaccionData.updatedBy = colaborador
+        // const transaccionNew = await Transaccion.create(transaccionData, { transaction })
 
-        const itemsNew = transaccion_itemsPast.map(a => {
-            const plain = a.toJSON()
-            plain.transaccion = transaccionNew.id
-            return plain
+        // const itemsNew = transaccion_itemsPast.map(a => {
+        //     const plain = a.toJSON()
+        //     plain.transaccion = transaccionNew.id
+        //     return plain
+        // })
+        // await TransaccionItem.bulkCreate(itemsNew, { transaction })
+
+        await Transaccion.update({
+            estado: 0,
+            anulado_motivo,
+            updatedBy: colaborador
+        }, {
+            where: { id }
         })
-        await TransaccionItem.bulkCreate(itemsNew, { transaction })
 
-        await transaction.commit()
+        // await transaction.commit()
 
         res.json({ code: 0 })
     }
     catch (error) {
-        await transaction.rollback()
+        // await transaction.rollback()0
 
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const ventasPendientes = async (req, res) => {
+    try {
+        const data = await Transaccion.findAll({
+            attributes: [
+                'venta_canal',
+                [fn('COUNT', col('id')), 'cantidad']
+            ],
+            where: { tipo: '2', estado: '1' },
+            group: ['venta_canal'],
+        })
+
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const cambiarMesa = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+        const { venta_mesa } = req.body
+
+        // ----- ENTREGAR Y FINALIZAR ----- //
+        await Transaccion.update(
+            {
+                venta_mesa,
+                updatedBy: colaborador
+            },
+            { where: { id } }
+        )
+
+        res.json({ code: 0 })
+    }
+    catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -380,4 +497,7 @@ export default {
     findById,
     delet,
     anular,
+
+    ventasPendientes,
+    cambiarMesa,
 }

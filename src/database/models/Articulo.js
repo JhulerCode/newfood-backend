@@ -11,6 +11,7 @@ export const Articulo = sequelize.define('articulos', {
     unidad: { type: DataTypes.STRING }, //required
     marca: { type: DataTypes.STRING },
     activo: { type: DataTypes.BOOLEAN }, //required
+    // foto: { type: DataTypes.STRING },
 
     igv_afectacion: { type: DataTypes.STRING }, //required
 

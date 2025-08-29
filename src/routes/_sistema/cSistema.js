@@ -27,6 +27,10 @@ const sistemaData = {
     unidades: [
         { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
         { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
+        // { id: 'GRM', nombre: 'Gramo', nombre_completo: 'Gramo (GRM)' },
+        { id: 'LTR', nombre: 'Litro', nombre_completo: 'Litro (LTR)' },
+        { id: 'OZN', nombre: 'Onza', nombre_completo: 'Onza (OZN)' },
+
     ],
     articulo_tipos: [
         { id: '1', nombre: 'INSUMO' },
@@ -52,7 +56,12 @@ const sistemaData = {
         { id: '3', nombre: 'AJUSTE ENTRADA', operacion: 1 },
         { id: '4', nombre: 'AJUSTE SALIDA', operacion: -1 },
     ],
-    
+    venta_caneles: [
+        { id: '1', nombre: 'Salón' },
+        { id: '2', nombre: 'Para llevar' },
+        { id: '3', nombre: 'Delivery' },
+    ]
+
 
 
 
@@ -61,8 +70,8 @@ const sistemaData = {
     //     { id: '1', nombre: 'ABIERTO' },
     //     { id: '2', nombre: 'CERRADO' }
     // ],
-    
-    
+
+
     // produccion_tipos: [
     //     { id: 1, nombre: 'FILTRANTE' },
     //     { id: 2, nombre: 'GRANEL' },

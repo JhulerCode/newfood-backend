@@ -9,6 +9,9 @@ export const Mesa = sequelize.define('mesas', {
     activo: { type: DataTypes.BOOLEAN }, //required
     salon: { type: DataTypes.STRING },
 
+    unida: { type: DataTypes.BOOLEAN, defaultValue: false },
+    unidos: { type: DataTypes.JSON, defaultValue: [] },
+
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })

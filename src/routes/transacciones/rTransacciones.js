@@ -8,7 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vCompras:listar',
-        'vVentas:listar'
+        'vPedidos:listar'
     ]),
     controller.find
 )
@@ -17,7 +17,7 @@ router.post(
     '/',
     verifyPermiso([
         'vCompras:crear',
-        'vVentas:crear',
+        'vPedidos:crear',
     ]),
     controller.create
 )
@@ -25,8 +25,8 @@ router.post(
 router.get(
     '/uno/:id',
     verifyPermiso([
-        'vCompras:ver',
-        'vVentas:ver',
+        'vCompras:ver', 'vCompras:editar',
+        'vPedidos:editar',
     ]),
     controller.findById
 )
@@ -35,7 +35,7 @@ router.patch(
     '/:id',
     verifyPermiso([
         'vCompras:editar',
-        'vVentas:editar',
+        'vPedidos:editar',
     ]),
     controller.update
 )
@@ -44,7 +44,7 @@ router.delete(
     '/:id',
     verifyPermiso([
         'vCompras:eliminar',
-        'vVentas:eliminar',
+        // 'vPedidos:eliminar',
     ]),
     controller.delet
 )
@@ -53,9 +53,23 @@ router.patch(
     '/anular/:id',
     verifyPermiso([
         'vCompras:anular',
-        'vVentas:anular',
+        'vPedidos:anular',
     ]),
     controller.anular
+)
+
+router.get(
+    '/ventas-pendientes',
+    verifyPermiso([
+        'vPedidos:listar',
+    ]),
+    controller.ventasPendientes
+)
+
+router.patch(
+    '/cambiar-mesa/:id',
+    verifyPermiso(['vPedidos:cambiarMesa']),
+    controller.cambiarMesa
 )
 
 export default router
