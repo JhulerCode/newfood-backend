@@ -10,13 +10,8 @@ export const Kardex = sequelize.define('kardexes', {
     fecha: { type: DataTypes.DATEONLY }, //required
 
     articulo: { type: DataTypes.STRING }, //required //linked
-    cantidad: { type: DataTypes.DOUBLE }, //required
+    cantidad: { type: DataTypes.DECIMAL(10, 2) }, //required
 
-    pu: { type: DataTypes.DOUBLE }, //required
-    igv_afectacion: { type: DataTypes.STRING }, //required
-    igv_porcentaje: { type: DataTypes.DOUBLE }, //required
-
-    observacion: { type: DataTypes.STRING },
     estado: { type: DataTypes.STRING },
 
     transaccion: { type: DataTypes.STRING }, //required //linked

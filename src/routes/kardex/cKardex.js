@@ -111,7 +111,7 @@ const find = async (req, res) => {
             transaccion1: {
                 model: Transaccion,
                 as: 'transaccion1',
-                attributes: ['id', 'socio', 'pago_comprobante_serie', 'pago_comprobante_correlativo',],
+                attributes: ['id', 'socio', 'compra_comprobante_serie', 'compra_comprobante_correlativo',],
                 required: false,
                 include: [
                     {

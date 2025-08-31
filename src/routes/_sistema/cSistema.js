@@ -60,6 +60,17 @@ const sistemaData = {
         { id: '1', nombre: 'Salón' },
         { id: '2', nombre: 'Para llevar' },
         { id: '3', nombre: 'Delivery' },
+    ],
+    caja_operaciones: [
+        { id: 1, tipo: 1, nombre: 'VENTA'},
+        { id: 2, tipo: 1, nombre: 'SALDO INICIAL'},
+        { id: 3, tipo: 1, nombre: 'OTRO'},
+        { id: 4, tipo: 2, nombre: 'COMPRA'},
+        { id: 5, tipo: 2, nombre: 'MANTENIMIENTO'},
+        { id: 6, tipo: 2, nombre: 'MOVILIDAD'},
+        { id: 7, tipo: 2, nombre: 'SERVICIO'},
+        { id: 8, tipo: 2, nombre: 'REMUNERACIÓN'},
+        { id: 9, tipo: 2, nombre: 'OTROS'},
     ]
 
 

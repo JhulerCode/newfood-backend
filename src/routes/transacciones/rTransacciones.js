@@ -52,7 +52,7 @@ router.delete(
 router.patch(
     '/anular/:id',
     verifyPermiso([
-        'vCompras:anular',
+        // 'vCompras:anular',
         'vPedidos:anular',
     ]),
     controller.anular

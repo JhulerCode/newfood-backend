@@ -6,12 +6,13 @@ import articulo_categorias from './articulo_categorias/rArticuloCategorias.js'
 import articulos from './articulos/rArticulos.js'
 import cajas from './cajas/rCajas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
+import comprobantes from './comprobantes/rComprobantes.js'
 import empresa from './empresa/rEmpresa.js'
 import impresoras from './impresoras/rImpresoras.js'
 import kardex from './kardex/rKardex.js'
 import mesas from './mesas/rMesas.js'
 import pago_comprobantes from './pago_comprobantes/rPagoComprobantes.js'
-import pago_metodos from './pago_metodo/rPagoMetodos.js'
+import pago_metodos from './pago_metodos/rPagoMetodos.js'
 import produccion_areas from './produccion_areas/rProduccionAreas.js'
 import receta_insumos from './receta_insumos/rRecetaInsumos.js'
 import salones from './salones/rSalones.js'
@@ -32,6 +33,7 @@ function routes(app) {
     app.use('/api/articulos', articulos)
     app.use('/api/cajas', cajas)
     app.use('/api/colaboradores', colaboradores)
+    app.use('/api/comprobantes', comprobantes)
     app.use('/api/empresa', empresa)
     app.use('/api/impresoras', impresoras)
     app.use('/api/kardex', kardex)

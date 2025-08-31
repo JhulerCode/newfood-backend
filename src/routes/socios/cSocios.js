@@ -4,9 +4,6 @@ import { applyFilters, existe } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import sequelize from '../../database/sequelize.js'
 
-const includes = {
-}
-
 const create = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -108,16 +105,13 @@ const find = async (req, res) => {
 
             if (qry.cols) {
                 findProps.attributes = findProps.attributes.concat(qry.cols)
-
-                // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('precio_lista')) findProps.include.push(includes.precio_lista1)
             }
 
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes[a])
-                }
-            }
+            // if (qry.incl) {
+            //     for (const a of qry.incl) {
+            //         if (qry.incl.includes(a)) findProps.include.push(includes1[a])
+            //     }
+            // }
         }
 
         let data = await Socio.findAll(findProps)

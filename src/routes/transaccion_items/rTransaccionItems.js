@@ -17,7 +17,6 @@ router.post(
     '/',
     verifyPermiso([
         'vCompras:crear',
-        'vVentas:crear',
     ]),
     controller.create
 )
@@ -35,7 +34,6 @@ router.patch(
     '/:id',
     verifyPermiso([
         'vCompras:editar',
-        'vVentas:editar',
     ]),
     controller.update
 )
@@ -44,7 +42,6 @@ router.delete(
     '/:id',
     verifyPermiso([
         'vCompras:eliminar',
-        'vVentas:eliminar',
     ]),
     controller.delet
 )

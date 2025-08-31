@@ -3,10 +3,12 @@ import sequelize from '../../database/sequelize.js'
 import { Articulo } from '../../database/models/Articulo.js'
 import { ArticuloCategoria } from '../../database/models/ArticuloCategoria.js'
 import { ProduccionArea } from '../../database/models/ProduccionArea.js'
+import { RecetaInsumo } from '../../database/models/RecetaInsumo.js'
+import { ComboArticulo } from '../../database/models/ComboArticulo.js'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
-const includes = {
+const includes1 = {
     categoria1: {
         model: ArticuloCategoria,
         as: 'categoria1',
@@ -16,10 +18,32 @@ const includes = {
         model: ProduccionArea,
         as: 'produccion_area1',
         attributes: ['id', 'nombre']
+    },
+    receta_insumos: {
+        model: RecetaInsumo,
+        as: 'receta_insumos',
+        attributes: ['articulo_principal', 'articulo', 'cantidad']
+    },
+    combo_articulos: {
+        model: ComboArticulo,
+        as: 'combo_articulos',
+        attributes: ['articulo_principal', 'articulo', 'cantidad'],
+        include: {
+            model: Articulo,
+            as: 'articulo1',
+            attributes: ['id', 'nombre', 'unidad', 'has_receta'],
+            include: {
+                model: RecetaInsumo,
+                as: 'receta_insumos',
+                attributes: ['articulo_principal', 'articulo', 'cantidad']
+            }
+        }
     }
 }
 
 const create = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador } = req.user
         const {
@@ -34,20 +58,32 @@ const create = async (req, res) => {
         // ----- VERIFY SI EXISTE NOMBRE ----- //
         if (await existe(Articulo, { nombre }, res) == true) return
 
-
         // ----- CREAR ----- //
         const nuevo = await Articulo.create({
             codigo_barra, nombre, unidad, marca, activo,
             igv_afectacion,
             tipo, categoria,
             produccion_area, has_receta,
-            is_combo, combo_articulos,
+            is_combo,
             precio_venta,
             createdBy: colaborador
-        })
+        }, { transaction })
+
+        ///// ----- COMBO ITEMS ----- /////
+        if (is_combo) {
+            const komboItems = combo_articulos.map(a => ({
+                articulo_principal: nuevo.id,
+                articulo: a.articulo,
+                cantidad: a.cantidad,
+                orden: a.orden,
+            }))
+
+            await ComboArticulo.bulkCreate(komboItems, { transaction })
+        }
+
+        await transaction.commit()
 
         const data = await loadOne(nuevo.id)
-
         res.json({ code: 0, data })
     }
     catch (error) {
@@ -56,6 +92,8 @@ const create = async (req, res) => {
 }
 
 const update = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador } = req.user
         const { id } = req.params
@@ -78,16 +116,37 @@ const update = async (req, res) => {
                 igv_afectacion,
                 tipo, categoria,
                 produccion_area, has_receta,
-                is_combo, combo_articulos,
+                is_combo,
                 precio_venta,
                 updatedBy: colaborador
             },
-            { where: { id } }
+            {
+                where: { id },
+                transaction
+            }
         )
 
         if (affectedRows > 0) {
-            const data = await loadOne(id)
+            ///// ----- COMBO ITEMS ----- /////
+            await ComboArticulo.destroy({
+                where: { articulo_principal: id },
+                transaction
+            })
 
+            if (is_combo) {
+                const komboItems = combo_articulos.map(a => ({
+                    articulo_principal: id,
+                    articulo: a.articulo,
+                    cantidad: a.cantidad,
+                    orden: a.orden,
+                }))
+
+                await ComboArticulo.bulkCreate(komboItems, { transaction })
+            }
+
+            await transaction.commit()
+
+            const data = await loadOne(id)
             res.json({ code: 0, data })
         }
         else {
@@ -103,7 +162,7 @@ const update = async (req, res) => {
 
 async function loadOne(id) {
     let data = await Articulo.findByPk(id, {
-        include: [includes.categoria1, includes.produccion_area1]
+        include: [includes1.categoria1, includes1.produccion_area1]
     })
 
     if (data) {
@@ -144,13 +203,13 @@ const find = async (req, res) => {
                 // if (qry.cols.includes('valor')) findProps.attributes.push(sqlValor)
 
                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('categoria')) findProps.include.push(includes.categoria1)
-                if (qry.cols.includes('produccion_area')) findProps.include.push(includes.produccion_area1)
+                if (qry.cols.includes('categoria')) findProps.include.push(includes1.categoria1)
+                if (qry.cols.includes('produccion_area')) findProps.include.push(includes1.produccion_area1)
             }
 
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes[a])
+                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
                 }
             }
         }
@@ -183,7 +242,9 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await Articulo.findByPk(id)
+        const data = await Articulo.findByPk(id, {
+            include: [includes1.combo_articulos]
+        })
 
         res.json({ code: 0, data })
     }

@@ -18,7 +18,7 @@ export const Colaborador = sequelize.define('colaboradores', {
     direccion: { type: DataTypes.STRING },
 
     cargo: { type: DataTypes.STRING }, //required
-    sueldo: { type: DataTypes.DOUBLE },
+    sueldo: { type: DataTypes.DECIMAL(10, 2) },
     activo: { type: DataTypes.BOOLEAN },
 
     has_signin: { type: DataTypes.BOOLEAN }, //required

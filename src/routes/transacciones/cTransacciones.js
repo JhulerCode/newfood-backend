@@ -9,7 +9,7 @@ import cSistema from "../_sistema/cSistema.js"
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { Mesa } from '../../database/models/Mesa.js'
 
-const includes = {
+const includes1 = {
     socio1: {
         model: Socio,
         as: 'socio1',
@@ -34,28 +34,25 @@ const create = async (req, res) => {
         const { colaborador } = req.user
         const {
             tipo, fecha, socio,
-            pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
-            observacion, estado,
-            anulado_motivo,
-            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
+            observacion, estado, anulado_motivo,
+            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
+            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
 
         // ----- CREAR ----- //
         const nuevo = await Transaccion.create({
             tipo, fecha, socio,
-            pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
-            observacion, estado,
-            anulado_motivo,
-            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
+            observacion, estado, anulado_motivo,
+            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
+            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             createdBy: colaborador
         }, { transaction })
 
         // ----- GUARDAR ITEMS ----- //
         const items = transaccion_items.map(a => ({
-            tipo, fecha,
             articulo: a.articulo,
             cantidad: a.cantidad,
             pu: a.pu,
@@ -64,8 +61,9 @@ const create = async (req, res) => {
             observacion: a.observacion,
             transaccion: nuevo.id,
             has_receta: a.has_receta,
+            receta_insumos: a.receta_insumos,
             is_combo: a.is_combo,
-            combo_articulo: a.combo_articulo,
+            combo_articulos: a.combo_articulos,
             createdBy: colaborador
         }))
 
@@ -74,13 +72,10 @@ const create = async (req, res) => {
         if (tipo == 1) {
             // ----- GUARAR KARDEX ----- //
             const kardexItems = transaccion_items.map(a => ({
-                tipo, fecha,
+                tipo,
+                fecha,
                 articulo: a.articulo,
                 cantidad: a.cantidad,
-                pu: a.pu,
-                igv_afectacion: a.igv_afectacion,
-                igv_porcentaje: a.igv_porcentaje,
-                observacion: a.observacion,
                 estado,
                 transaccion: nuevo.id,
                 createdBy: colaborador
@@ -126,21 +121,19 @@ const update = async (req, res) => {
         const { id } = req.params
         const {
             tipo, fecha, socio,
-            pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
-            observacion, estado,
-            anulado_motivo,
-            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
+            observacion, estado, anulado_motivo,
+            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
+            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
 
         const [affectedRows] = await Transaccion.update({
             tipo, fecha, socio,
-            pago_comprobante, pago_comprobante_serie, pago_comprobante_correlativo,
             pago_condicion, monto,
-            observacion, estado,
-            anulado_motivo,
-            pago_metodo, venta_codigo, venta_canal, venta_mesa, socio_datos, venta_entregado,
+            observacion, estado, anulado_motivo,
+            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
+            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             updatedBy: colaborador
         }, {
             where: { id },
@@ -157,7 +150,6 @@ const update = async (req, res) => {
 
                 // ----- GUARDAR ITEMS ----- //
                 const items = transaccion_items.map(a => ({
-                    tipo, fecha,
                     articulo: a.articulo,
                     cantidad: a.cantidad,
                     pu: a.pu,
@@ -166,8 +158,9 @@ const update = async (req, res) => {
                     observacion: a.observacion,
                     transaccion: id,
                     has_receta: a.has_receta,
+                    receta_insumos: a.receta_insumos,
                     is_combo: a.is_combo,
-                    combo_articulo: a.combo_articulo,
+                    combo_articulos: a.combo_articulos,
                     createdBy: colaborador
                 }))
 
@@ -194,7 +187,7 @@ const update = async (req, res) => {
 
 async function loadOne(id) {
     let data = await Transaccion.findByPk(id, {
-        include: [includes.socio1, includes.createdBy1]
+        include: [includes1.socio1, includes1.createdBy1]
     })
 
     if (data) {
@@ -224,7 +217,7 @@ const find = async (req, res) => {
         if (qry) {
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes[a])
+                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
                 }
             }
 
@@ -240,7 +233,7 @@ const find = async (req, res) => {
                 findProps.attributes = findProps.attributes.concat(cols1)
 
                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('socio')) findProps.include.push(includes.socio1)
+                if (qry.cols.includes('socio')) findProps.include.push(includes1.socio1)
             }
         }
 
@@ -366,70 +359,10 @@ const delet = async (req, res) => {
 }
 
 const anular = async (req, res) => {
-    // const transaction = await sequelize.transaction()
-
     try {
         const { colaborador } = req.user
         const { id } = req.params
         const { anulado_motivo, item } = req.body
-
-        // const transaccion_itemsPast = await TransaccionItem.findAll({
-        //     where: { transaccion: id },
-        // })
-
-        // const transaccionPast = await Transaccion.findByPk(id)
-
-        // await TransaccionItem.destroy({
-        //     where: { transaccion: id },
-        //     transaction
-        // })
-
-        // await Transaccion.destroy({
-        //     where: { id },
-        //     transaction
-        // })
-        // let transaccionData = transaccionPast.toJSON()
-
-        // if (item.tipo == 5) {
-        //     for (const a of transaccion_itemsPast) {
-        //         await TransaccionItem.update(
-        //             {
-        //                 stock: sequelize.literal(`COALESCE(stock, 0) + ${a.cantidad}`)
-        //             },
-        //             {
-        //                 where: { id: a.lote_padre },
-        //                 transaction
-        //             }
-        //         )
-        //     }
-        // }
-
-        // if (transaccionData.socio_pedido) {
-        //     for (const a of transaccion_itemsPast) {
-        //         await SocioPedidoItem.update(
-        //             {
-        //                 entregado: sequelize.literal(`COALESCE(entregado, 0) - ${a.cantidad}`)
-        //             },
-        //             {
-        //                 where: { articulo: a.articulo, socio_pedido: transaccionData.socio_pedido },
-        //                 transaction
-        //             }
-        //         )
-        //     }
-        // }
-
-        // ----- GUARDAR EL ANULADO ----- //
-        // transaccionData.estado = 0
-        // transaccionData.anulado_motivo = anulado_motivo
-        // transaccionData.updatedBy = colaborador
-        // const transaccionNew = await Transaccion.create(transaccionData, { transaction })
-
-        // const itemsNew = transaccion_itemsPast.map(a => {
-        //     const plain = a.toJSON()
-        //     plain.transaccion = transaccionNew.id
-        //     return plain
-        // })
-        // await TransaccionItem.bulkCreate(itemsNew, { transaction })
 
         await Transaccion.update({
             estado: 0,
@@ -438,8 +371,6 @@ const anular = async (req, res) => {
         }, {
             where: { id }
         })
-
-        // await transaction.commit()
 
         res.json({ code: 0 })
     }

@@ -13,17 +13,14 @@ export const Articulo = sequelize.define('articulos', {
     activo: { type: DataTypes.BOOLEAN }, //required
     // foto: { type: DataTypes.STRING },
 
-    igv_afectacion: { type: DataTypes.STRING }, //required
-
     tipo: { type: DataTypes.STRING }, //required
     categoria: { type: DataTypes.STRING }, //required //linked
     
     produccion_area: { type: DataTypes.STRING },
     has_receta: { type: DataTypes.BOOLEAN },
-
     is_combo: { type: DataTypes.BOOLEAN },
-    combo_articulos: { type: DataTypes.JSON },
 
+    igv_afectacion: { type: DataTypes.STRING }, //required
     precio_venta: { type: DataTypes.DOUBLE },
     stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 

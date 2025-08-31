@@ -4,15 +4,21 @@ import { Colaborador } from './Colaborador.js'
 
 export const Empresa = sequelize.define('empresas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    ruc: { type: DataTypes.STRING }, //required
-    nombre: { type: DataTypes.STRING }, //required
+    ruc: { type: DataTypes.STRING },
+    razon_social: { type: DataTypes.STRING },
+    nombre_comercial: { type: DataTypes.STRING },
+    domicilio_fiscal: { type: DataTypes.STRING },
+    ubigeo: { type: DataTypes.STRING },
+    urbanizacion: { type: DataTypes.STRING },
+    distrito: { type: DataTypes.STRING },
+    provincia: { type: DataTypes.STRING },
+    departamento: { type: DataTypes.STRING },
 
-    telefono: { type: DataTypes.STRING }, //required
-    correo: { type: DataTypes.STRING }, //required
-    direccion: { type: DataTypes.STRING }, //required
+    telefono: { type: DataTypes.STRING },
+    correo: { type: DataTypes.STRING },
     
-    pc_principal_ip: { type: DataTypes.STRING }, //required
-    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 }, //required
+    pc_principal_ip: { type: DataTypes.STRING },
+    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
 
     updatedBy: { type: DataTypes.STRING }
 })

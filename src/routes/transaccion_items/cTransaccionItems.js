@@ -1,8 +1,7 @@
 import sequelize from '../../database/sequelize.js'
-import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
+import { TransaccionItem } from '../../database/models/Transaccion.js'
 import { Articulo } from '../../database/models/Articulo.js'
 import { Kardex } from '../../database/models/Kardex.js'
-import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
 const create = async (req, res) => {
@@ -134,13 +133,7 @@ async function actualizarStock(tipo, articulo, cantidad, transaction) {
 }
 
 async function loadOne(id) {
-    let data = await TransaccionItem.findByPk(id, {
-        // include: {
-        //     model: Articulo,
-        //     as: 'articulo1',
-        //     attributes: ['nombre', 'unidad']
-        // }
-    })
+    let data = await TransaccionItem.findByPk(id)
 
     if (data) {
         data = data.toJSON()
@@ -149,93 +142,6 @@ async function loadOne(id) {
 
     return data
 }
-
-// const find = async (req, res) => {
-//     try {
-//         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
-//         const findProps = {
-//             attributes: ['id'],
-//             order: [['createdAt', 'DESC']],
-//             where: {},
-//             include: []
-//         }
-
-//         if (qry) {
-//             if (qry.fltr) {
-//                 Object.assign(findProps.where, applyFilters(qry.fltr))
-//             }
-
-//             if (qry.cols) {
-//                 findProps.attributes = findProps.attributes.concat(qry.cols)
-
-//                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-//                 if (qry.cols.includes('socio')) findProps.include.push(includes.socio1)
-//             }
-
-//             if (qry.incl) {
-//                 for (const a of qry.incl) {
-//                     if (qry.incl.includes(a)) findProps.include.push(includes[a])
-//                 }
-//             }
-//         }
-
-//         let data = await Transaccion.findAll(findProps)
-
-//         if (data.length > 0 && qry.cols) {
-//             data = data.map(a => a.toJSON())
-
-//             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-//             const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
-
-//             for (const a of data) {
-//                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
-//                 if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
-//             }
-//         }
-
-//         res.json({ code: 0, data })
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
-
-// const findById = async (req, res) => {
-//     try {
-//         const { id } = req.params
-
-//         let data = await Transaccion.findByPk(id, {
-//             include: [
-//                 {
-//                     model: TransaccionItem,
-//                     as: 'transaccion_items',
-//                     include: [
-//                         {
-//                             model: Articulo,
-//                             as: 'articulo1',
-//                             attributes: ['nombre', 'unidad']
-//                         },
-//                     ]
-//                 },
-//                 {
-//                     model: Socio,
-//                     as: 'socio1',
-//                     attributes: ['id', 'nombres']
-//                 },
-//             ]
-//         })
-
-//         // if (data) {
-//         //     data = data.toJSON()
-//         // }
-
-//         res.json({ code: 0, data })
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
 
 const delet = async (req, res) => {
     const transaction = await sequelize.transaction()
@@ -272,7 +178,5 @@ const delet = async (req, res) => {
 export default {
     create,
     update,
-    // find,
-    // findById,
     delet,
 }
