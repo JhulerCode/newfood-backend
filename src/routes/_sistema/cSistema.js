@@ -61,6 +61,10 @@ const sistemaData = {
         { id: '2', nombre: 'Para llevar' },
         { id: '3', nombre: 'Delivery' },
     ],
+    caja_operacion_tipos: [
+        { id: 1, nombre: 'INGRESO' },
+        { id: 2, nombre: 'EGRESO' },
+    ],
     caja_operaciones: [
         { id: 1, tipo: 1, nombre: 'VENTA'},
         { id: 2, tipo: 1, nombre: 'SALDO INICIAL'},

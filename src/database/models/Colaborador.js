@@ -9,7 +9,7 @@ export const Colaborador = sequelize.define('colaboradores', {
     doc_tipo: { type: DataTypes.STRING }, //required
     doc_numero: { type: DataTypes.STRING }, //required
 
-    fecha_nacimiento: { type: DataTypes.DATE },
+    fecha_nacimiento: { type: DataTypes.DATEONLY },
     sexo: { type: DataTypes.STRING },
 
     correo: { type: DataTypes.STRING },

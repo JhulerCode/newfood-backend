@@ -8,12 +8,11 @@ import { Transaccion } from './Transaccion.js'
 
 export const DineroMovimiento = sequelize.define('dinero_movimientos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    fecha: { type: DataTypes.DATE },
-    
+    fecha: { type: DataTypes.DATEONLY },
     tipo: { type: DataTypes.SMALLINT },
     operacion: { type: DataTypes.STRING }, //linked
     detalle: { type: DataTypes.STRING },
-    
+
     pago_metodo: { type: DataTypes.STRING }, //linked
     monto: { type: DataTypes.DECIMAL(10, 2) },
 
@@ -23,7 +22,14 @@ export const DineroMovimiento = sequelize.define('dinero_movimientos', {
     // caja: { type: DataTypes.STRING }, //linked //required
 
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
+
+    monto_real: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return `${this.tipo == 1 ? this.monto * 1 : this.monto * -1}`
+        }
+    }
 })
 
 PagoMetodo.hasMany(DineroMovimiento, { foreignKey: 'pago_metodo', as: 'dinero_movimientos', onDelete: 'RESTRICT' })

@@ -8,7 +8,7 @@ export const CajaApertura = sequelize.define('caja_aperturas', {
     fecha_cierre: { type: DataTypes.DATE },
     monto_apertura: { type: DataTypes.DECIMAL(10, 2) },
     monto_cierre: { type: DataTypes.DECIMAL(10, 2) },
-    abierto: { type: DataTypes.BOOLEAN },
+    estado: { type: DataTypes.STRING },
 
     // caja: {type:DataTypes.STRING}, //linked
 

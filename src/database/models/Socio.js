@@ -23,11 +23,8 @@ export const Socio = sequelize.define('socios', {
     doc_nombres: {
         type: DataTypes.VIRTUAL,
         get() {
-            return `${this.doc_numero} - ${this.nombres}`;
-        },
-        set(value) {
-            throw new Error("No puedes asignar valor a esta columna virtual.");
-        },
+            return `${this.doc_numero} - ${this.nombres}`
+        }
     },
 })
 

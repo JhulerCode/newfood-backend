@@ -46,7 +46,14 @@ export const Comprobante = sequelize.define('comprobantes', {
     venta_nota: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
+
+    serie_correlativo: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return `${this.venta_serie}-${this.venta_numero}`
+        },
+    },
 })
 
 Socio.hasMany(Comprobante, { foreignKey: 'socio', as: 'comprobantes', onDelete: 'RESTRICT' })
@@ -69,7 +76,7 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     igv_porcentaje: { type: DataTypes.DOUBLE },
     descuento_tipo: { type: DataTypes.STRING },
     descuento_valor: { type: DataTypes.DOUBLE },
-    
+
     producto: { type: DataTypes.STRING },
     codigo_unidad: { type: DataTypes.STRING },
     cantidad: { type: DataTypes.STRING },

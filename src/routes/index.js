@@ -5,9 +5,11 @@ import verifyToken from '../middlewares/verifyToken.js'
 import articulo_categorias from './articulo_categorias/rArticuloCategorias.js'
 import articulos from './articulos/rArticulos.js'
 import cajas from './cajas/rCajas.js'
+import caja_aperturas from './caja_aperturas/rCajaAperturas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
 import comprobantes from './comprobantes/rComprobantes.js'
 import empresa from './empresa/rEmpresa.js'
+import dinero_movimientos from './dinero_movimientos/rDineroMovimientos.js'
 import impresoras from './impresoras/rImpresoras.js'
 import kardex from './kardex/rKardex.js'
 import mesas from './mesas/rMesas.js'
@@ -32,9 +34,11 @@ function routes(app) {
     app.use('/api/articulo_categorias', articulo_categorias)
     app.use('/api/articulos', articulos)
     app.use('/api/cajas', cajas)
+    app.use('/api/caja_aperturas', caja_aperturas)
     app.use('/api/colaboradores', colaboradores)
     app.use('/api/comprobantes', comprobantes)
     app.use('/api/empresa', empresa)
+    app.use('/api/dinero_movimientos', dinero_movimientos)
     app.use('/api/impresoras', impresoras)
     app.use('/api/kardex', kardex)
     app.use('/api/mesas', mesas)

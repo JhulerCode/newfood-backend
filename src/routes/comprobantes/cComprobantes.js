@@ -8,6 +8,7 @@ import { Kardex } from '../../database/models/Kardex.js'
 import { Articulo } from '../../database/models/Articulo.js'
 import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
+import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { DineroMovimiento } from "../../database/models/DineroMovimiento.js"
 import cSistema from "../_sistema/cSistema.js"
 import { applyFilters } from '../../utils/mine.js'
@@ -40,6 +41,10 @@ const create = async (req, res) => {
         const empresa = await Empresa.findByPk('1')
         const cliente = await Socio.findByPk(socio)
         const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
+        const caja_apertura = await CajaApertura.findOne({ where: { estado: '1' } })
+
+        // ----- VERIFY SI CAJA ESTÁ APERTURADA ----- //
+        if (caja_apertura == null) return res.json({ code: 1, msg: 'No hay caja aperturada' })
 
         // ----- CREAR ----- //
         const nuevo = await Comprobante.create({
@@ -203,21 +208,21 @@ const create = async (req, res) => {
         }
 
         ///// ----- GUARDAR PAGOS ----- /////
-        // if (pago_condicion == 1) {
-        //     const pagoItems = pago_metodos.map(a => ({
-        //         fecha,
-        //         tipo: 1,
-        //         operacion: 1,
-        //         detalle: null,
-        //         pago_metodo: '1',
-        //         monto,
-        //         comprobante: nuevo.id,
-        //         transaccion: transaccion.id,
-        //         caja_apertura: caja_apertura.id,
-        //         createdBy: colaborador
-        //     }))
-        //     await DineroMovimiento.bulkCreate(pagoItems, { transaction })
-        // }
+        if (pago_condicion == 1) {
+            const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
+                fecha,
+                tipo: 1,
+                operacion: 1,
+                detalle: null,
+                pago_metodo: a.id,
+                monto,
+                comprobante: nuevo.id,
+                transaccion: transaccion.id,
+                caja_apertura: caja_apertura.id,
+                createdBy: colaborador
+            }))
+            await DineroMovimiento.bulkCreate(pagoItems, { transaction })
+        }
 
         await transaction.commit()
 
