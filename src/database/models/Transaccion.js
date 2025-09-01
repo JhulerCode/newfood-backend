@@ -32,7 +32,8 @@ export const Transaccion = sequelize.define('transacciones', {
     venta_pago_metodo: { type: DataTypes.STRING },
     venta_pago_con: { type: DataTypes.DECIMAL(10, 2) },
     venta_socio_datos: { type: DataTypes.JSON },
-    venta_entregado: { type: DataTypes.BOOLEAN },
+    venta_facturado: { type: DataTypes.BOOLEAN, defaultValue: false },
+    venta_entregado: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }

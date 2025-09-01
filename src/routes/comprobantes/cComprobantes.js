@@ -10,9 +10,8 @@ import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { DineroMovimiento } from "../../database/models/DineroMovimiento.js"
 import cSistema from "../_sistema/cSistema.js"
+import { applyFilters } from '../../utils/mine.js'
 
-// import { applyFilters } from '../../utils/mine.js'
-// import { Mesa } from '../../database/models/Mesa.js'
 
 const includes1 = {
     socio1: {
@@ -47,6 +46,7 @@ const create = async (req, res) => {
             socio,
             pago_condicion,
             monto,
+            transaccion: transaccion.id,
             estado,
 
             empresa_ruc: empresa.ruc,
@@ -85,11 +85,14 @@ const create = async (req, res) => {
         // ----- GUARDAR ITEMS ----- //
         const items = comprobante_items.map(a => ({
             articulo: a.articulo,
+            igv_porcentaje: a.igv_porcentaje,
+            descuento_tipo: a.descuento_tipo,
+            descuento_valor: a.descuento_valor,
 
             producto: a.nombre,
             codigo_unidad: a.unidad,
             cantidad: a.cantidad,
-            precio_base: a.vu,
+            precio_base: a.vu, // CUANDO HAY DESCUENTO ES: a.vu - a.vu_desc
             tipo_igv_codigo: a.igv_afectacion,
             codigo_sunat: '-', // NO SÉ
             codigo_producto: '-',
@@ -97,7 +100,6 @@ const create = async (req, res) => {
             comprobante: nuevo.id,
             createdBy: colaborador
         }))
-
         await ComprobanteItem.bulkCreate(items, { transaction })
 
         // ----- ACTUALIZAR CORRELATIVO ----- //
@@ -111,7 +113,6 @@ const create = async (req, res) => {
 
         // ----- GUARDAR KARDEX ----- //
         const kardexItems = []
-
         for (const a of comprobante_items) {
             if (a.is_combo == true) {
                 for (const b of a.combo_articulos) {
@@ -172,7 +173,6 @@ const create = async (req, res) => {
         // ----- ACTUALIZAR STOCK ----- //
         const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = transaccion_tiposMap[2]
-
         for (const a of kardexItems) {
             await Articulo.update(
                 {
@@ -187,9 +187,10 @@ const create = async (req, res) => {
 
         ///// ----- ACTUALIZAR PEDIDO ITEMS ----- /////
         for (const a of comprobante_items) {
+            // console.log(a.cantidad, a.venta_entregado, Number(a.cantidad) + Number(a.venta_entregado))
             await TransaccionItem.update(
                 {
-                    venta_entregado: a.cantidad
+                    venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
                 },
                 {
                     where: {
@@ -202,39 +203,46 @@ const create = async (req, res) => {
         }
 
         ///// ----- GUARDAR PAGOS ----- /////
-        if (pago_condicion == 1) {
-            const pagoItems = pago_metodos.map(a => ({
-                fecha,
-                tipo: 1,
-                operacion: 1,
-                detalle: null,
-                pago_metodo: '1',
-                monto,
-                comprobante: nuevo.id,
-                transaccion: transaccion.id,
-                caja_apertura: caja_apertura.id,
-                createdBy: colaborador
-            }))
-            await DineroMovimiento.bulkCreate(pagoItems, { transaction })
-        }
+        // if (pago_condicion == 1) {
+        //     const pagoItems = pago_metodos.map(a => ({
+        //         fecha,
+        //         tipo: 1,
+        //         operacion: 1,
+        //         detalle: null,
+        //         pago_metodo: '1',
+        //         monto,
+        //         comprobante: nuevo.id,
+        //         transaccion: transaccion.id,
+        //         caja_apertura: caja_apertura.id,
+        //         createdBy: colaborador
+        //     }))
+        //     await DineroMovimiento.bulkCreate(pagoItems, { transaction })
+        // }
 
         await transaction.commit()
 
-        ///// ----- ACTUALIZAR PEDIDO SI ES MESA ----- /////
-        if (transaccion.venta_canal == 1) {
-            const pedido_items = await TransaccionItem.findAll({
-                where: { transaccion: transaccion.id }
-            })
-            const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
-            if (is_pendiente == false) {
-                await Transaccion.update(
-                    { venta_entregado: true },
-                    {
-                        where: { id: transaccion.id },
-                    }
-                )
+        ///// ----- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO ----- /////
+        const pedido_items = await TransaccionItem.findAll({
+            where: { transaccion: transaccion.id }
+        })
+        const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
+        if (is_pendiente == false) {
+            const send = { venta_facturado: true }
+            if (transaccion.venta_canal == 1) {
+                send.venta_entregado = true
+                send.estado = true
             }
+
+            await Transaccion.update(
+                send,
+                {
+                    where: { id: transaccion.id },
+                }
+            )
         }
+
+        ///// ----- ACTUALIZAR PEDIDO SI SE PAGÓ TODO ----- /////
+
 
         // ----- DEVOLVER ----- //
         const data = await loadOne(nuevo.id)
@@ -288,9 +296,7 @@ const find = async (req, res) => {
             }
 
             if (qry.cols) {
-                const excludeCols = [
-                    'timeAgo',
-                ]
+                const excludeCols = []
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
@@ -305,11 +311,13 @@ const find = async (req, res) => {
             data = data.map(a => a.toJSON())
 
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-            const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+            const pago_comprobantes = cSistema.arrayMap('pago_comprobantes')
+            // const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
 
             for (const a of data) {
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
-                if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
+                if (qry.cols.includes('venta_tipo_documento_codigo')) a.venta_tipo_documento_codigo1 = pago_comprobantes[a.venta_tipo_documento_codigo]
+                // if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
             }
         }
 
@@ -365,64 +373,64 @@ const findById = async (req, res) => {
     }
 }
 
-const delet = async (req, res) => {
-    const transaction = await sequelize.transaction()
+// const delet = async (req, res) => {
+//     const transaction = await sequelize.transaction()
 
-    try {
-        const { id } = req.params
-        const { tipo, estado } = req.body
+//     try {
+//         const { id } = req.params
+//         const { tipo, estado } = req.body
 
-        await Kardex.destroy({
-            where: { transaccion: id },
-            transaction
-        })
+//         await Kardex.destroy({
+//             where: { transaccion: id },
+//             transaction
+//         })
 
-        await ComprobanteItem.destroy({
-            where: { transaccion: id },
-            transaction
-        })
+//         await ComprobanteItem.destroy({
+//             where: { transaccion: id },
+//             transaction
+//         })
 
-        await Comprobante.destroy({
-            where: { id },
-            transaction
-        })
+//         await Comprobante.destroy({
+//             where: { id },
+//             transaction
+//         })
 
-        if (estado != 0) {
-            const transaccion_items = await ComprobanteItem.findAll({
-                where: { transaccion: id },
-                attributes: ['id', 'articulo', 'cantidad'],
-            })
+//         if (estado != 0) {
+//             const transaccion_items = await ComprobanteItem.findAll({
+//                 where: { transaccion: id },
+//                 attributes: ['id', 'articulo', 'cantidad'],
+//             })
 
-            const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
-            const tipoInfo = transaccion_tiposMap[tipo]
+//             const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
+//             const tipoInfo = transaccion_tiposMap[tipo]
 
-            for (const a of transaccion_items) {
-                await Articulo.update(
-                    {
-                        stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '-' : '+'} ${a.cantidad}`)
-                    },
-                    {
-                        where: { id: a.articulo },
-                        transaction
-                    }
-                )
-            }
-        }
+//             for (const a of transaccion_items) {
+//                 await Articulo.update(
+//                     {
+//                         stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '-' : '+'} ${a.cantidad}`)
+//                     },
+//                     {
+//                         where: { id: a.articulo },
+//                         transaction
+//                     }
+//                 )
+//             }
+//         }
 
-        await transaction.commit()
+//         await transaction.commit()
 
-        res.json({ code: 0 })
-    }
-    catch (error) {
-        await transaction.rollback()
+//         res.json({ code: 0 })
+//     }
+//     catch (error) {
+//         await transaction.rollback()
 
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
+//         res.status(500).json({ code: -1, msg: error.message, error })
+//     }
+// }
 
 export default {
     create,
     find,
     findById,
-    delet,
+    // delet,
 }

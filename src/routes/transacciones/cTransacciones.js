@@ -1,5 +1,5 @@
 import sequelize from '../../database/sequelize.js'
-import { fn, col } from 'sequelize'
+import { fn, col, literal, Op } from 'sequelize'
 import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
 import { Socio } from '../../database/models/Socio.js'
 import { Articulo } from '../../database/models/Articulo.js'
@@ -195,9 +195,12 @@ async function loadOne(id) {
 
         const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
         const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+        const estados = cSistema.arrayMap('estados')
 
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.estado1 = transaccion_estadosMap[data.estado]
+        data.venta_facturado1 = estados[data.venta_facturado]
+        data.venta_entregado1 = estados[data.venta_entregado]
     }
 
     return data
@@ -214,6 +217,17 @@ const find = async (req, res) => {
             include: []
         }
 
+        const sqls = {
+            comprobantes_monto: [
+                literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`),
+                "comprobantes_monto"
+            ],
+            pagos_monto: [
+                literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.transaccion = "transacciones"."id")`),
+                "pagos_monto"
+            ]
+        }
+
         if (qry) {
             if (qry.incl) {
                 for (const a of qry.incl) {
@@ -227,13 +241,19 @@ const find = async (req, res) => {
 
             if (qry.cols) {
                 const excludeCols = [
-                    'timeAgo',
+                    'timeAgo', 'comprobantes_monto', 'pagos_monto', 'more_info'
                 ]
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
                 if (qry.cols.includes('socio')) findProps.include.push(includes1.socio1)
+            }
+
+            if (qry.sqls) {
+                for (const a of qry.sqls) {
+                    if (sqls[a]) findProps.attributes.push(sqls[a])
+                }
             }
         }
 
@@ -244,10 +264,13 @@ const find = async (req, res) => {
 
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
             const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+            const estados = cSistema.arrayMap('estados')
 
             for (const a of data) {
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
+                if (qry.cols.includes('venta_facturado')) a.venta_facturado1 = estados[a.venta_facturado]
+                if (qry.cols.includes('venta_entregado')) a.venta_entregado1 = estados[a.venta_entregado]
             }
         }
 
@@ -358,6 +381,9 @@ const delet = async (req, res) => {
     }
 }
 
+
+
+///// ----- PARA VENTAS ----- /////
 const anular = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -383,14 +409,20 @@ const anular = async (req, res) => {
 
 const ventasPendientes = async (req, res) => {
     try {
-        const data = await Transaccion.findAll({
+        const findProps = {
             attributes: [
                 'venta_canal',
                 [fn('COUNT', col('id')), 'cantidad']
             ],
-            where: { tipo: '2', estado: '1' },
+            where: {
+                tipo: '2',
+                estado: '1',
+                venta_facturado: false
+            },
             group: ['venta_canal'],
-        })
+        }
+
+        const data = await Transaccion.findAll(findProps)
 
         res.json({ code: 0, data })
     }
@@ -421,14 +453,38 @@ const cambiarMesa = async (req, res) => {
     }
 }
 
+const entregar = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+
+        // ----- ENTREGAR Y FINALIZAR ----- //
+        await Transaccion.update(
+            {
+                venta_entregado: true,
+                estado: 2,
+                updatedBy: colaborador
+            },
+            { where: { id } }
+        )
+
+        const data = await loadOne(id)
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 export default {
     create,
     update,
     find,
     findById,
     delet,
-    anular,
 
+    anular,
     ventasPendientes,
     cambiarMesa,
+    entregar,
 }

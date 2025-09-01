@@ -19,9 +19,19 @@ export const Socio = sequelize.define('socios', {
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
+
+    doc_nombres: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            return `${this.doc_numero} - ${this.nombres}`;
+        },
+        set(value) {
+            throw new Error("No puedes asignar valor a esta columna virtual.");
+        },
+    },
 })
 
-Colaborador.hasMany(Socio, {foreignKey:'createdBy', onDelete:'RESTRICT'})
-Socio.belongsTo(Colaborador, {foreignKey:'createdBy', as:'createdBy1'})
-Colaborador.hasMany(Socio, {foreignKey:'updatedBy', onDelete:'RESTRICT'})
-Socio.belongsTo(Colaborador, {foreignKey:'updatedBy', as:'updatedBy1'})
+Colaborador.hasMany(Socio, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
+Socio.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
+Colaborador.hasMany(Socio, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
+Socio.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })

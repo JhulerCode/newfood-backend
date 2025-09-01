@@ -71,16 +71,16 @@ const sistemaData = {
         { id: 7, tipo: 2, nombre: 'SERVICIO'},
         { id: 8, tipo: 2, nombre: 'REMUNERACIÓN'},
         { id: 9, tipo: 2, nombre: 'OTROS'},
+    ],
+    pago_comprobantes: [
+        { id: '01', nombre: 'FACTURA' },
+        { id: '03', nombre: 'BOLETA' },
+        { id: 'NV', nombre: 'NOTA DE VENTA' },
     ]
 
 
 
 
-    // pedido_estados: [
-    //     { id: '0', nombre: 'ANULADO' },
-    //     { id: '1', nombre: 'ABIERTO' },
-    //     { id: '2', nombre: 'CERRADO' }
-    // ],
 
 
     // produccion_tipos: [

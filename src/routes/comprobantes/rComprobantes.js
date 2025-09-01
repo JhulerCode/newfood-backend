@@ -4,14 +4,13 @@ import verifyPermiso from '../../middlewares/verifyPermiso.js'
 
 const router = Router()
 
-// router.get(
-//     '/',
-//     verifyPermiso([
-//         'vCompras:listar',
-//         'vPedidos:listar'
-//     ]),
-//     controller.find
-// )
+router.get(
+    '/',
+    verifyPermiso([
+        'vPedidos:listar',
+    ]),
+    controller.find
+)
 
 router.post(
     '/',

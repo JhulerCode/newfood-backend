@@ -49,6 +49,7 @@ router.delete(
     controller.delet
 )
 
+///// ----- PARA VENTAS ----- /////
 router.patch(
     '/anular/:id',
     verifyPermiso([
@@ -70,6 +71,12 @@ router.patch(
     '/cambiar-mesa/:id',
     verifyPermiso(['vPedidos:cambiarMesa']),
     controller.cambiarMesa
+)
+
+router.patch(
+    '/entregar/:id',
+    verifyPermiso(['vPedidos:entregar']),
+    controller.entregar
 )
 
 export default router

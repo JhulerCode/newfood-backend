@@ -3,12 +3,14 @@ import sequelize from '../sequelize.js'
 import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
 import { Colaborador } from './Colaborador.js'
+import { Transaccion } from './Transaccion.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    socio: { type: DataTypes.STRING }, //required //linked
-    pago_condicion: { type: DataTypes.STRING }, //required
-    monto: { type: DataTypes.DECIMAL(10, 2) }, //required
+    socio: { type: DataTypes.STRING }, //linked
+    pago_condicion: { type: DataTypes.STRING },
+    monto: { type: DataTypes.DECIMAL(10, 2) },
+    transaccion: { type: DataTypes.STRING }, //linked
     estado: { type: DataTypes.STRING },
 
     empresa_ruc: { type: DataTypes.STRING },
@@ -50,6 +52,9 @@ export const Comprobante = sequelize.define('comprobantes', {
 Socio.hasMany(Comprobante, { foreignKey: 'socio', as: 'comprobantes', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })
 
+Transaccion.hasMany(Comprobante, { foreignKey: 'transaccion', as: 'comprobantes', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
+
 Colaborador.hasMany(Comprobante, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
 Colaborador.hasMany(Comprobante, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
@@ -61,6 +66,9 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
 
     articulo: { type: DataTypes.STRING },
+    igv_porcentaje: { type: DataTypes.DOUBLE },
+    descuento_tipo: { type: DataTypes.STRING },
+    descuento_valor: { type: DataTypes.DOUBLE },
     
     producto: { type: DataTypes.STRING },
     codigo_unidad: { type: DataTypes.STRING },
