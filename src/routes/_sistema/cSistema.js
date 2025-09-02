@@ -56,7 +56,7 @@ const sistemaData = {
         { id: '3', nombre: 'AJUSTE ENTRADA', operacion: 1 },
         { id: '4', nombre: 'AJUSTE SALIDA', operacion: -1 },
     ],
-    venta_caneles: [
+    venta_canales: [
         { id: '1', nombre: 'Salón' },
         { id: '2', nombre: 'Para llevar' },
         { id: '3', nombre: 'Delivery' },

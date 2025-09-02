@@ -28,4 +28,10 @@ router.delete(
     controller.delet
 )
 
+router.get(
+    '/resumen/:id',
+    // verifyPermiso(['vCajaMovimientos:ver']),
+    controller.findResumen
+)
+
 export default router

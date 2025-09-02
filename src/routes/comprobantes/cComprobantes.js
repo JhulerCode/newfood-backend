@@ -90,6 +90,7 @@ const create = async (req, res) => {
         // ----- GUARDAR ITEMS ----- //
         const items = comprobante_items.map(a => ({
             articulo: a.articulo,
+            pu: a.pu,
             igv_porcentaje: a.igv_porcentaje,
             descuento_tipo: a.descuento_tipo,
             descuento_valor: a.descuento_valor,
@@ -148,7 +149,6 @@ const create = async (req, res) => {
             }
             else {
                 if (a.has_receta == true) {
-                    console.log(a.nombre)
                     for (const b of a.receta_insumos) {
                         kardexItems.push({
                             tipo: 2,

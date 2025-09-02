@@ -73,14 +73,15 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
 
     articulo: { type: DataTypes.STRING },
+    pu: { type: DataTypes.DECIMAL(10, 2) },
     igv_porcentaje: { type: DataTypes.DOUBLE },
     descuento_tipo: { type: DataTypes.STRING },
     descuento_valor: { type: DataTypes.DOUBLE },
 
     producto: { type: DataTypes.STRING },
     codigo_unidad: { type: DataTypes.STRING },
-    cantidad: { type: DataTypes.STRING },
-    precio_base: { type: DataTypes.STRING },
+    cantidad: { type: DataTypes.DECIMAL(10, 2) },
+    precio_base: { type: DataTypes.DECIMAL(10, 2) },
     tipo_igv_codigo: { type: DataTypes.STRING },
     codigo_sunat: { type: DataTypes.STRING },
     codigo_producto: { type: DataTypes.STRING },
