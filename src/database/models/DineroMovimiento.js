@@ -17,7 +17,6 @@ export const DineroMovimiento = sequelize.define('dinero_movimientos', {
     monto: { type: DataTypes.DECIMAL(10, 2) },
 
     comprobante: { type: DataTypes.STRING }, //linked
-    transaccion: { type: DataTypes.STRING }, //linked
     caja_apertura: { type: DataTypes.STRING }, //linked
     // caja: { type: DataTypes.STRING }, //linked //required
 

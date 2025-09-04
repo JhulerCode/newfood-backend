@@ -27,7 +27,6 @@ const sistemaData = {
     unidades: [
         { id: 'NIU', nombre: 'Unidad', nombre_completo: 'Unidad (NIU)' },
         { id: 'KGM', nombre: 'Kilogramo', nombre_completo: 'Kilogramo (KGM)' },
-        // { id: 'GRM', nombre: 'Gramo', nombre_completo: 'Gramo (GRM)' },
         { id: 'LTR', nombre: 'Litro', nombre_completo: 'Litro (LTR)' },
         { id: 'OZN', nombre: 'Onza', nombre_completo: 'Onza (OZN)' },
 
@@ -57,9 +56,9 @@ const sistemaData = {
         { id: '4', nombre: 'AJUSTE SALIDA', operacion: -1 },
     ],
     venta_canales: [
-        { id: '1', nombre: 'Salón' },
-        { id: '2', nombre: 'Para llevar' },
-        { id: '3', nombre: 'Delivery' },
+        { id: '1', nombre: 'SALÓN' },
+        { id: '2', nombre: 'PARA LLEVAR' },
+        { id: '3', nombre: 'DELIVERY' },
     ],
     caja_operacion_tipos: [
         { id: 1, nombre: 'INGRESO' },
@@ -80,44 +79,16 @@ const sistemaData = {
         { id: '01', nombre: 'FACTURA' },
         { id: '03', nombre: 'BOLETA' },
         { id: 'NV', nombre: 'NOTA DE VENTA' },
+    ],
+    comprobante_estados: [
+        { id: '0', nombre: 'ANULADO' },
+        { id: '1', nombre: 'SIN ENVIAR' },
+        { id: '2', nombre: 'ACEPTADO' },
+    ],
+    caja_apertura_estados: [
+        { id: '1', nombre: 'ABIERTO' },
+        { id: '2', nombre: 'CERRADO' },
     ]
-
-
-
-
-
-
-    // produccion_tipos: [
-    //     { id: 1, nombre: 'FILTRANTE' },
-    //     { id: 2, nombre: 'GRANEL' },
-    //     { id: 3, nombre: 'PIRAMIDAL' }
-    // ],
-    // produccion_orden_estados: [
-    //     { id: '0', nombre: 'ANULADO' },
-    //     { id: '1', nombre: 'ABIERTO' },
-    //     { id: '2', nombre: 'CERRADO' }
-    // ],
-    // documentos_estados: [
-    //     { id: '0', nombre: 'VENCIDO' },
-    //     { id: '0.1', nombre: 'VENCE HOY' },
-    //     { id: '1', nombre: 'POR VENCER' },
-    //     { id: '2', nombre: 'VIGENTE' },
-    // ],
-
-    // caja_apertura_estados: [
-    //     { id: '1', nombre: 'ABIERTO' },
-    //     { id: '2', nombre: 'CERRADO' },
-    // ],
-    // cuarentena_productos_estados: [
-    //     { id: '0', nombre: 'ANULADO' },
-    //     { id: '1', nombre: 'PENDIENTE' },
-    //     { id: '2', nombre: 'ACEPTADO' }
-    // ],
-
-    // conformidad_estados: [
-    //     { id: '1', nombre: 'CONFORME' },
-    //     { id: '2', nombre: 'NO CONFORME' },
-    // ],
 }
 
 function arrayMap(array) {

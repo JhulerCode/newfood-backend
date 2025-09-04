@@ -3,6 +3,7 @@ import { Transaccion } from '../../database/models/Transaccion.js'
 import { Kardex } from '../../database/models/Kardex.js'
 import { Socio } from '../../database/models/Socio.js'
 import { Articulo } from '../../database/models/Articulo.js'
+import { Comprobante } from '../../database/models/Comprobante.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -14,9 +15,7 @@ const create = async (req, res) => {
         const {
             tipo, fecha,
             articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje,
-            observacion,
-            estado,
+            observacion, estado,
             transaccion,
         } = req.body
 
@@ -24,9 +23,7 @@ const create = async (req, res) => {
         const nuevo = await Kardex.create({
             tipo, fecha,
             articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje,
-            observacion,
-            estado,
+            observacion, estado,
             transaccion,
             createdBy: colaborador
         }, { transaction })
@@ -57,39 +54,34 @@ const create = async (req, res) => {
     }
 }
 
-const update = async (req, res) => {
-    try {
-        const { colaborador } = req.user
-        const { id } = req.params
-        const {
-            tipo, fecha,
-            articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje, moneda, tipo_cambio,
-            lote, fv,
-            is_lote_padre, stock, lote_padre,
-            observacion, calidad_revisado,
-            transaccion, produccion_orden, maquina,
-        } = req.body
+// const update = async (req, res) => {
+//     try {
+//         const { colaborador } = req.user
+//         const { id } = req.params
+//         const {
+//             tipo, fecha,
+//             articulo, cantidad,
+//             observacion, calidad_revisado,
+//             transaccion, produccion_orden, maquina,
+//         } = req.body
 
-        await Kardex.update({
-            tipo, fecha,
-            articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje, moneda, tipo_cambio,
-            lote, fv,
-            is_lote_padre, stock, lote_padre,
-            observacion, calidad_revisado,
-            transaccion, produccion_orden, maquina,
-            updatedBy: colaborador
-        }, { where: { id } })
+//         await Kardex.update({
+//             tipo, fecha,
+//             articulo, cantidad,
+//             is_lote_padre, stock, lote_padre,
+//             observacion, calidad_revisado,
+//             transaccion, produccion_orden, maquina,
+//             updatedBy: colaborador
+//         }, { where: { id } })
 
-        const data = await Kardex.findByPk(id)
+//         const data = await Kardex.findByPk(id)
 
-        res.json({ code: 0, data })
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
+//         res.json({ code: 0, data })
+//     }
+//     catch (error) {
+//         res.status(500).json({ code: -1, msg: error.message, error })
+//     }
+// }
 
 const find = async (req, res) => {
     try {
@@ -111,16 +103,22 @@ const find = async (req, res) => {
             transaccion1: {
                 model: Transaccion,
                 as: 'transaccion1',
-                attributes: ['id', 'socio', 'compra_comprobante_serie', 'compra_comprobante_correlativo',],
+                attributes: ['id', 'socio', 'compra_comprobante_serie', 'compra_comprobante_correlativo'],
                 required: false,
+
+            },
+            comprobante1: {
+                model: Comprobante,
+                as: 'comprobante1',
+                attributes: ['id', 'venta_serie', 'venta_numero', 'serie_correlativo'],
                 include: [
                     {
                         model: Socio,
                         as: 'socio1',
                         attributes: ['id', 'nombres']
-                    }
+                    },
                 ],
-            },
+            }
         }
 
         if (qry) {
@@ -234,7 +232,7 @@ const delet = async (req, res) => {
 
 
 export default {
-    update,
+    // update,
     find,
     delet,
     create,

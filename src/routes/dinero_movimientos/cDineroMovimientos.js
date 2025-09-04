@@ -1,3 +1,4 @@
+// import { literal } from 'sequelize'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
@@ -58,8 +59,16 @@ const find = async (req, res) => {
             }
 
             if (qry.cols) {
-                findProps.attributes = findProps.attributes.concat(qry.cols)
+                const excludeCols = []
+                const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
+                findProps.attributes = findProps.attributes.concat(cols1)
             }
+
+            // if (qry.sqls) {
+            //     for (const a of qry.sqls) {
+            //         if (sqls1[a]) findProps.attributes.push(sqls1[a])
+            //     }
+            // }
         }
 
         let data = await DineroMovimiento.findAll(findProps)
@@ -205,7 +214,28 @@ const findResumen = async (req, res) => {
         }
 
         let data = await DineroMovimiento.findAll(findProps)
-        let send = {}
+
+        const send = {
+            efectivo_ingresos: [],
+            efectivo_ingresos_total: 0,
+            efectivo_ingresos_extra_total: 0,
+
+            efectivo_egresos: [],
+            efectivo_egresos_total: 0,
+
+            ventas_total: 0,
+            descuentos_total: 0,
+
+            venta_pago_metodos: [],
+            venta_canales: [],
+            venta_comprobantes: [],
+            comprobantes_aceptados: [],
+            comprobantes_aceptados_total: 0,
+            comprobantes_anulados: [],
+            comprobantes_anulados_total: 0,
+            productos: [],
+            productos_anulados: [],
+        }
 
         if (data.length > 0) {
             data = data.map(a => a.toJSON())
@@ -214,33 +244,12 @@ const findResumen = async (req, res) => {
             const caja_operacionesMap = cSistema.arrayMap('caja_operaciones')
             const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
 
-            const efectivo_ingresos = []
-            let efectivo_ingresos_total = 0
-            let efectivo_ingresos_extra_total = 0
-
-            const efectivo_egresos = []
-            let efectivo_egresos_total = 0
-
-            let ventas_total = 0
-            let descuentos_total = 0
-
-            const venta_pago_metodos = []
-            const venta_canales = []
-            const venta_comprobantes = []
-            const comprobantes_aceptados = []
-            const comprobantes_anulados = []
-            let comprobantes_aceptados_total = 0
-            let comprobantes_anulados_total = 0
-            const productos = []
-            const productos_anulados = []
-            // let productos_anulados_total = 0
-
             for (const a of data) {
                 if (a.tipo == 2) {
                     if (a.pago_metodo == 1) {
-                        efectivo_egresos_total += Number(a.monto)
+                        send.efectivo_egresos_total += Number(a.monto)
 
-                        efectivo_egresos.push({
+                        send.efectivo_egresos.push({
                             id: a.id,
                             operacion: caja_operacionesMap[a.operacion].nombre,
                             detalle: a.detalle,
@@ -251,12 +260,12 @@ const findResumen = async (req, res) => {
 
                 if (a.tipo == 1) {
                     if (a.pago_metodo == 1) {
-                        efectivo_ingresos_total += Number(a.monto)
+                        send.efectivo_ingresos_total += Number(a.monto)
 
                         if (a.operacion != 1) {
-                            efectivo_ingresos_extra_total += Number(a.monto)
+                            send.efectivo_ingresos_extra_total += Number(a.monto)
 
-                            efectivo_ingresos.push({
+                            send.efectivo_ingresos.push({
                                 id: a.id,
                                 operacion: caja_operacionesMap[a.operacion].nombre,
                                 detalle: a.detalle,
@@ -266,11 +275,11 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.transaccion1) {
-                        ventas_total += Number(a.monto)
+                        send.ventas_total += Number(a.monto)
 
-                        const j = venta_canales.findIndex(b => b.id == a.transaccion1.venta_canal)
+                        const j = send.venta_canales.findIndex(b => b.id == a.transaccion1.venta_canal)
                         if (j === -1) {
-                            venta_canales.push({
+                            send.venta_canales.push({
                                 id: a.transaccion1.venta_canal,
                                 nombre: venta_canalesMap[a.transaccion1.venta_canal].nombre,
                                 monto: Number(a.monto),
@@ -278,123 +287,121 @@ const findResumen = async (req, res) => {
                             })
                         }
                         else {
-                            venta_canales[j].monto += Number(a.monto)
-                            venta_canales[j].cantidad++
+                            send.venta_canales[j].monto += Number(a.monto)
+                            send.venta_canales[j].cantidad++
                         }
                     }
 
                     if (a.comprobante1) {
                         ///// ----- ANULADOS ----- /////
                         if (a.comprobante1.estado == 0) {
-                            comprobantes_anulados_total += Number(a.comprobante1.monto)
-
                             ///// ----- COMPROBANTES ----- /////
-                            const j = comprobantes_anulados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
+                            send.comprobantes_anulados_total += Number(a.monto)
+
+                            const j = send.comprobantes_anulados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
                             if (j === -1) {
-                                comprobantes_anulados.push({
+                                send.comprobantes_anulados.push({
                                     id: a.comprobante1.serie_correlativo,
                                     tipo: pago_comprobantesMap[a.comprobante1.venta_tipo_documento_codigo].nombre,
-                                    monto: Number(a.comprobante1.monto),
+                                    monto: Number(a.monto),
                                 })
                             }
                             else {
-                                comprobantes_anulados[i].monto += Number(a.comprobante1.monto)
+                                send.comprobantes_anulados[i].monto += Number(a.monto)
                             }
 
                             ///// ----- PRODUCTOS ----- /////
                             for (const b of a.comprobante1.comprobante_items) {
-                                const k = productos_anulados.findIndex(c => c.id == b.articulo)
-                                const send = calcularUno({
+                                const k = send.productos_anulados.findIndex(c => c.id == b.articulo)
+                                const prd = calcularUno({
                                     pu: Number(b.pu),
                                     descuento_tipo: b.descuento_tipo,
                                     descuento_valor: b.descuento_valor,
                                     cantidad: Number(b.cantidad),
                                 })
 
-                                // descuentos_total += send.descuento
-
                                 if (k === -1) {
-                                    productos_anulados.push({
+                                    send.productos_anulados.push({
                                         id: b.articulo,
                                         nombre: b.producto,
                                         cantidad: Number(b.cantidad),
-                                        monto: send.total,
-                                        descuento: send.descuento == 0 ? null : send.descuento,
+                                        monto: Number(a.monto),
+                                        descuento: prd.descuento == 0 ? null : prd.descuento,
                                     })
                                 }
                                 else {
-                                    productos_anulados[k].cantidad += Number(b.cantidad)
-                                    productos_anulados[k].monto += send.total
-                                    productos_anulados[k].descuento += send.descuento == 0 ? null : send.descuento
+                                    send.productos_anulados[k].cantidad += Number(b.cantidad)
+                                    send.productos_anulados[k].monto += Number(a.monto)
+                                    send.productos_anulados[k].descuento += prd.descuento == 0 ? null : prd.descuento
                                 }
                             }
                         }
 
                         ///// ----- ACEPTADOS ----- /////
                         if (a.comprobante1.estado == 1) {
-                            comprobantes_aceptados_total += Number(a.comprobante1.monto)
-
                             ///// ----- TIPOS DE COMPROBANTES ----- /////
-                            const i = venta_comprobantes.findIndex(b => b.id == a.comprobante1.venta_tipo_documento_codigo)
+                            const i = send.venta_comprobantes.findIndex(b => b.id == a.comprobante1.venta_tipo_documento_codigo)
                             if (i === -1) {
-                                venta_comprobantes.push({
+                                send.venta_comprobantes.push({
                                     id: a.comprobante1.venta_tipo_documento_codigo,
                                     nombre: pago_comprobantesMap[a.comprobante1.venta_tipo_documento_codigo].nombre,
-                                    monto: Number(a.comprobante1.monto),
+                                    monto: Number(a.monto),
                                     cantidad: 1
                                 })
                             }
                             else {
-                                venta_comprobantes[i].monto += Number(a.comprobante1.monto)
-                                venta_comprobantes[i].cantidad++
+                                send.venta_comprobantes[i].monto += Number(a.monto)
+                                send.venta_comprobantes[i].cantidad++
                             }
 
                             ///// ----- COMPROBANTES ----- /////
-                            const j = comprobantes_aceptados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
+                            send.comprobantes_aceptados_total += Number(a.monto)
+
+                            const j = send.comprobantes_aceptados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
                             if (j === -1) {
-                                comprobantes_aceptados.push({
+                                send.comprobantes_aceptados.push({
                                     id: a.comprobante1.serie_correlativo,
                                     tipo: pago_comprobantesMap[a.comprobante1.venta_tipo_documento_codigo].nombre,
-                                    monto: Number(a.comprobante1.monto),
+                                    monto: Number(a.monto),
                                 })
                             }
                             else {
-                                comprobantes_aceptados[i].monto += Number(a.comprobante1.monto)
+                                send.comprobantes_aceptados[i].monto += Number(a.monto)
                             }
 
                             ///// ----- PRODUCTOS ----- /////
                             for (const b of a.comprobante1.comprobante_items) {
-                                const k = productos.findIndex(c => c.id == b.articulo)
-                                const send = calcularUno({
+                                const k = send.productos.findIndex(c => c.id == b.articulo)
+                                const prd = calcularUno({
                                     pu: Number(b.pu),
                                     descuento_tipo: b.descuento_tipo,
                                     descuento_valor: b.descuento_valor,
                                     cantidad: Number(b.cantidad),
                                 })
 
-                                descuentos_total += send.descuento
+                                send.descuentos_total += prd.descuento
 
                                 if (k === -1) {
-                                    productos.push({
+                                    send.productos.push({
                                         id: b.articulo,
                                         nombre: b.producto,
                                         cantidad: Number(b.cantidad),
-                                        monto: send.total,
-                                        descuento: send.descuento == 0 ? null : send.descuento,
+                                        monto: Number(a.monto),
+                                        descuento: prd.descuento == 0 ? null : prd.descuento,
                                     })
                                 }
                                 else {
-                                    productos[k].cantidad += Number(b.cantidad)
-                                    productos[k].monto += send.total
-                                    productos[k].descuento += send.descuento == 0 ? null : send.descuento
+                                    send.productos[k].cantidad += Number(b.cantidad)
+                                    send.productos[k].monto += Number(a.monto)
+                                    send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
                                 }
                             }
 
                             ///// ----- MÉTODOS DE PAGO ----- /////
                             // console.log(1)
-                            const l = venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
+                            const l = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
                             if (l === -1) {
-                                venta_pago_metodos.push({
+                                send.venta_pago_metodos.push({
                                     id: a.pago_metodo1.id,
                                     nombre: a.pago_metodo1.nombre,
                                     monto: Number(a.monto),
@@ -402,34 +409,12 @@ const findResumen = async (req, res) => {
                                 })
                             }
                             else {
-                                venta_pago_metodos[l].monto += Number(a.monto)
-                                venta_pago_metodos[l].cantidad++
+                                send.venta_pago_metodos[l].monto += Number(a.monto)
+                                send.venta_pago_metodos[l].cantidad++
                             }
                         }
                     }
                 }
-            }
-
-            send = {
-                efectivo_ingresos,
-                efectivo_ingresos_total,
-                efectivo_ingresos_extra_total,
-
-                efectivo_egresos,
-                efectivo_egresos_total,
-
-                ventas_total,
-                descuentos_total,
-
-                venta_pago_metodos,
-                venta_canales,
-                venta_comprobantes,
-                comprobantes_aceptados,
-                comprobantes_aceptados_total,
-                comprobantes_anulados,
-                comprobantes_anulados_total,
-                productos,
-                productos_anulados,
             }
         }
 

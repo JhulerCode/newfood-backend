@@ -11,6 +11,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     pago_condicion: { type: DataTypes.STRING },
     monto: { type: DataTypes.DECIMAL(10, 2) },
     transaccion: { type: DataTypes.STRING }, //linked
+    caja_apertura: { type: DataTypes.STRING }, //linked
     estado: { type: DataTypes.STRING },
 
     empresa_ruc: { type: DataTypes.STRING },

@@ -1,5 +1,5 @@
 import sequelize from '../../database/sequelize.js'
-import { fn, col, Op } from 'sequelize'
+import { literal } from 'sequelize'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
 import { Empresa } from '../../database/models/Empresa.js'
 import { Socio } from '../../database/models/Socio.js'
@@ -27,6 +27,13 @@ const includes1 = {
     },
 }
 
+const sqls1 = {
+    pagos_monto: [
+        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.comprobante = "comprobantes"."id")`),
+        "pagos_monto"
+    ]
+}
+
 const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
@@ -44,7 +51,7 @@ const create = async (req, res) => {
         const caja_apertura = await CajaApertura.findOne({ where: { estado: '1' } })
 
         // ----- VERIFY SI CAJA ESTÁ APERTURADA ----- //
-        if (caja_apertura == null) return res.json({ code: 1, msg: 'No hay caja aperturada' })
+        if (caja_apertura == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
 
         // ----- CREAR ----- //
         const nuevo = await Comprobante.create({
@@ -52,6 +59,7 @@ const create = async (req, res) => {
             pago_condicion,
             monto,
             transaccion: transaccion.id,
+            caja_apertura: caja_apertura.id,
             estado,
 
             empresa_ruc: empresa.ruc,
@@ -131,6 +139,7 @@ const create = async (req, res) => {
                                 cantidad: c.cantidad * b.cantidad * a.cantidad,
                                 estado: 1,
                                 transaccion: transaccion.id,
+                                comprobante: nuevo.id,
                                 createdBy: colaborador
                             })
                         }
@@ -142,6 +151,7 @@ const create = async (req, res) => {
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
                             transaccion: transaccion.id,
+                            comprobante: nuevo.id,
                             createdBy: colaborador
                         })
                     }
@@ -157,6 +167,7 @@ const create = async (req, res) => {
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
                             transaccion: transaccion.id,
+                            comprobante: nuevo.id,
                             createdBy: colaborador
                         })
                     }
@@ -168,6 +179,7 @@ const create = async (req, res) => {
                         cantidad: a.cantidad,
                         estado: 1,
                         transaccion: transaccion.id,
+                        comprobante: nuevo.id,
                         createdBy: colaborador
                     })
                 }
@@ -215,9 +227,8 @@ const create = async (req, res) => {
                 operacion: 1,
                 detalle: null,
                 pago_metodo: a.id,
-                monto,
+                monto: a.monto,
                 comprobante: nuevo.id,
-                transaccion: transaccion.id,
                 caja_apertura: caja_apertura.id,
                 createdBy: colaborador
             }))
@@ -235,7 +246,7 @@ const create = async (req, res) => {
             const send = { venta_facturado: true }
             if (transaccion.venta_canal == 1) {
                 send.venta_entregado = true
-                send.estado = true
+                send.estado = 2
             }
 
             await Transaccion.update(
@@ -245,9 +256,6 @@ const create = async (req, res) => {
                 }
             )
         }
-
-        ///// ----- ACTUALIZAR PEDIDO SI SE PAGÓ TODO ----- /////
-
 
         // ----- DEVOLVER ----- //
         const data = await loadOne(nuevo.id)
@@ -301,12 +309,18 @@ const find = async (req, res) => {
             }
 
             if (qry.cols) {
-                const excludeCols = []
+                const excludeCols = ['pagos_monto']
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
                 // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
                 if (qry.cols.includes('socio')) findProps.include.push(includes1.socio1)
+            }
+
+            if (qry.sqls) {
+                for (const a of qry.sqls) {
+                    if (sqls1[a]) findProps.attributes.push(sqls1[a])
+                }
             }
         }
 
@@ -317,12 +331,12 @@ const find = async (req, res) => {
 
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
             const pago_comprobantes = cSistema.arrayMap('pago_comprobantes')
-            // const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+            const comprobante_estadosMap = cSistema.arrayMap('comprobante_estados')
 
             for (const a of data) {
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry.cols.includes('venta_tipo_documento_codigo')) a.venta_tipo_documento_codigo1 = pago_comprobantes[a.venta_tipo_documento_codigo]
-                // if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
+                if (qry.cols.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
             }
         }
 
@@ -333,109 +347,103 @@ const find = async (req, res) => {
     }
 }
 
-const findById = async (req, res) => {
-    try {
-        const { id } = req.params
-
-        let data = await Comprobante.findByPk(id, {
-            include: [
-                {
-                    model: ComprobanteItem,
-                    as: 'transaccion_items',
-                    include: [
-                        {
-                            model: Articulo,
-                            as: 'articulo1',
-                            attributes: ['nombre', 'unidad']
-                        },
-                    ]
-                },
-                {
-                    model: Socio,
-                    as: 'socio1',
-                    attributes: ['id', 'nombres']
-                },
-                {
-                    model: Mesa,
-                    as: 'venta_mesa1',
-                    attributes: ['id', 'nombre']
-                }
-            ]
-        })
-
-        if (data) {
-            data = data.toJSON()
-
-            for (const a of data.transaccion_items) {
-                a.cantidad_anterior = a.cantidad || 0
-            }
-        }
-
-        res.json({ code: 0, data })
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-// const delet = async (req, res) => {
-//     const transaction = await sequelize.transaction()
-
+// const findById = async (req, res) => {
 //     try {
 //         const { id } = req.params
-//         const { tipo, estado } = req.body
 
-//         await Kardex.destroy({
-//             where: { transaccion: id },
-//             transaction
+//         let data = await Comprobante.findByPk(id, {
+//             include: [
+//                 {
+//                     model: ComprobanteItem,
+//                     as: 'transaccion_items',
+//                     include: [
+//                         {
+//                             model: Articulo,
+//                             as: 'articulo1',
+//                             attributes: ['nombre', 'unidad']
+//                         },
+//                     ]
+//                 },
+//                 {
+//                     model: Socio,
+//                     as: 'socio1',
+//                     attributes: ['id', 'nombres']
+//                 },
+//                 {
+//                     model: Mesa,
+//                     as: 'venta_mesa1',
+//                     attributes: ['id', 'nombre']
+//                 }
+//             ]
 //         })
 
-//         await ComprobanteItem.destroy({
-//             where: { transaccion: id },
-//             transaction
-//         })
+//         if (data) {
+//             data = data.toJSON()
 
-//         await Comprobante.destroy({
-//             where: { id },
-//             transaction
-//         })
-
-//         if (estado != 0) {
-//             const transaccion_items = await ComprobanteItem.findAll({
-//                 where: { transaccion: id },
-//                 attributes: ['id', 'articulo', 'cantidad'],
-//             })
-
-//             const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
-//             const tipoInfo = transaccion_tiposMap[tipo]
-
-//             for (const a of transaccion_items) {
-//                 await Articulo.update(
-//                     {
-//                         stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '-' : '+'} ${a.cantidad}`)
-//                     },
-//                     {
-//                         where: { id: a.articulo },
-//                         transaction
-//                     }
-//                 )
+//             for (const a of data.transaccion_items) {
+//                 a.cantidad_anterior = a.cantidad || 0
 //             }
 //         }
 
-//         await transaction.commit()
-
-//         res.json({ code: 0 })
+//         res.json({ code: 0, data })
 //     }
 //     catch (error) {
-//         await transaction.rollback()
-
 //         res.status(500).json({ code: -1, msg: error.message, error })
 //     }
 // }
 
+const actualizarPago = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+        const { venta_fecha_emision, caja_apertura, pago_metodos, modal_mode } = req.body
+
+        let caja_apertura1
+        if (modal_mode == 1) {
+            caja_apertura1 = await CajaApertura.findOne({ where: { estado: '1' } })
+
+            ///// ----- VERIFY SI CAJA ESTÁ APERTURADA ----- /////
+            if (caja_apertura1 == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
+        }
+
+        if (modal_mode == 2) {
+            ///// ----- ELIMINAR PAGOS ANTERIORES ----- /////
+            await DineroMovimiento.destroy({
+                where: { comprobante: id },
+                transaction
+            })
+        }
+
+        ///// ----- GUARDAR PAGOS ----- /////
+        const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
+            fecha: modal_mode == 1 ? caja_apertura1.fecha_apertura : venta_fecha_emision,
+            tipo: 1,
+            operacion: 1,
+            detalle: null,
+            pago_metodo: a.id,
+            monto: a.monto,
+            comprobante: id,
+            caja_apertura: modal_mode == 1 ? caja_apertura1.id : caja_apertura,
+            createdBy: colaborador
+        }))
+        await DineroMovimiento.bulkCreate(pagoItems, { transaction })
+
+        await transaction.commit()
+
+        res.json({ code: 0 })
+    }
+    catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 export default {
     create,
     find,
-    findById,
-    // delet,
+    // findById,
+    actualizarPago,
 }

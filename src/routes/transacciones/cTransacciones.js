@@ -8,6 +8,8 @@ import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { Mesa } from '../../database/models/Mesa.js'
+import { CajaApertura } from '../../database/models/CajaApertura.js'
+import { Salon } from '../../database/models/Salon.js'
 
 const includes1 = {
     socio1: {
@@ -23,7 +25,12 @@ const includes1 = {
     venta_mesa1: {
         model: Mesa,
         as: 'venta_mesa1',
-        attributes: ['id', 'nombre']
+        attributes: ['id', 'nombre'],
+        include: {
+            model: Salon,
+            as: 'salon1',
+            attributes: ['id', 'nombre']
+        }
     }
 }
 
@@ -40,6 +47,15 @@ const create = async (req, res) => {
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
+
+        const caja_apertura = await CajaApertura.findOne({
+            where: { estado: '1' }
+        })
+
+        if (caja_apertura == null) {
+            await transaction.rollback()
+            return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
+        }
 
         // ----- CREAR ----- //
         const nuevo = await Transaccion.create({
@@ -241,7 +257,8 @@ const find = async (req, res) => {
 
             if (qry.cols) {
                 const excludeCols = [
-                    'timeAgo', 'comprobantes_monto', 'pagos_monto', 'more_info'
+                    'timeAgo', 'comprobantes_monto', 'pagos_monto', 'more_info',
+                    'hora', 'salon', 'mesa',
                 ]
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
@@ -262,11 +279,13 @@ const find = async (req, res) => {
         if (data.length > 0 && qry.cols) {
             data = data.map(a => a.toJSON())
 
+            const venta_canalesMap = cSistema.arrayMap('venta_canales')
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
             const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
             const estados = cSistema.arrayMap('estados')
 
             for (const a of data) {
+                if (qry.cols.includes('venta_canal')) a.venta_canal1 = venta_canalesMap[a.venta_canal]
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry.cols.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
                 if (qry.cols.includes('venta_facturado')) a.venta_facturado1 = estados[a.venta_facturado]
@@ -417,7 +436,7 @@ const ventasPendientes = async (req, res) => {
             where: {
                 tipo: '2',
                 estado: '1',
-                venta_facturado: false
+                // venta_facturado: false
             },
             group: ['venta_canal'],
         }

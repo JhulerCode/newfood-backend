@@ -5,16 +5,20 @@ const update = async (req, res) => {
         const { id } = req.params
         const { colaborador } = req.user
         const {
-            ruc, nombre,
-            telefono, correo, direccion,
+            ruc, razon_social, nombre_comercial,
+            domicilio_fiscal, ubigeo,
+            urbanizacion, distrito, provincia, departamento,
+            telefono, correo,
             pc_principal_ip, igv_porcentaje,
         } = req.body
 
         // ----- ACTUALIZAR -----//
         const [affectedRows] = await Empresa.update(
             {
-                ruc, nombre,
-                telefono, correo, direccion,
+                ruc, razon_social, nombre_comercial,
+                domicilio_fiscal, ubigeo,
+                urbanizacion, distrito, provincia, departamento,
+                telefono, correo,
                 pc_principal_ip, igv_porcentaje,
                 updatedBy: colaborador
             },

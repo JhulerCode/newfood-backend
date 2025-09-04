@@ -1,6 +1,7 @@
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 // import { CajaMovimiento } from '../../database/models/CajaMovimiento.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
+import { Transaccion } from '../../database/models/Transaccion.js'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -31,6 +32,14 @@ const cerrar = async (req, res) => {
         const { id } = req.params
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
+        const pedidos = await Transaccion.findAll({
+            where: { tipo: 2, estado: '1' }
+        })
+
+        if (pedidos.length > 0) {
+            return res.json({ code: 1, msg: 'No se puede cerrar caja con pedidos pendientes' })
+        }
+
         // ----- ACTUALIZAR ----- //
         const [affectedRows] = await CajaApertura.update(
             {
@@ -55,7 +64,15 @@ const cerrar = async (req, res) => {
 }
 
 async function loadOne(id) {
-    let data = await CajaApertura.findByPk(id)
+    let data = await CajaApertura.findByPk(id, {
+        include: [
+            {
+                model: Colaborador,
+                as: 'createdBy1',
+                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+            },
+        ],
+    })
 
     if (data) {
         data = data.toJSON()
@@ -108,10 +125,10 @@ const find = async (req, res) => {
         if (data.length > 0 && qry.cols) {
             data = data.map(a => a.toJSON())
 
-            const estadosMap = cSistema.arrayMap('transaccion_estados')
+            const caja_apertura_estadosMap = cSistema.arrayMap('caja_apertura_estados')
 
             for (const a of data) {
-                if (qry.cols.includes('estado')) a.estado1 = estadosMap[a.estado]
+                if (qry.cols.includes('estado')) a.estado1 = caja_apertura_estadosMap[a.estado]
             }
         }
 
@@ -122,45 +139,8 @@ const find = async (req, res) => {
     }
 }
 
-// const findById = async (req, res) => {
-//     try {
-//         const { id } = req.params
-
-//         const findProps = {
-//             include: {
-//                 model: CajaMovimiento,
-//                 as: 'caja_movimientos',
-//             }
-//         }
-
-//         const data = await CajaApertura.findByPk(id, findProps)
-
-//         res.json({ code: 0, data })
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
-
-// const delet = async (req, res) => {
-//     try {
-//         const { id } = req.params
-
-//         const deletedCount = await CajaApertura.destroy({ where: { id } })
-
-//         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
-
-//         res.json(send)
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
-
 export default {
     create,
     cerrar,
     find,
-    // findById,
-    // delet,
 }

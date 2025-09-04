@@ -20,40 +20,12 @@ router.post(
     controller.create
 )
 
-// router.get(
-//     '/uno/:id',
-//     verifyPermiso([
-//         'vCompras:ver', 'vCompras:editar',
-//         'vPedidos:editar',
-//     ]),
-//     controller.findById
-// )
-
-// router.patch(
-//     '/:id',
-//     verifyPermiso([
-//         'vCompras:editar',
-//         'vPedidos:editar',
-//     ]),
-//     controller.update
-// )
-
-// router.delete(
-//     '/:id',
-//     verifyPermiso([
-//         'vCompras:eliminar',
-//         // 'vPedidos:eliminar',
-//     ]),
-//     controller.delet
-// )
-
-// router.patch(
-//     '/anular/:id',
-//     verifyPermiso([
-//         'vCompras:anular',
-//         'vPedidos:anular',
-//     ]),
-//     controller.anular
-// )
+router.patch(
+    '/actualizar-pagos/:id',
+    verifyPermiso([
+        'vReporteComprobantes:agregarPagos', 'vReporteComprobantes:editarPagos',
+    ]),
+    controller.actualizarPago
+)
 
 export default router

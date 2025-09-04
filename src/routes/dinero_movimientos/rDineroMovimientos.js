@@ -30,7 +30,10 @@ router.delete(
 
 router.get(
     '/resumen/:id',
-    // verifyPermiso(['vCajaMovimientos:ver']),
+    verifyPermiso([
+        'vCajaResumen:ver',
+        'vCajaAperturas:verResumen',
+    ]),
     controller.findResumen
 )
 

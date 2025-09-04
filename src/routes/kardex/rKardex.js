@@ -16,20 +16,24 @@ router.get(
 router.post(
     '/',
     verifyPermiso([
+        'vInsumos:ajusteStock',
+        'vProductos:ajusteStock',
     ]),
     controller.create
 )
 
-router.patch(
-    '/:id',
-    verifyPermiso([
-    ]),
-    controller.update
-)
+// router.patch(
+//     '/:id',
+//     verifyPermiso([
+//     ]),
+//     controller.update
+// )
 
 router.delete(
     '/:id',
     verifyPermiso([
+        'vInsumos:ajusteStock',
+        'vProductos:ajusteStock',
     ]),
     controller.delet
 )

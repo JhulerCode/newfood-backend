@@ -7,6 +7,7 @@ import articulos from './articulos/rArticulos.js'
 import cajas from './cajas/rCajas.js'
 import caja_aperturas from './caja_aperturas/rCajaAperturas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
+import comprobante_items from './comprobante_items/rComprobanteItems.js'
 import comprobantes from './comprobantes/rComprobantes.js'
 import empresa from './empresa/rEmpresa.js'
 import dinero_movimientos from './dinero_movimientos/rDineroMovimientos.js'
@@ -36,6 +37,7 @@ function routes(app) {
     app.use('/api/cajas', cajas)
     app.use('/api/caja_aperturas', caja_aperturas)
     app.use('/api/colaboradores', colaboradores)
+    app.use('/api/comprobante_items', comprobante_items)
     app.use('/api/comprobantes', comprobantes)
     app.use('/api/empresa', empresa)
     app.use('/api/dinero_movimientos', dinero_movimientos)
