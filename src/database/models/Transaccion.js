@@ -7,6 +7,7 @@ import { PagoComprobante } from './PagoComprobante.js'
 import { PagoMetodo } from './PagoMetodo.js'
 import { Mesa } from './Mesa.js'
 import { Salon } from './Salon.js'
+import { CajaApertura } from './CajaApertura.js'
 
 export const Transaccion = sequelize.define('transacciones', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -35,6 +36,8 @@ export const Transaccion = sequelize.define('transacciones', {
     venta_facturado: { type: DataTypes.BOOLEAN, defaultValue: false },
     venta_entregado: { type: DataTypes.BOOLEAN, defaultValue: false },
 
+    caja_apertura: { type: DataTypes.STRING }, //linked
+
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -53,6 +56,9 @@ Transaccion.belongsTo(Mesa, { foreignKey: 'venta_mesa', as: 'venta_mesa1' })
 
 PagoMetodo.hasMany(Transaccion, { foreignKey: 'venta_pago_metodo', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(PagoMetodo, { foreignKey: 'venta_pago_metodo', as: 'venta_pago_metodo1' })
+
+CajaApertura.hasMany(Transaccion, { foreignKey: 'caja_apertura', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_apertura1' })
 
 Colaborador.hasMany(Transaccion, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

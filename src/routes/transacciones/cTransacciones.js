@@ -48,13 +48,16 @@ const create = async (req, res) => {
             transaccion_items,
         } = req.body
 
-        const caja_apertura = await CajaApertura.findOne({
-            where: { estado: '1' }
-        })
+        let caja_apertura = null
+        if (tipo == 2) {
+            caja_apertura = await CajaApertura.findOne({
+                where: { estado: '1' }
+            })
 
-        if (caja_apertura == null) {
-            await transaction.rollback()
-            return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
+            if (caja_apertura == null) {
+                await transaction.rollback()
+                return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
+            }
         }
 
         // ----- CREAR ----- //
@@ -64,6 +67,7 @@ const create = async (req, res) => {
             observacion, estado, anulado_motivo,
             compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
+            caja_apertura: caja_apertura.id,
             createdBy: colaborador
         }, { transaction })
 

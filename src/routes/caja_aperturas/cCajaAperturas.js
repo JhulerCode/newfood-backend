@@ -1,9 +1,14 @@
+import { fn, col } from 'sequelize'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
+import { DineroMovimiento } from '../../database/models/DineroMovimiento.js'
+import { PagoMetodo } from '../../database/models/PagoMetodo.js'
+import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
 // import { CajaMovimiento } from '../../database/models/CajaMovimiento.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
-import { Transaccion } from '../../database/models/Transaccion.js'
+import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import { Articulo } from '../../database/models/Articulo.js'
 
 const create = async (req, res) => {
     try {
@@ -139,8 +144,312 @@ const find = async (req, res) => {
     }
 }
 
+const findResumen = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const send = {
+            efectivo_ingresos: [],
+            efectivo_ingresos_total: 0,
+            efectivo_ingresos_extra_total: 0,
+
+            efectivo_egresos: [],
+            efectivo_egresos_total: 0,
+
+            ventas_total: 0,
+            descuentos_total: 0,
+
+            venta_canales: [],
+            venta_canales_total: 0,
+            pedidos_anulados: [],
+            pedidos_anulados_total: 0,
+
+            venta_pago_metodos: [],
+            venta_comprobantes: [],
+            comprobantes_aceptados: [],
+            comprobantes_aceptados_total: 0,
+            comprobantes_anulados: [],
+            comprobantes_anulados_total: 0,
+            productos: [],
+            productos_anulados: [],
+        }
+
+        const dinero_movimientos = await DineroMovimiento.findAll({
+            order: [['createdAt', 'DESC']],
+            where: {
+                caja_apertura: id,
+            },
+            include: [
+                {
+                    model: PagoMetodo,
+                    as: 'pago_metodo1',
+                    attributes: ['id', 'nombre'],
+                },
+            ]
+        })
+
+        const caja_operacionesMap = cSistema.arrayMap('caja_operaciones')
+
+        for (const a of dinero_movimientos) {
+            if (a.tipo == 1) {
+                if (a.operacion != 1) {
+                    send.efectivo_ingresos_extra_total += Number(a.monto)
+
+                    send.efectivo_ingresos.push({
+                        id: a.id,
+                        operacion: caja_operacionesMap[a.operacion].nombre,
+                        detalle: a.detalle,
+                        monto: Number(a.monto),
+                    })
+                }
+
+                if (a.operacion == 1) {
+                    if (a.pago_metodo == 1) send.efectivo_ingresos_total += Number(a.monto)
+
+                    ///// ----- MÉTODOS DE PAGO ----- /////
+                    const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
+                    if (i === -1) {
+                        send.venta_pago_metodos.push({
+                            id: a.pago_metodo1.id,
+                            nombre: a.pago_metodo1.nombre,
+                            monto: Number(a.monto),
+                            cantidad: 1
+                        })
+                    }
+                    else {
+                        send.venta_pago_metodos[i].monto += Number(a.monto)
+                        send.venta_pago_metodos[i].cantidad++
+                    }
+                }
+            }
+
+            if (a.tipo == 2) {
+                send.efectivo_egresos_total += Number(a.monto)
+
+                send.efectivo_egresos.push({
+                    id: a.id,
+                    operacion: caja_operacionesMap[a.operacion].nombre,
+                    detalle: a.detalle,
+                    monto: Number(a.monto),
+                })
+            }
+        }
+
+        send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
+
+        const comprobantes = await Comprobante.findAll({
+            attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo', 'monto', 'estado'],
+            order: [['createdAt', 'DESC']],
+            where: {
+                caja_apertura: id,
+            },
+            include: {
+                model: ComprobanteItem,
+                as: 'comprobante_items',
+                attributes: ['id', 'articulo', 'producto', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+            }
+        })
+
+        const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
+
+        for (const a of comprobantes) {
+            // console.log(a.venta_tipo_documento_codigo)
+            ///// ----- ACEPTADOS ----- /////
+            if (a.estado == 1) {
+                ///// ----- TIPOS DE COMPROBANTES ----- /////
+                const i = send.venta_comprobantes.findIndex(b => b.id == a.venta_tipo_documento_codigo)
+                if (i === -1) {
+                    send.venta_comprobantes.push({
+                        id: a.venta_tipo_documento_codigo,
+                        nombre: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                        monto: Number(a.monto),
+                        cantidad: 1
+                    })
+                }
+                else {
+                    send.venta_comprobantes[i].monto += Number(a.monto)
+                    send.venta_comprobantes[i].cantidad++
+                }
+
+                ///// ----- COMPROBANTES ----- /////
+                send.comprobantes_aceptados_total += Number(a.monto)
+
+                const j = send.comprobantes_aceptados.findIndex(b => b.id == a.serie_correlativo)
+                if (j === -1) {
+                    send.comprobantes_aceptados.push({
+                        id: a.serie_correlativo,
+                        tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                        monto: Number(a.monto),
+                    })
+                }
+                else {
+                    send.comprobantes_aceptados[i].monto += Number(a.monto)
+                }
+
+                ///// ----- PRODUCTOS ----- /////
+                for (const b of a.comprobante_items) {
+                    const k = send.productos.findIndex(c => c.id == b.articulo)
+                    const prd = calcularUno({
+                        pu: Number(b.pu),
+                        descuento_tipo: b.descuento_tipo,
+                        descuento_valor: b.descuento_valor,
+                        cantidad: Number(b.cantidad),
+                    })
+
+                    send.descuentos_total += prd.descuento
+
+                    if (k === -1) {
+                        send.productos.push({
+                            id: b.articulo,
+                            nombre: b.producto,
+                            cantidad: Number(b.cantidad),
+                            monto: Number(a.monto),
+                            descuento: prd.descuento == 0 ? null : prd.descuento,
+                        })
+                    }
+                    else {
+                        send.productos[k].cantidad += Number(b.cantidad)
+                        send.productos[k].monto += Number(a.monto)
+                        send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
+                    }
+                }
+            }
+
+            ///// ----- ANULADOS ----- /////
+            if (a.estado == 0) {
+                ///// ----- COMPROBANTES ----- /////
+                send.comprobantes_anulados_total += Number(a.monto)
+
+                const j = send.comprobantes_anulados.findIndex(b => b.id == a.serie_correlativo)
+                if (j === -1) {
+                    send.comprobantes_anulados.push({
+                        id: a.serie_correlativo,
+                        tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                        monto: Number(a.monto),
+                    })
+                }
+                else {
+                    send.comprobantes_anulados[i].monto += Number(a.monto)
+                }
+
+                ///// ----- PRODUCTOS ----- /////
+                for (const b of a.comprobante_items) {
+                    const k = send.productos_anulados.findIndex(c => c.id == b.articulo)
+                    const prd = calcularUno({
+                        pu: Number(b.pu),
+                        descuento_tipo: b.descuento_tipo,
+                        descuento_valor: b.descuento_valor,
+                        cantidad: Number(b.cantidad),
+                    })
+
+                    if (k === -1) {
+                        send.productos_anulados.push({
+                            id: b.articulo,
+                            nombre: b.producto,
+                            cantidad: Number(b.cantidad),
+                            monto: Number(a.monto),
+                            descuento: prd.descuento == 0 ? null : prd.descuento,
+                        })
+                    }
+                    else {
+                        send.productos_anulados[k].cantidad += Number(b.cantidad)
+                        send.productos_anulados[k].monto += Number(a.monto)
+                        send.productos_anulados[k].descuento += prd.descuento == 0 ? null : prd.descuento
+                    }
+                }
+            }
+        }
+
+        let pedidos = await Transaccion.findAll({
+            attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
+            order: [['createdAt', 'DESC']],
+            where: {
+                tipo: 2,
+                caja_apertura: id,
+            },
+            // include: [
+            //     {
+            //         model: TransaccionItem,
+            //         as: 'transaccion_items',
+            //         attributes: ['id', 'articulo', 'producto', 'pu'],
+            //         include: {
+            //             model: Articulo,
+            //             as: 'articulo1',
+            //             attributes: ['id', 'nombre'],
+            //         }
+            //     }
+            // ]
+        })
+
+        // pedidos = pedidos.map(a => a.toJSON())
+        const venta_canalesMap = cSistema.arrayMap('venta_canales')
+
+        for (let a of pedidos) {
+            if (a.estado != 0) {
+                send.venta_canales_total += Number(a.monto)
+
+                const i = send.venta_canales.findIndex(b => b.id == a.venta_canal)
+                if (i === -1) {
+                    send.venta_canales.push({
+                        id: a.venta_canal,
+                        nombre: venta_canalesMap[a.venta_canal].nombre,
+                        monto: Number(a.monto),
+                        cantidad: 1,
+                    })
+                }
+                else {
+                    send.venta_canales[i].monto += Number(a.monto)
+                    send.venta_canales[i].cantidad++
+                }
+            }
+
+            if (a.estado == 0) {
+                send.pedidos_anulados_total += Number(a.monto)
+
+                send.pedidos_anulados.push({
+                    id: a.id,
+                    venta_codigo: a.venta_codigo,
+                    venta_canal: venta_canalesMap[a.venta_canal].nombre,
+                    monto: a.monto,
+                })
+            }
+        }
+
+        send.pago_metodos = send.venta_pago_metodos.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        send.venta_comprobantes = send.venta_comprobantes.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        send.productos = send.productos.sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+        res.json({ code: 0, data: send, comprobantes })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+function calcularUno(item) {
+    if (
+        item.descuento_tipo != null &&
+        item.descuento_valor != null &&
+        item.descuento_valor != 0
+    ) {
+        if (item.descuento_tipo == 1) {
+            item.pu_desc = item.descuento_valor
+        } else if (item.descuento_tipo == 2) {
+            item.pu_desc = item.cantidad * item.pu * (item.descuento_valor / 100)
+        }
+    } else {
+        item.pu_desc = 0
+    }
+
+    item.descuento = item.pu_desc
+    item.total = item.cantidad * (item.pu - item.pu_desc)
+
+    return item
+}
+
 export default {
     create,
     cerrar,
     find,
+    findResumen,
 }

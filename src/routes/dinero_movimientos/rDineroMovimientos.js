@@ -16,12 +16,6 @@ router.post(
     controller.create
 )
 
-// router.patch(
-//     '/:id',
-//     verifyPermiso(['vCajaMovimientos:editar']),
-//     controller.update
-// )
-
 router.delete(
     '/:id',
     verifyPermiso(['vCajaMovimientos:eliminar']),

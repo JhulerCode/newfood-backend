@@ -135,35 +135,6 @@ async function loadOne(id) {
     return data
 }
 
-// const update = async (req, res) => {
-//     try {
-//         const { id } = req.params
-//         const { colaborador } = req.user
-//         const { fecha, detalle, monto } = req.body
-
-//         // ----- ACTUALIZAR ----- //
-//         const [affectedRows] = await DineroMovimiento.update(
-//             {
-//                 fecha, detalle, monto,
-//                 updatedBy: colaborador
-//             },
-//             { where: { id } }
-//         )
-
-//         if (affectedRows > 0) {
-//             const data = await DineroMovimiento.findByPk(id)
-
-//             res.json({ code: 0, data })
-//         }
-//         else {
-//             res.json({ code: 1, msg: 'No se actualizó ningú registro' })
-//         }
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
-
 const delet = async (req, res) => {
     try {
         const { id } = req.params
@@ -449,7 +420,6 @@ function calcularUno(item) {
 export default {
     find,
     create,
-    // update,
     delet,
     findResumen,
 }

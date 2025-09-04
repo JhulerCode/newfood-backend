@@ -25,22 +25,13 @@ router.patch(
     controller.cerrar
 )
 
-// router.get(
-//     '/uno/:id',
-//     verifyPermiso([
-//         'vCajaAperturas:ver',
-//         'vCajaAperturas:cerrarCaja',
-//         'vCajaMovimientos:listar',
-//     ]),
-//     controller.findById
-// )
-
-
-
-// router.delete(
-//     '/:id',
-//     verifyPermiso(['vCajaAperturas:eliminar']),
-//     controller.delet
-// )
+router.get(
+    '/resumen/:id',
+    verifyPermiso([
+        'vCajaResumen:ver',
+        'vCajaAperturas:verResumen',
+    ]),
+    controller.findResumen
+)
 
 export default router
