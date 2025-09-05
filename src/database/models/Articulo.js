@@ -4,6 +4,16 @@ import { ArticuloCategoria } from './ArticuloCategoria.js'
 import { Colaborador } from './Colaborador.js'
 import { ProduccionArea } from './ProduccionArea.js'
 
+const precios_semana_default = [
+    { id: 0, dia: 'DOMINGO', pu: null },
+    { id: 1, dia: 'LUNES', pu: null },
+    { id: 2, dia: 'MARTES', pu: null },
+    { id: 3, dia: 'MIÉRCOLES', pu: null },
+    { id: 4, dia: 'JUEVES', pu: null },
+    { id: 5, dia: 'VIERNES', pu: null },
+    { id: 6, dia: 'SÁBADO', pu: null }
+]
+
 export const Articulo = sequelize.define('articulos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     codigo_barra: { type: DataTypes.STRING },
@@ -15,13 +25,14 @@ export const Articulo = sequelize.define('articulos', {
 
     tipo: { type: DataTypes.STRING }, //required
     categoria: { type: DataTypes.STRING }, //required //linked
-    
+
     produccion_area: { type: DataTypes.STRING },
     has_receta: { type: DataTypes.BOOLEAN },
     is_combo: { type: DataTypes.BOOLEAN },
 
     igv_afectacion: { type: DataTypes.STRING }, //required
     precio_venta: { type: DataTypes.DOUBLE },
+    precios_semana: { type: DataTypes.JSON, defaultValue: precios_semana_default },
     stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
     createdBy: { type: DataTypes.STRING },

@@ -104,6 +104,7 @@ const update = async (req, res) => {
             produccion_area, has_receta,
             is_combo, combo_articulos,
             precio_venta,
+            precios_semana,
         } = req.body
 
         // ----- VERIFY SI EXISTE NOMBRE ----- //
@@ -118,6 +119,7 @@ const update = async (req, res) => {
                 produccion_area, has_receta,
                 is_combo,
                 precio_venta,
+                precios_semana,
                 updatedBy: colaborador
             },
             {

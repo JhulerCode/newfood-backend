@@ -76,6 +76,9 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
     igv_afectacion: { type: DataTypes.STRING }, //required
     igv_porcentaje: { type: DataTypes.DOUBLE }, //required
 
+    descuento_tipo: { type: DataTypes.STRING },
+    descuento_valor: { type: DataTypes.DOUBLE },
+
     observacion: { type: DataTypes.STRING },
 
     transaccion: { type: DataTypes.STRING }, //required //linked

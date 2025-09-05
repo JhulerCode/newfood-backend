@@ -22,13 +22,4 @@ router.delete(
     controller.delet
 )
 
-router.get(
-    '/resumen/:id',
-    verifyPermiso([
-        'vCajaResumen:ver',
-        'vCajaAperturas:verResumen',
-    ]),
-    controller.findResumen
-)
-
 export default router
