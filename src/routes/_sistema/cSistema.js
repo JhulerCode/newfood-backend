@@ -84,6 +84,7 @@ const sistemaData = {
         { id: '0', nombre: 'ANULADO' },
         { id: '1', nombre: 'SIN ENVIAR' },
         { id: '2', nombre: 'ACEPTADO' },
+        { id: '3', nombre: 'CANJEADO' },
     ],
     caja_apertura_estados: [
         { id: '1', nombre: 'ABIERTO' },

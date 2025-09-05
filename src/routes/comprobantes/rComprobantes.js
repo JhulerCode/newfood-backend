@@ -44,6 +44,14 @@ router.patch(
     controller.anular
 )
 
+router.patch(
+    '/canjear/:id',
+    verifyPermiso([
+        'vReporteComprobantes:canjear',
+    ]),
+    controller.canjear
+)
+
 // router.get(
 //     '/pdf/:id',
 //     // verifyPermiso([

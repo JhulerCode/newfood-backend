@@ -171,8 +171,10 @@ const findResumen = async (req, res) => {
             comprobantes_aceptados_total: 0,
             comprobantes_anulados: [],
             comprobantes_anulados_total: 0,
+            comprobantes_canjeados: [],
             productos: [],
             productos_anulados: [],
+            ventas_credito_total: 0,
         }
 
         const dinero_movimientos = await DineroMovimiento.findAll({
@@ -241,22 +243,28 @@ const findResumen = async (req, res) => {
         send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
 
         const comprobantes = await Comprobante.findAll({
-            attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo', 'monto', 'estado'],
+            attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
             order: [['createdAt', 'DESC']],
             where: {
                 caja_apertura: id,
             },
-            include: {
-                model: ComprobanteItem,
-                as: 'comprobante_items',
-                attributes: ['id', 'articulo', 'producto', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
-            }
+            include: [
+                {
+                    model: ComprobanteItem,
+                    as: 'comprobante_items',
+                    attributes: ['id', 'articulo', 'producto', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+                },
+                {
+                    model: Comprobante,
+                    as: 'canjeado_por1',
+                    attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo'],
+                }
+            ]
         })
 
         const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
 
         for (const a of comprobantes) {
-            // console.log(a.venta_tipo_documento_codigo)
             ///// ----- ACEPTADOS ----- /////
             if (a.estado == 1) {
                 ///// ----- TIPOS DE COMPROBANTES ----- /////
@@ -277,17 +285,11 @@ const findResumen = async (req, res) => {
                 ///// ----- COMPROBANTES ----- /////
                 send.comprobantes_aceptados_total += Number(a.monto)
 
-                const j = send.comprobantes_aceptados.findIndex(b => b.id == a.serie_correlativo)
-                if (j === -1) {
-                    send.comprobantes_aceptados.push({
-                        id: a.serie_correlativo,
-                        tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
-                        monto: Number(a.monto),
-                    })
-                }
-                else {
-                    send.comprobantes_aceptados[i].monto += Number(a.monto)
-                }
+                send.comprobantes_aceptados.push({
+                    id: a.serie_correlativo,
+                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    monto: Number(a.monto),
+                })
 
                 ///// ----- PRODUCTOS ----- /////
                 for (const b of a.comprobante_items) {
@@ -316,6 +318,18 @@ const findResumen = async (req, res) => {
                         send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
                     }
                 }
+
+                ///// ----- CRÉDITO ----- /////
+                if (a.pago_condicion == 2) {
+                    send.ventas_credito_total += Number(a.monto)
+
+                    send.venta_pago_metodos.push({
+                        id: 'CRÉDITO',
+                        nombre: 'CRÉDITO',
+                        monto: Number(a.monto),
+                        cantidad: 1
+                    })
+                }
             }
 
             ///// ----- ANULADOS ----- /////
@@ -323,17 +337,11 @@ const findResumen = async (req, res) => {
                 ///// ----- COMPROBANTES ----- /////
                 send.comprobantes_anulados_total += Number(a.monto)
 
-                const j = send.comprobantes_anulados.findIndex(b => b.id == a.serie_correlativo)
-                if (j === -1) {
-                    send.comprobantes_anulados.push({
-                        id: a.serie_correlativo,
-                        tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
-                        monto: Number(a.monto),
-                    })
-                }
-                else {
-                    send.comprobantes_anulados[i].monto += Number(a.monto)
-                }
+                send.comprobantes_anulados.push({
+                    id: a.serie_correlativo,
+                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    monto: Number(a.monto),
+                })
 
                 ///// ----- PRODUCTOS ----- /////
                 for (const b of a.comprobante_items) {
@@ -362,6 +370,17 @@ const findResumen = async (req, res) => {
                         send.productos_anulados[k].descuento += prd.descuento == 0 ? null : prd.descuento
                     }
                 }
+            }
+
+            ///// ----- CANJEADOS ----- /////
+            if (a.estado == 3) {
+                ///// ----- COMPROBANTES ----- /////
+                send.comprobantes_canjeados.push({
+                    id: a.serie_correlativo,
+                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    monto: Number(a.monto),
+                    canjeado_por: a.canjeado_por1.serie_correlativo
+                })
             }
         }
 
@@ -420,7 +439,11 @@ const findResumen = async (req, res) => {
             }
         }
 
-        send.pago_metodos = send.venta_pago_metodos.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        send.venta_pago_metodos = send.venta_pago_metodos.sort((a, b) => {
+            if (a.nombre === 'CRÉDITO' && b.nombre !== 'CRÉDITO') return 1
+            if (b.nombre === 'CRÉDITO' && a.nombre !== 'CRÉDITO') return -1
+            return a.nombre.localeCompare(b.nombre)
+        })
         send.venta_comprobantes = send.venta_comprobantes.sort((a, b) => a.nombre.localeCompare(b.nombre))
         send.productos = send.productos.sort((a, b) => a.nombre.localeCompare(b.nombre))
 

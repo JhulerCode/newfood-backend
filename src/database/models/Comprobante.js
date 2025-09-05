@@ -14,6 +14,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     transaccion: { type: DataTypes.STRING }, //linked
     caja_apertura: { type: DataTypes.STRING }, //linked
     estado: { type: DataTypes.STRING },
+    canjeado_por: { type: DataTypes.STRING },
 
     empresa_ruc: { type: DataTypes.STRING },
     empresa_razon_social: { type: DataTypes.STRING },
@@ -63,6 +64,9 @@ Comprobante.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })
 
 Transaccion.hasMany(Comprobante, { foreignKey: 'transaccion', as: 'comprobantes', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
+
+Comprobante.hasOne(Comprobante, { foreignKey: 'canjeado_por', as: 'comprobante_inicial', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(Comprobante, { foreignKey: 'canjeado_por', as: 'canjeado_por1' })
 
 Colaborador.hasMany(Comprobante, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

@@ -1,5 +1,5 @@
 import sequelize from '../../database/sequelize.js'
-import { literal } from 'sequelize'
+import { literal, where } from 'sequelize'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
 import { Empresa } from '../../database/models/Empresa.js'
 import { Socio } from '../../database/models/Socio.js'
@@ -747,15 +747,145 @@ function makePdf(doc, res) {
     // })
 }
 
-const loadPdf = async (req, res) => {
-    // const { id } = req.params
-    const file = getFile('asdasd.pdf')
-    const rutaArchivo = getFilePath('asdasd.pdf')
+// const loadPdf = async (req, res) => {
+//     // const { id } = req.params
+//     const file = getFile('asdasd.pdf')
+//     const rutaArchivo = getFilePath('asdasd.pdf')
 
-    if (file) {
-        res.sendFile(rutaArchivo)
-    } else {
-        res.status(404).json({ msg: 'Archivo no encontrado' })
+//     if (file) {
+//         res.sendFile(rutaArchivo)
+//     } else {
+//         res.status(404).json({ msg: 'Archivo no encontrado' })
+//     }
+// }
+
+const canjear = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+        const {
+            fecha, doc_tipo, socio
+        } = req.body
+
+        let comprobante = await Comprobante.findByPk(id, {
+            include: [
+                {
+                    model: ComprobanteItem,
+                    as: 'comprobante_items',
+                },
+            ]
+        })
+
+        ///// ----- CREAR NUEVO COMPROBANTE ----- /////
+        const cliente = await Socio.findByPk(socio)
+        const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
+
+        const nuevo = await Comprobante.create({
+            socio: socio,
+            pago_condicion: comprobante.pago_condicion,
+            monto: comprobante.monto,
+            transaccion: comprobante.transaccion,
+            caja_apertura: comprobante.caja_apertura,
+            estado: 1,
+
+            empresa_ruc: comprobante.ruc,
+            empresa_razon_social: comprobante.razon_social,
+            empresa_nombre_comercial: comprobante.nombre_comercial,
+            empresa_domicilio_fiscal: comprobante.domicilio_fiscal,
+            empresa_ubigeo: comprobante.ubigeo,
+            empresa_urbanizacion: comprobante.urbanizacion,
+            empresa_distrito: comprobante.distrito,
+            empresa_provincia: comprobante.provincia,
+            empresa_departamento: comprobante.departamento,
+            empresa_modo: comprobante.empresa_modo,
+
+            cliente_razon_social_nombres: cliente.nombres,
+            cliente_numero_documento: cliente.doc_numero,
+            cliente_codigo_tipo_entidad: cliente.doc_tipo,
+            cliente_cliente_direccion: cliente.direccion,
+
+            venta_serie: pago_comprobante.serie,
+            venta_numero: pago_comprobante.correlativo,
+            venta_fecha_emision: fecha,
+            venta_hora_emision: '10:00:00',
+            venta_fecha_vencimiento: '',
+            venta_moneda_id: comprobante.venta_moneda_id,
+            venta_forma_pago_id: comprobante.venta_forma_pago_id,
+            venta_total_gravada: comprobante.total_gravada,
+            venta_total_igv: comprobante.total_igv,
+            venta_total_exonerada: comprobante.total_exonerada,
+            venta_total_inafecta: comprobante.total_inafecta,
+            venta_tipo_documento_codigo: doc_tipo,
+            venta_nota: comprobante.venta_nota,
+
+            createdBy: colaborador
+        }, { transaction })
+
+        ///// ----- GUARDAR ITEMS ----- /////
+        const items = comprobante.comprobante_items.map(a => ({
+            articulo: a.articulo,
+            pu: a.pu,
+            igv_porcentaje: a.igv_porcentaje,
+            descuento_tipo: a.descuento_tipo,
+            descuento_valor: a.descuento_valor,
+
+            producto: a.producto,
+            codigo_unidad: a.codigo_unidad,
+            cantidad: a.cantidad,
+            precio_base: a.precio_base,
+            tipo_igv_codigo: a.tipo_igv_codigo,
+            codigo_sunat: a.codigo_sunat,
+            codigo_producto: a.codigo_producto,
+
+            comprobante: nuevo.id,
+            createdBy: colaborador
+        }))
+        await ComprobanteItem.bulkCreate(items, { transaction })
+
+        ///// ----- ACTUALIZAR CORRELATIVO ----- /////
+        await PagoComprobante.update(
+            { correlativo: pago_comprobante.correlativo + 1 },
+            {
+                where: { id: doc_tipo },
+                transaction
+            }
+        )
+
+        ///// ----- ESTADO CANJEADO ----- /////
+        await Comprobante.update(
+            {
+                estado: 3,
+                canjeado_por: nuevo.id,
+                updatedBy: colaborador
+            },
+            {
+                where: { id },
+                transaction
+            }
+        )
+
+        ///// ----- CAMBIAR PAGOS ----- /////
+        await DineroMovimiento.update(
+            {
+                comprobante: nuevo.id,
+                updatedBy: colaborador
+            },
+            {
+                where: { comprobante: id },
+                transaction
+            }
+        )
+
+        await transaction.commit()
+
+        res.json({ code: 0 })
+    }
+    catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
@@ -765,5 +895,5 @@ export default {
     findById,
     actualizarPago,
     anular,
-    loadPdf,
+    canjear,
 }
