@@ -32,6 +32,8 @@ function routes(app) {
     app.use('/api', verifyToken)
     app.use('/api/sistema', sistema)
 
+    // app.use('/comprobantes', comprobantes)
+
     app.use('/api/articulo_categorias', articulo_categorias)
     app.use('/api/articulos', articulos)
     app.use('/api/cajas', cajas)

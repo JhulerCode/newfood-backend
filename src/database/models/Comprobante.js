@@ -7,6 +7,7 @@ import { Transaccion } from './Transaccion.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    empresa_telefono: { type: DataTypes.STRING },
     socio: { type: DataTypes.STRING }, //linked
     pago_condicion: { type: DataTypes.STRING },
     monto: { type: DataTypes.DECIMAL(10, 2) },

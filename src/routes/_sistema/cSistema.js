@@ -65,15 +65,15 @@ const sistemaData = {
         { id: 2, nombre: 'EGRESO' },
     ],
     caja_operaciones: [
-        { id: '1', tipo: 1, nombre: 'VENTA'},
-        { id: '2', tipo: 1, nombre: 'SALDO INICIAL'},
-        { id: '3', tipo: 1, nombre: 'OTROS INGRESOS'},
-        { id: '4', tipo: 2, nombre: 'COMPRA'},
-        { id: '5', tipo: 2, nombre: 'MANTENIMIENTO'},
-        { id: '6', tipo: 2, nombre: 'MOVILIDAD'},
-        { id: '7', tipo: 2, nombre: 'SERVICIO'},
-        { id: '8', tipo: 2, nombre: 'REMUNERACIÓN'},
-        { id: '9', tipo: 2, nombre: 'OTROS EGRESOS'},
+        { id: '1', tipo: 1, nombre: 'VENTA' },
+        { id: '2', tipo: 1, nombre: 'SALDO INICIAL' },
+        { id: '3', tipo: 1, nombre: 'OTROS INGRESOS' },
+        { id: '4', tipo: 2, nombre: 'COMPRA' },
+        { id: '5', tipo: 2, nombre: 'MANTENIMIENTO' },
+        { id: '6', tipo: 2, nombre: 'MOVILIDAD' },
+        { id: '7', tipo: 2, nombre: 'SERVICIO' },
+        { id: '8', tipo: 2, nombre: 'REMUNERACIÓN' },
+        { id: '9', tipo: 2, nombre: 'OTROS EGRESOS' },
     ],
     pago_comprobantes: [
         { id: '01', nombre: 'FACTURA' },
@@ -88,6 +88,10 @@ const sistemaData = {
     caja_apertura_estados: [
         { id: '1', nombre: 'ABIERTO' },
         { id: '2', nombre: 'CERRADO' },
+    ],
+    dinero_movimiento_estados: [
+        { id: '0', nombre: 'ANULADO' },
+        { id: '2', nombre: 'PROCESADO' },
     ]
 }
 

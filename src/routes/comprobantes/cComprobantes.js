@@ -11,8 +11,14 @@ import { Colaborador } from '../../database/models/Colaborador.js'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { DineroMovimiento } from "../../database/models/DineroMovimiento.js"
 import cSistema from "../_sistema/cSistema.js"
-import { applyFilters } from '../../utils/mine.js'
-
+import { applyFilters, numeroATexto } from '../../utils/mine.js'
+import { Mesa } from '../../database/models/Mesa.js'
+import { Salon } from '../../database/models/Salon.js'
+import { PagoMetodo } from '../../database/models/PagoMetodo.js'
+import PdfPrinter from 'pdfmake'
+import { uploadsPath, getFilePath, getFile } from '../../utils/uploadFiles.js'
+import path from 'path'
+import fs from 'fs'
 
 const includes1 = {
     socio1: {
@@ -347,50 +353,66 @@ const find = async (req, res) => {
     }
 }
 
-// const findById = async (req, res) => {
-//     try {
-//         const { id } = req.params
+const findById = async (req, res) => {
+    try {
+        const { id } = req.params
 
-//         let data = await Comprobante.findByPk(id, {
-//             include: [
-//                 {
-//                     model: ComprobanteItem,
-//                     as: 'transaccion_items',
-//                     include: [
-//                         {
-//                             model: Articulo,
-//                             as: 'articulo1',
-//                             attributes: ['nombre', 'unidad']
-//                         },
-//                     ]
-//                 },
-//                 {
-//                     model: Socio,
-//                     as: 'socio1',
-//                     attributes: ['id', 'nombres']
-//                 },
-//                 {
-//                     model: Mesa,
-//                     as: 'venta_mesa1',
-//                     attributes: ['id', 'nombre']
-//                 }
-//             ]
-//         })
+        let data = await Comprobante.findByPk(id, {
+            include: [
+                {
+                    model: ComprobanteItem,
+                    as: 'comprobante_items',
+                },
+                {
+                    model: Transaccion,
+                    as: 'transaccion1',
+                    attributes: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
+                    include: {
+                        model: Mesa,
+                        as: 'venta_mesa1',
+                        attributes: ['id', 'nombre'],
+                        include: {
+                            model: Salon,
+                            as: 'salon1',
+                            attributes: ['id', 'nombre']
+                        }
+                    }
+                },
+                {
+                    model: DineroMovimiento,
+                    as: 'dinero_movimientos',
+                    attributes: ['id', 'pago_metodo', 'monto'],
+                    include: {
+                        model: PagoMetodo,
+                        as: 'pago_metodo1',
+                        attributes: ['id', 'nombre']
+                    }
+                }
+            ]
+        })
 
-//         if (data) {
-//             data = data.toJSON()
+        if (data) {
+            data = data.toJSON()
 
-//             for (const a of data.transaccion_items) {
-//                 a.cantidad_anterior = a.cantidad || 0
-//             }
-//         }
+            const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
+            const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+            const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+            const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
-//         res.json({ code: 0, data })
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
+            data.tipo = pago_comprobantesMap[data.venta_tipo_documento_codigo]
+            data.cliente_doc_tipo = documentos_identidadMap[data.cliente_codigo_tipo_entidad]
+            data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+            data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
+        }
+
+        makePdf(data, res)
+
+        // res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
 
 const actualizarPago = async (req, res) => {
     const transaction = await sequelize.transaction()
@@ -441,9 +463,307 @@ const actualizarPago = async (req, res) => {
     }
 }
 
+const anular = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+
+        ///// ---- ANULAR ----- /////
+        await Comprobante.update(
+            {
+                estado: 0,
+                updatedBy: colaborador
+            },
+            {
+                where: { id },
+                transaction
+            }
+        )
+
+        ///// ---- ANULAR PAGOS ----- /////
+        await DineroMovimiento.update(
+            {
+                estado: 0,
+                updatedBy: colaborador
+            },
+            {
+                where: { comprobante: id },
+                transaction
+            }
+        )
+
+        await transaction.commit()
+
+        res.json({ code: 0 })
+
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+function makePdf(doc, res) {
+    // const doc = res.data
+
+    ///// ----- TABLE ITEMS ----- /////
+    const dataRows = doc.comprobante_items.map((p) => [
+        { text: p.producto, style: 'tableItem', noWrap: false }, // permite saltos de línea
+        { text: p.cantidad, style: 'tableItem', alignment: 'right' },
+        { text: p.pu, style: 'tableItem', alignment: 'right' },
+        {
+            text: (p.cantidad * p.pu).toFixed(2),
+            style: 'tableItem',
+            alignment: 'right',
+        },
+    ])
+
+    ///// ----- TIPO DE ATENCIÓN ----- /////
+    if (doc.transaccion1.venta_canal == 1) {
+        doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
+    } else {
+        doc.atencion = doc.venta_canal1.nombre
+    }
+
+    ///// ----- SUBTOTAL ----- /////
+    doc.subtotal = (
+        Number(doc.venta_total_gravada) +
+        Number(doc.venta_total_exonerada) +
+        Number(doc.venta_total_inafecta)
+    ).toFixed(2)
+
+    ///// ----- PAGOS ----- /////
+    const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
+    doc.vuelto = totalPagado - Number(doc.monto)
+    const pagosStack =
+        doc.dinero_movimientos.length > 0
+            ? {
+                stack: [
+                    ...doc.dinero_movimientos.map((p) => ({
+                        text: `${p.pago_metodo1.nombre}: ${p.monto}`,
+                        style: 'datosExtra',
+                    })),
+                    { text: `VUELTO: ${doc.vuelto.toFixed(2)}`, style: 'datosExtra' },
+                ],
+            }
+            : null
+
+    ///// ----- PARA DELIVERY ----- /////
+    const deliveryStack =
+        doc.transaccion1.venta_tipo == 3
+            ? {
+                stack: [
+                    {
+                        text: `TELEFONO: ${doc.transaccion1.venta_socio_datos.telefono || ''}`,
+                        style: 'datosExtra',
+                    },
+                    {
+                        text: `DIRECCIÓN: ${doc.transaccion1.venta_socio_datos.direccion || ''}`,
+                        style: 'datosExtra',
+                    },
+                ],
+            }
+            : null
+
+    ///// ----- DEFINICIÓN DEL PDF ----- /////
+    const docDefinition = {
+        pageSize: {
+            width: 80 * 2.83465,
+            height: 'auto',
+        },
+        pageMargins: [5, 5, 5, 5],
+    }
+
+    docDefinition.content = [
+        ///// ----- EMPRESA ----- /////
+        {
+            stack: [
+                doc.empresa_razon_social,
+                `RUC: ${doc.empresa_ruc}`,
+                doc.empresa_domicilio_fiscal,
+                `TEL: ${doc.empresa_telefono}`,
+            ],
+            style: 'empresa',
+        },
+        ///// ----- TIPO DE DOCUMENTO ----- /////
+        {
+            stack: [doc.tipo.nombre, `${doc.venta_serie}-${doc.venta_numero}`],
+            style: 'tipo_doc',
+        },
+        ///// ----- CLIENTE ----- /////
+        {
+            stack: [
+                {
+                    // text: `FECHA DE EMISIÓN: ${dayjs(doc.createdAt).format('DD-MM-YYYY HH:mm')}`,
+                    text: `FECHA DE EMISIÓN: ${doc.createdAt}`,
+                    style: 'datosExtra',
+                },
+                { text: `ATENCIÓN: ${doc.atencion}`, style: 'datosExtra' },
+                {
+                    text: `CLIENTE: ${doc.cliente_razon_social_nombres}`,
+                    style: 'datosExtra',
+                },
+                {
+                    text: `${doc.cliente_doc_tipo.nombre}: ${doc.cliente_numero_documento}`,
+                    style: 'datosExtra',
+                },
+                {
+                    text: `DIRECCIÓN: ${doc.cliente_cliente_direccion}`,
+                    style: 'datosExtra',
+                },
+            ],
+            style: 'cliente_datos',
+        },
+        ///// ----- TABLA ----- /////
+        {
+            table: {
+                widths: ['*', 'auto', 'auto', 'auto'], // se adapta a todo el ancho
+                body: [
+                    [
+                        { text: 'PRODUCTO', style: 'tableHeader' },
+                        { text: 'CANT.', style: 'tableHeader', alignment: 'right' },
+                        { text: 'P.U.', style: 'tableHeader', alignment: 'right' },
+                        { text: 'IMP.', style: 'tableHeader', alignment: 'right' },
+                    ],
+                    ...dataRows,
+                ],
+            },
+            layout: {
+                hLineWidth: function (i, node) {
+                    if (i === 0 || i === 1 || i === node.table.body.length) {
+                        return 1 // línea arriba del header, abajo del header y al final
+                    }
+                    return 0 // sin líneas intermedias
+                },
+                vLineWidth: function () {
+                    return 0 // sin líneas verticales
+                },
+                hLineColor: function () {
+                    return '#000' // color de las líneas
+                },
+            },
+        },
+        ///// ----- TOTALES ----- /////
+        {
+            stack: [
+                {
+                    columns: [
+                        { text: 'OPE. GRAVADAS:', style: 'totalesLabel' },
+                        { text: doc.venta_total_gravada, style: 'totalesValue' },
+                    ],
+                },
+                {
+                    columns: [
+                        { text: 'OPE. EXONERDAS:', style: 'totalesLabel' },
+                        { text: doc.venta_total_exonerada, style: 'totalesValue' },
+                    ],
+                },
+                {
+                    columns: [
+                        { text: 'OPE. INAFECTAS:', style: 'totalesLabel' },
+                        { text: doc.venta_total_inafecta, style: 'totalesValue' },
+                    ],
+                },
+                {
+                    columns: [
+                        { text: 'SUBTOTAL:', style: 'totalesLabel' },
+                        { text: doc.subtotal, style: 'totalesValue' },
+                    ],
+                },
+                {
+                    columns: [
+                        { text: 'IGV:', style: 'totalesLabel' },
+                        { text: doc.venta_total_igv, style: 'totalesValue' },
+                    ],
+                },
+                {
+                    columns: [
+                        { text: 'TOTAL:', style: 'totalesLabel' },
+                        { text: doc.monto, style: 'totalesValue' },
+                    ],
+                },
+            ],
+            margin: [0, 10, 0, 10],
+        },
+        ///// ----- DATOS EXTRA ----- /////
+        {
+            stack: [
+                { text: `SON: ${numeroATexto(doc.monto)} SOLES`, style: 'datosExtra' },
+                {
+                    text: `CONDICIÓN DE PAGO: ${doc.pago_condicion1.nombre}`,
+                    style: 'datosExtra',
+                },
+            ],
+        },
+        ///// ----- PAGOS ----- /////
+        ...(pagosStack ? [pagosStack] : []),
+        ///// ----- DELIVERY ----- /////
+        ...(deliveryStack ? [deliveryStack] : []),
+        ///// ----- HASH COMPROBANTE SUNAT ----- /////
+        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa', margin: [0, 10, 0, 0] },
+    ]
+
+    docDefinition.styles = {
+        empresa: { fontSize: 10, alignment: 'center' },
+        tipo_doc: { fontSize: 11, alignment: 'center', bold: true, margin: [0, 10, 0, 10] },
+        cliente_datos: { fontSize: 10, alignment: 'left', margin: [0, 0, 0, 10] },
+        tableHeader: { fontSize: 10, bold: true, margin: [0, 0, 0, 1] },
+        tableItem: { fontSize: 10, margin: [0, 0, 0, 1] },
+        totalesLabel: { fontSize: 10, margin: [0, 0, 0, 1] },
+        totalesValue: { fontSize: 10, alignment: 'right', margin: [0, 0, 0, 1] },
+        datosExtra: { fontSize: 10, margin: [0, 0, 0, 1] },
+    }
+
+    const fonts = {
+        Roboto: {
+            normal: 'src/fonts/Roboto-Regular.ttf',
+            bold: 'src/fonts/Roboto-Bold.ttf',
+        }
+    }
+
+    const printer = new PdfPrinter(fonts)
+    const pdfDoc = printer.createPdfKitDocument(docDefinition)
+    let chunks = []
+    pdfDoc.on('data', chunk => { chunks.push(chunk) })
+    pdfDoc.on('end', () => {
+        const result = Buffer.concat(chunks)
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `inline; filename=${doc.venta_serie}-${doc.venta_numero}.pdf`)
+        res.send(result)
+    })
+    pdfDoc.end()
+
+    // const pdfDoc = printer.createPdfKitDocument(docDefinition)
+    // const fileName = `${doc.venta_serie}-${doc.venta_numero}.pdf`
+    // const filePath = path.join(uploadsPath, fileName)
+    // const stream = fs.createWriteStream(filePath)
+
+    // pdfDoc.pipe(stream)
+    // pdfDoc.end()
+
+    // stream.on('finish', () => {
+    //     res.sendFile(filePath)
+    //     res.json({ code: 0, data: fileName })
+    // })
+}
+
+const loadPdf = async (req, res) => {
+    // const { id } = req.params
+    const file = getFile('asdasd.pdf')
+    const rutaArchivo = getFilePath('asdasd.pdf')
+
+    if (file) {
+        res.sendFile(rutaArchivo)
+    } else {
+        res.status(404).json({ msg: 'Archivo no encontrado' })
+    }
+}
+
 export default {
     create,
     find,
-    // findById,
+    findById,
     actualizarPago,
+    anular,
+    loadPdf,
 }

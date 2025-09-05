@@ -12,6 +12,14 @@ router.get(
     controller.find
 )
 
+router.get(
+    '/uno/:id',
+    verifyPermiso([
+        'vReporteComprobantes:descargarPdf',
+    ]),
+    controller.findById
+)
+
 router.post(
     '/',
     verifyPermiso([
@@ -27,5 +35,21 @@ router.patch(
     ]),
     controller.actualizarPago
 )
+
+router.patch(
+    '/anular/:id',
+    verifyPermiso([
+        'vReporteComprobantes:anular',
+    ]),
+    controller.anular
+)
+
+// router.get(
+//     '/pdf/:id',
+//     // verifyPermiso([
+//     //     'vReporteComprobantes:descargarPdf',
+//     // ]),
+//     controller.loadPdf
+// )
 
 export default router

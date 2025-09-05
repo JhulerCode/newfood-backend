@@ -3,9 +3,11 @@ import cors from 'cors'
 import config from './config.js'
 import routes from './routes/index.js'
 import connDb from './database/connect.js'
+// import { uploadsPath } from './utils/uploadFiles.js'
 
 const app = express()
 
+// app.use('/uploads', express.static(uploadsPath))
 // ----- MIDDLEWARES -----//
 app.disable('x-powered-by')
 const corsOptions = {

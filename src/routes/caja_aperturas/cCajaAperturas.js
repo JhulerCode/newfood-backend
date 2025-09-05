@@ -158,6 +158,7 @@ const findResumen = async (req, res) => {
 
             ventas_total: 0,
             descuentos_total: 0,
+            descuentos_anulados_total: 0,
 
             venta_canales: [],
             venta_canales_total: 0,
@@ -191,47 +192,49 @@ const findResumen = async (req, res) => {
         const caja_operacionesMap = cSistema.arrayMap('caja_operaciones')
 
         for (const a of dinero_movimientos) {
-            if (a.tipo == 1) {
-                if (a.operacion != 1) {
-                    send.efectivo_ingresos_extra_total += Number(a.monto)
+            if (a.estado == 2) {
+                if (a.tipo == 1) {
+                    if (a.operacion != 1) {
+                        send.efectivo_ingresos_extra_total += Number(a.monto)
 
-                    send.efectivo_ingresos.push({
+                        send.efectivo_ingresos.push({
+                            id: a.id,
+                            operacion: caja_operacionesMap[a.operacion].nombre,
+                            detalle: a.detalle,
+                            monto: Number(a.monto),
+                        })
+                    }
+
+                    if (a.operacion == 1) {
+                        if (a.pago_metodo == 1) send.efectivo_ingresos_total += Number(a.monto)
+
+                        ///// ----- MÉTODOS DE PAGO ----- /////
+                        const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
+                        if (i === -1) {
+                            send.venta_pago_metodos.push({
+                                id: a.pago_metodo1.id,
+                                nombre: a.pago_metodo1.nombre,
+                                monto: Number(a.monto),
+                                cantidad: 1
+                            })
+                        }
+                        else {
+                            send.venta_pago_metodos[i].monto += Number(a.monto)
+                            send.venta_pago_metodos[i].cantidad++
+                        }
+                    }
+                }
+
+                if (a.tipo == 2) {
+                    send.efectivo_egresos_total += Number(a.monto)
+
+                    send.efectivo_egresos.push({
                         id: a.id,
                         operacion: caja_operacionesMap[a.operacion].nombre,
                         detalle: a.detalle,
                         monto: Number(a.monto),
                     })
                 }
-
-                if (a.operacion == 1) {
-                    if (a.pago_metodo == 1) send.efectivo_ingresos_total += Number(a.monto)
-
-                    ///// ----- MÉTODOS DE PAGO ----- /////
-                    const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
-                    if (i === -1) {
-                        send.venta_pago_metodos.push({
-                            id: a.pago_metodo1.id,
-                            nombre: a.pago_metodo1.nombre,
-                            monto: Number(a.monto),
-                            cantidad: 1
-                        })
-                    }
-                    else {
-                        send.venta_pago_metodos[i].monto += Number(a.monto)
-                        send.venta_pago_metodos[i].cantidad++
-                    }
-                }
-            }
-
-            if (a.tipo == 2) {
-                send.efectivo_egresos_total += Number(a.monto)
-
-                send.efectivo_egresos.push({
-                    id: a.id,
-                    operacion: caja_operacionesMap[a.operacion].nombre,
-                    detalle: a.detalle,
-                    monto: Number(a.monto),
-                })
             }
         }
 
@@ -341,6 +344,8 @@ const findResumen = async (req, res) => {
                         descuento_valor: b.descuento_valor,
                         cantidad: Number(b.cantidad),
                     })
+
+                    send.descuentos_anulados_total += prd.descuento
 
                     if (k === -1) {
                         send.productos_anulados.push({

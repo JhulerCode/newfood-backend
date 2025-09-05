@@ -78,10 +78,12 @@ const find = async (req, res) => {
 
             const caja_operacion_tiposMap = cSistema.arrayMap('caja_operacion_tipos')
             const caja_operacionesMap = cSistema.arrayMap('caja_operaciones')
+            const dinero_movimiento_estadosMap = cSistema.arrayMap('dinero_movimiento_estados')
 
             for (const a of data) {
                 if (qry.cols.includes('tipo')) a.tipo1 = caja_operacion_tiposMap[a.tipo]
                 if (qry.cols.includes('operacion')) a.operacion1 = caja_operacionesMap[a.operacion]
+                if (qry.cols.includes('estado')) a.estado1 = dinero_movimiento_estadosMap[a.estado]
             }
         }
 
@@ -127,9 +129,11 @@ async function loadOne(id) {
 
         const caja_operacion_tiposMap = cSistema.arrayMap('caja_operacion_tipos')
         const caja_operacionesMap = cSistema.arrayMap('caja_operaciones')
+        const dinero_movimiento_estadosMap = cSistema.arrayMap('dinero_movimiento_estados')
 
         data.tipo1 = caja_operacion_tiposMap[data.tipo]
         data.operacion1 = caja_operacionesMap[data.operacion]
+        data.estado1 = dinero_movimiento_estadosMap[data.estado]
     }
 
     return data

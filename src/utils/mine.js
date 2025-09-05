@@ -98,9 +98,35 @@ function redondear(num, dec = 2) {
     })
 }
 
+function numeroATexto(num) {
+    const unidades = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+    const decenas = ["", "DIEZ", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+    const especiales = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
+    const centenas = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+    function convertir(n) {
+        if (n < 10) return unidades[n];
+        if (n < 20) return especiales[n - 10];
+        if (n < 100) return decenas[Math.floor(n / 10)] + (n % 10 === 0 ? "" : " Y " + unidades[n % 10]);
+        if (n < 1000) return (n === 100 ? "CIEN" : centenas[Math.floor(n / 100)]) + (n % 100 === 0 ? "" : " " + convertir(n % 100));
+        if (n < 1000000) return (n < 2000 ? "MIL" : convertir(Math.floor(n / 1000)) + " MIL") + (n % 1000 === 0 ? "" : " " + convertir(n % 1000));
+        if (n < 1000000000) return convertir(Math.floor(n / 1000000)) + " MILLONES" + (n % 1000000 === 0 ? "" : " " + convertir(n % 1000000));
+        return "";
+    }
+
+    const parteEntera = Math.floor(num);
+    const parteDecimal = Math.round((num - parteEntera) * 100);
+
+    const textoEntero = convertir(parteEntera);
+    const textoDecimal = parteDecimal < 10 ? "0" + parteDecimal : parteDecimal;
+
+    return `${textoEntero} CON ${textoDecimal}/100`;
+}
+
 export {
     existe,
     applyFilters,
     cleanFloat,
     redondear,
+    numeroATexto,
 }
