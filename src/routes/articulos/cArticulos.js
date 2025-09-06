@@ -7,6 +7,7 @@ import { RecetaInsumo } from '../../database/models/RecetaInsumo.js'
 import { ComboArticulo } from '../../database/models/ComboArticulo.js'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import { deleteFile } from '../../utils/uploadFiles.js'
 
 const includes1 = {
     categoria1: {
@@ -66,11 +67,12 @@ const create = async (req, res) => {
             produccion_area, has_receta,
             is_combo,
             precio_venta,
+            foto_path: req.file ? req.file.filename : undefined,
             createdBy: colaborador
         }, { transaction })
 
         ///// ----- COMBO ITEMS ----- /////
-        if (is_combo) {
+        if (is_combo == true) {
             const komboItems = combo_articulos.map(a => ({
                 articulo_principal: nuevo.id,
                 articulo: a.articulo,
@@ -103,25 +105,30 @@ const update = async (req, res) => {
             tipo, categoria,
             produccion_area, has_receta,
             is_combo, combo_articulos,
-            precio_venta,
-            precios_semana,
+            precio_venta, precios_semana,
+            foto_path, previous_foto_path,
         } = req.body
 
         // ----- VERIFY SI EXISTE NOMBRE ----- //
         if (await existe(Articulo, { nombre, codigo_barra, id }, res) == true) return
 
         // ----- ACTUALIZAR ----- //
+        const send = {
+            codigo_barra, nombre, unidad, marca, activo,
+            igv_afectacion,
+            tipo, categoria,
+            produccion_area, has_receta,
+            is_combo,
+            precio_venta,
+            precios_semana,
+            updatedBy: colaborador
+        }
+
+        if (req.file) send.foto_path = req.file.filename
+        if (foto_path == null) send.foto_path = null
+
         const [affectedRows] = await Articulo.update(
-            {
-                codigo_barra, nombre, unidad, marca, activo,
-                igv_afectacion,
-                tipo, categoria,
-                produccion_area, has_receta,
-                is_combo,
-                precio_venta,
-                precios_semana,
-                updatedBy: colaborador
-            },
+            send,
             {
                 where: { id },
                 transaction
@@ -129,13 +136,17 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
+            if (req.file || file_name == null) {
+                if (previous_foto_path != 'null') deleteFile(previous_foto_path)
+            }
+
             ///// ----- COMBO ITEMS ----- /////
             await ComboArticulo.destroy({
                 where: { articulo_principal: id },
                 transaction
             })
 
-            if (is_combo) {
+            if (is_combo == true) {
                 const komboItems = combo_articulos.map(a => ({
                     articulo_principal: id,
                     articulo: a.articulo,
@@ -244,9 +255,14 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await Articulo.findByPk(id, {
+        let data = await Articulo.findByPk(id, {
             include: [includes1.combo_articulos]
         })
+
+        if (data) {
+            data = data.toJSON()
+            data.previous_foto_path = data.foto_path
+        }
 
         res.json({ code: 0, data })
     }

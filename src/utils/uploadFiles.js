@@ -1,45 +1,27 @@
 import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
-// import multer from 'multer'
+import multer from 'multer'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const uploadsPath = path.join(__dirname, '..', 'uploads')
 
-// function saveFile(file, name) {
-//     if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true })
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
 
-//     const tipoArchivo = file.split(';')[0].split('/')[1]
+        if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true });
 
-//     const nombreArchivo = name ?
-//         `${name}.${tipoArchivo}` :
-//         Date.now() +''+ Math.floor(Math.random() * 1000) + '.' + tipoArchivo
-//     const filePath = path.join(uploadsPath, nombreArchivo)
+        cb(null, uploadsPath);
+    },
+    filename: (req, file, cb) => {
+        const timestamp = Date.now();
+        const uniqueName = `${timestamp}-${file.originalname}`;
+        cb(null, uniqueName);
+    }
+})
 
-//     const base64DataSinEncabezado = file.replace(/^data:[^;]+;base64,/, '')
-//     const datosBinarios = Buffer.from(base64DataSinEncabezado, 'base64')
-
-//     fs.writeFileSync(filePath, datosBinarios)
-
-//     return nombreArchivo
-// }
-
-// const storage = multer.diskStorage({
-//     destination: (req, file, cb) => {
-
-//         if (!fs.existsSync(uploadsPath)) fs.mkdirSync(uploadsPath, { recursive: true });
-
-//         cb(null, uploadsPath);
-//     },
-//     filename: (req, file, cb) => {
-//         const timestamp = Date.now();
-//         const uniqueName = `${timestamp}-${file.originalname}`;
-//         cb(null, uniqueName);
-//     }
-// })
-
-// const upload = multer({ storage })
+const upload = multer({ storage })
 
 function deleteFile(name) {
     try {
@@ -63,7 +45,7 @@ function getFilePath(name) {
 export {
     __dirname,
     uploadsPath,
-    // upload,
+    upload,
     deleteFile,
     getFilePath,
     getFile
