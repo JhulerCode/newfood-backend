@@ -156,7 +156,6 @@ const findResumen = async (req, res) => {
             efectivo_egresos: [],
             efectivo_egresos_total: 0,
 
-            ventas_total: 0,
             descuentos_total: 0,
             descuentos_anulados_total: 0,
 
@@ -176,6 +175,15 @@ const findResumen = async (req, res) => {
             productos_anulados: [],
             ventas_credito_total: 0,
         }
+
+        // const ventas = {
+        //     pago_metodos: [],
+        //     comprobante_tipos: [],
+        //     canales: [],
+        //     productos: [],
+        //     total: 0,
+        //     descuentos: 0,
+        // }
 
         const dinero_movimientos = await DineroMovimiento.findAll({
             order: [['createdAt', 'DESC']],
@@ -258,11 +266,17 @@ const findResumen = async (req, res) => {
                     model: Comprobante,
                     as: 'canjeado_por1',
                     attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo'],
+                },
+                {
+                    model: Transaccion,
+                    as: 'transaccion1',
+                    attributes: ['venta_canal'],
                 }
             ]
         })
 
         const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
+        const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         for (const a of comprobantes) {
             ///// ----- ACEPTADOS ----- /////
@@ -280,6 +294,20 @@ const findResumen = async (req, res) => {
                 else {
                     send.venta_comprobantes[i].monto += Number(a.monto)
                     send.venta_comprobantes[i].cantidad++
+                }
+
+                // ///// ----- CANALES ----- /////
+                const j = send.venta_canales.findIndex(b => b.id == a.transaccion1.venta_canal)
+                if (j === -1) {
+                    send.venta_canales.push({
+                        id: a.transaccion1.venta_canal,
+                        name: venta_canalesMap[a.transaccion1.venta_canal].nombre,
+                        value: Number(a.monto),
+                        cantidad: 0,
+                    })
+                }
+                else {
+                    send.venta_canales[j].value += Number(a.monto)
                 }
 
                 ///// ----- COMPROBANTES ----- /////
@@ -308,13 +336,13 @@ const findResumen = async (req, res) => {
                             id: b.articulo,
                             nombre: b.producto,
                             cantidad: Number(b.cantidad),
-                            monto: Number(a.monto),
+                            monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
                         })
                     }
                     else {
                         send.productos[k].cantidad += Number(b.cantidad)
-                        send.productos[k].monto += Number(a.monto)
+                        send.productos[k].monto += Number(prd.total)
                         send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
                     }
                 }
@@ -360,13 +388,13 @@ const findResumen = async (req, res) => {
                             id: b.articulo,
                             nombre: b.producto,
                             cantidad: Number(b.cantidad),
-                            monto: Number(a.monto),
+                            monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
                         })
                     }
                     else {
                         send.productos_anulados[k].cantidad += Number(b.cantidad)
-                        send.productos_anulados[k].monto += Number(a.monto)
+                        send.productos_anulados[k].monto += Number(prd.total)
                         send.productos_anulados[k].descuento += prd.descuento == 0 ? null : prd.descuento
                     }
                 }
@@ -391,40 +419,28 @@ const findResumen = async (req, res) => {
                 tipo: 2,
                 caja_apertura: id,
             },
-            // include: [
-            //     {
-            //         model: TransaccionItem,
-            //         as: 'transaccion_items',
-            //         attributes: ['id', 'articulo', 'producto', 'pu'],
-            //         include: {
-            //             model: Articulo,
-            //             as: 'articulo1',
-            //             attributes: ['id', 'nombre'],
-            //         }
-            //     }
-            // ]
         })
-
-        // pedidos = pedidos.map(a => a.toJSON())
-        const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         for (let a of pedidos) {
             if (a.estado != 0) {
                 send.venta_canales_total += Number(a.monto)
 
                 const i = send.venta_canales.findIndex(b => b.id == a.venta_canal)
-                if (i === -1) {
-                    send.venta_canales.push({
-                        id: a.venta_canal,
-                        nombre: venta_canalesMap[a.venta_canal].nombre,
-                        monto: Number(a.monto),
-                        cantidad: 1,
-                    })
-                }
-                else {
-                    send.venta_canales[i].monto += Number(a.monto)
+                if (i !== -1) {
                     send.venta_canales[i].cantidad++
                 }
+                // if (i === -1) {
+                //     send.venta_canales.push({
+                //         id: a.venta_canal,
+                //         nombre: venta_canalesMap[a.venta_canal].nombre,
+                //         monto: Number(a.monto),
+                //         cantidad: 1,
+                //     })
+                // }
+                // else {
+                //     send.venta_canales[i].monto += Number(a.monto)
+                //     send.venta_canales[i].cantidad++
+                // }
             }
 
             if (a.estado == 0) {
@@ -470,7 +486,7 @@ function calcularUno(item) {
     }
 
     item.descuento = item.pu_desc
-    item.total = item.cantidad * (item.pu - item.pu_desc)
+    item.total = (item.cantidad * item.pu) - item.descuento
 
     return item
 }

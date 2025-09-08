@@ -19,6 +19,7 @@ import PdfPrinter from 'pdfmake'
 import { uploadsPath, getFilePath, getFile } from '../../utils/uploadFiles.js'
 import path from 'path'
 import fs from 'fs'
+import dayjs from "dayjs"
 
 const includes1 = {
     socio1: {
@@ -889,6 +890,211 @@ const canjear = async (req, res) => {
     }
 }
 
+const resumen = async (req, res) => {
+    try {
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        const findProps = {
+            attributes: ['id', 'venta_fecha_emision', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
+            order: [['createdAt', 'ASC']],
+            where: {},
+            include: [
+                {
+                    model: ComprobanteItem,
+                    as: 'comprobante_items',
+                    attributes: ['id', 'articulo', 'producto', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+                },
+                {
+                    model: Transaccion,
+                    as: 'transaccion1',
+                    attributes: ['venta_canal'],
+                },
+                {
+                    model: DineroMovimiento,
+                    as: 'dinero_movimientos',
+                    attributes: ['id', 'pago_metodo', 'monto'],
+                    include: {
+                        model: PagoMetodo,
+                        as: 'pago_metodo1',
+                        attributes: ['id', 'nombre', 'color']
+                    }
+                }
+            ]
+        }
+
+        if (qry) {
+            Object.assign(findProps.where, applyFilters(qry.fltr))
+        }
+
+        const comprobantes = await Comprobante.findAll(findProps)
+
+        const ventas = {
+            tiempo: {},
+            pago_metodos: [],
+            comprobante_tipos: [],
+            canales: [],
+            productos: [],
+            total: 0,
+            descuentos: 0,
+        }
+
+        const anulados = {
+            total: 0,
+            descuentos: 0,
+        }
+
+        const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
+        const venta_canalesMap = cSistema.arrayMap('venta_canales')
+
+        ///// ----- INDICES AUXILIARES ----- /////
+        const pagoMetodosMap = {}
+        const comprobanteTiposMap = {}
+        const canalesMap = {}
+        const productosMap = {}
+        const mesesMap = {}
+
+        for (const a of comprobantes) {
+            ///// ----- ACEPTADOS ----- /////
+            if (a.estado == 1) {
+                ventas.total += Number(a.monto)
+
+                ///// ----- MÉTODOS DE PAGO ----- /////
+                for (const b of a.dinero_movimientos) {
+                    const mkey = b.pago_metodo
+                    if (!pagoMetodosMap[mkey]) {
+                        const item = {
+                            id: mkey,
+                            name: b.pago_metodo1.nombre,
+                            value: Number(b.monto),
+                            itemStyle: { color: b.pago_metodo1.color }
+                        }
+                        ventas.pago_metodos.push(item)
+                        pagoMetodosMap[mkey] = item
+                    } else {
+                        pagoMetodosMap[mkey].value += Number(b.monto)
+                    }
+                }
+
+                ///// ----- TIPOS DE COMPROBANTES ----- /////
+                const tKey = a.venta_tipo_documento_codigo
+                if (!comprobanteTiposMap[tKey]) {
+                    const item = {
+                        id: tKey,
+                        name: pago_comprobantesMap[tKey].nombre,
+                        value: Number(a.monto),
+                    }
+                    ventas.comprobante_tipos.push(item)
+                    comprobanteTiposMap[tKey] = item
+                } else {
+                    comprobanteTiposMap[tKey].value += Number(a.monto)
+                }
+
+                ///// ----- CANALES ----- /////
+                const cKey = a.transaccion1.venta_canal
+                if (!canalesMap[cKey]) {
+                    const item = {
+                        id: cKey,
+                        name: venta_canalesMap[cKey].nombre,
+                        value: Number(a.monto),
+                    }
+                    ventas.canales.push(item)
+                    canalesMap[cKey] = item
+                } else {
+                    canalesMap[cKey].value += Number(a.monto)
+                }
+
+                ///// ----- PRODUCTOS ----- /////
+                for (const b of a.comprobante_items) {
+                    const prd = calcularUno({
+                        pu: Number(b.pu),
+                        descuento_tipo: b.descuento_tipo,
+                        descuento_valor: b.descuento_valor,
+                        cantidad: Number(b.cantidad),
+                    })
+
+                    ventas.descuentos += prd.descuento
+                    const pKey = b.articulo
+
+                    if (!productosMap[pKey]) {
+                        const item = {
+                            id: b.articulo,
+                            nombre: b.producto,
+                            cantidad: Number(b.cantidad),
+                            monto: Number(prd.total),
+                            descuento: prd.descuento == 0 ? null : prd.descuento,
+                        }
+                        ventas.productos.push(item)
+                        productosMap[pKey] = item
+                    } else {
+                        productosMap[pKey].cantidad += Number(b.cantidad)
+                        productosMap[pKey].monto += Number(prd.total)
+                        productosMap[pKey].descuento += prd.descuento == 0 ? null : prd.descuento
+                    }
+                }
+
+                ///// ----- TIEMPO ----- /////
+                const mes = dayjs(a.venta_fecha_emision).format("YYYY-MMM")
+                if (!mesesMap[mes]) mesesMap[mes] = 0
+                mesesMap[mes] += Number(a.monto)
+            }
+
+            ///// ----- ANULADOS ----- /////
+            if (a.estado == 0) {
+                anulados.total += Number(a.monto)
+
+                for (const b of a.comprobante_items) {
+                    const prd = calcularUno({
+                        pu: Number(b.pu),
+                        descuento_tipo: b.descuento_tipo,
+                        descuento_valor: b.descuento_valor,
+                        cantidad: Number(b.cantidad),
+                    })
+                    anulados.descuentos += prd.descuento
+                }
+            }
+        }
+
+        ventas.tiempo = {
+            meses: Object.keys(mesesMap),
+            ventas: Object.values(mesesMap),
+        }
+
+        ventas.productos = ventas.productos.sort((a, b) => b.monto - a.monto)
+
+        const data = {
+            ventas,
+            anulados,
+            general: ventas.total + anulados.total + ventas.descuentos + anulados.descuentos
+        }
+
+        res.json({ code: 0, data, comprobantes })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+function calcularUno(item) {
+    if (
+        item.descuento_tipo != null &&
+        item.descuento_valor != null &&
+        item.descuento_valor != 0
+    ) {
+        if (item.descuento_tipo == 1) {
+            item.pu_desc = item.descuento_valor
+        } else if (item.descuento_tipo == 2) {
+            item.pu_desc = item.cantidad * item.pu * (item.descuento_valor / 100)
+        }
+    } else {
+        item.pu_desc = 0
+    }
+
+    item.descuento = item.pu_desc
+    item.total = (item.cantidad * item.pu) - item.descuento
+
+    return item
+}
+
 export default {
     create,
     find,
@@ -896,4 +1102,5 @@ export default {
     actualizarPago,
     anular,
     canjear,
+    resumen,
 }

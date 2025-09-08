@@ -52,12 +52,12 @@ router.patch(
     controller.canjear
 )
 
-// router.get(
-//     '/pdf/:id',
-//     // verifyPermiso([
-//     //     'vReporteComprobantes:descargarPdf',
-//     // ]),
-//     controller.loadPdf
-// )
+router.get(
+    '/dashboard',
+    verifyPermiso([
+        'vDashboard:ver',
+    ]),
+    controller.resumen
+)
 
 export default router

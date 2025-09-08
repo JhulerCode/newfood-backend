@@ -164,14 +164,14 @@ function calcularUno(item) {
         if (item.descuento_tipo == 1) {
             item.pu_desc = item.descuento_valor
         } else if (item.descuento_tipo == 2) {
-            item.pu_desc = item.pu * (item.descuento_valor / 100)
+            item.pu_desc = item.cantidad * item.pu * (item.descuento_valor / 100)
         }
     } else {
         item.pu_desc = 0
     }
 
-    item.descuento = item.cantidad * item.pu_desc
-    item.total = item.cantidad * (item.pu - item.pu_desc)
+    item.descuento = item.pu_desc
+    item.total = (item.cantidad * item.pu) - item.descuento
 
     return item
 }
