@@ -47,6 +47,12 @@ const create = async (req, res) => {
 
     try {
         const { colaborador } = req.user
+
+        if (req.body.datos) {
+            const datos = JSON.parse(req.body.datos)
+            req.body = { ...req.body, ...datos }
+        }
+
         const {
             codigo_barra, nombre, unidad, marca, activo,
             igv_afectacion,
@@ -67,7 +73,7 @@ const create = async (req, res) => {
             produccion_area, has_receta,
             is_combo,
             precio_venta,
-            foto_path: req.file ? req.file.filename : undefined,
+            foto_path: req.file ? req.file.filename : null,
             createdBy: colaborador
         }, { transaction })
 
@@ -99,6 +105,12 @@ const update = async (req, res) => {
     try {
         const { colaborador } = req.user
         const { id } = req.params
+
+        if (req.body.datos) {
+            const datos = JSON.parse(req.body.datos)
+            req.body = { ...datos }
+        }
+
         const {
             codigo_barra, nombre, unidad, marca, activo,
             igv_afectacion,
@@ -107,6 +119,7 @@ const update = async (req, res) => {
             is_combo, combo_articulos,
             precio_venta, precios_semana,
             foto_path, previous_foto_path,
+            patch_mode,
         } = req.body
 
         // ----- VERIFY SI EXISTE NOMBRE ----- //
@@ -119,13 +132,12 @@ const update = async (req, res) => {
             tipo, categoria,
             produccion_area, has_receta,
             is_combo,
-            precio_venta,
-            precios_semana,
+            precio_venta, precios_semana,
+            foto_path,
             updatedBy: colaborador
         }
 
         if (req.file) send.foto_path = req.file.filename
-        if (foto_path == null) send.foto_path = null
 
         const [affectedRows] = await Articulo.update(
             send,
@@ -136,8 +148,10 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-            if (req.file || file_name == null) {
-                if (previous_foto_path != 'null') deleteFile(previous_foto_path)
+            if (patch_mode != 1) { // PORQUE EDITO PRECIOS DE LA SEMANA EN OTRO MODAL
+                if (send.foto_path != previous_foto_path && previous_foto_path != null) {
+                    deleteFile(previous_foto_path)
+                }
             }
 
             ///// ----- COMBO ITEMS ----- /////
@@ -274,6 +288,9 @@ const findById = async (req, res) => {
 const delet = async (req, res) => {
     try {
         const { id } = req.params
+        const { foto_path } = req.body
+
+        if (foto_path != null) deleteFile(foto_path)
 
         // ----- ELIMINAR ----- //
         const deletedCount = await Articulo.destroy({ where: { id } })
