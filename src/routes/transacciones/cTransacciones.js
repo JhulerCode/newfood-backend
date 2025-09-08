@@ -11,7 +11,7 @@ import { Mesa } from '../../database/models/Mesa.js'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { Salon } from '../../database/models/Salon.js'
 
-const includes1 = {
+const include1 = {
     socio1: {
         model: Socio,
         as: 'socio1',
@@ -60,7 +60,7 @@ const create = async (req, res) => {
             }
         }
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await Transaccion.create({
             tipo, fecha, socio,
             pago_condicion, monto,
@@ -71,7 +71,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        // ----- GUARDAR ITEMS ----- //
+       // --- GUARDAR ITEMS --- //
         const items = transaccion_items.map(a => ({
             articulo: a.articulo,
             cantidad: a.cantidad,
@@ -90,7 +90,7 @@ const create = async (req, res) => {
         await TransaccionItem.bulkCreate(items, { transaction })
 
         if (tipo == 1) {
-            // ----- GUARAR KARDEX ----- //
+           // --- GUARAR KARDEX --- //
             const kardexItems = transaccion_items.map(a => ({
                 tipo,
                 fecha,
@@ -103,7 +103,7 @@ const create = async (req, res) => {
 
             await Kardex.bulkCreate(kardexItems, { transaction })
 
-            // ----- ACTUALIZAR STOCK ----- //
+           // --- ACTUALIZAR STOCK --- //
             const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
             const tipoInfo = transaccion_tiposMap[tipo]
 
@@ -122,7 +122,7 @@ const create = async (req, res) => {
 
         await transaction.commit()
 
-        // ----- DEVOLVER ----- //
+       // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
     }
@@ -162,13 +162,13 @@ const update = async (req, res) => {
 
         if (affectedRows > 0) {
             if (tipo == 2) {
-                // ----- ELIMINAR ITEMS ----- //
+               // --- ELIMINAR ITEMS --- //
                 await TransaccionItem.destroy({
                     where: { transaccion: id },
                     transaction
                 })
 
-                // ----- GUARDAR ITEMS ----- //
+               // --- GUARDAR ITEMS --- //
                 const items = transaccion_items.map(a => ({
                     articulo: a.articulo,
                     cantidad: a.cantidad,
@@ -207,7 +207,7 @@ const update = async (req, res) => {
 
 async function loadOne(id) {
     let data = await Transaccion.findByPk(id, {
-        include: [includes1.socio1, includes1.createdBy1]
+        include: [include1.socio1, include1.createdBy1]
     })
 
     if (data) {
@@ -251,7 +251,7 @@ const find = async (req, res) => {
         if (qry) {
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }
             }
 
@@ -267,8 +267,8 @@ const find = async (req, res) => {
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
-                // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('socio')) findProps.include.push(includes1.socio1)
+               // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
+                if (qry.cols.includes('socio')) findProps.include.push(include1.socio1)
             }
 
             if (qry.sqls) {
@@ -406,7 +406,7 @@ const delet = async (req, res) => {
 
 
 
-///// ----- PARA VENTAS ----- /////
+// --- PARA VENTAS --- //
 const anular = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -424,8 +424,6 @@ const anular = async (req, res) => {
         res.json({ code: 0 })
     }
     catch (error) {
-        // await transaction.rollback()0
-
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -440,7 +438,6 @@ const ventasPendientes = async (req, res) => {
             where: {
                 tipo: '2',
                 estado: '1',
-                // venta_facturado: false
             },
             group: ['venta_canal'],
         }
@@ -460,7 +457,7 @@ const cambiarMesa = async (req, res) => {
         const { id } = req.params
         const { venta_mesa } = req.body
 
-        // ----- ENTREGAR Y FINALIZAR ----- //
+       // --- ENTREGAR Y FINALIZAR --- //
         await Transaccion.update(
             {
                 venta_mesa,
@@ -481,7 +478,7 @@ const entregar = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
 
-        // ----- ENTREGAR Y FINALIZAR ----- //
+       // --- ENTREGAR Y FINALIZAR --- //
         await Transaccion.update(
             {
                 venta_entregado: true,

@@ -13,10 +13,10 @@ const create = async (req, res) => {
             activo,
         } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+       // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Socio, { tipo, doc_numero }, res, `El socio comercial ya existe`) == true) return
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await Socio.create({
             tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
@@ -43,10 +43,10 @@ const update = async (req, res) => {
             activo,
         } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+       // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Socio, { tipo, doc_numero, id }, res, `El socio comercial ya existe`) == true) return
 
-        // ----- ACTUALIZAR ----- //
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await Socio.update(
             {
                 tipo, doc_tipo, doc_numero, nombres,
@@ -106,12 +106,6 @@ const find = async (req, res) => {
             if (qry.cols) {
                 findProps.attributes = findProps.attributes.concat(qry.cols)
             }
-
-            // if (qry.incl) {
-            //     for (const a of qry.incl) {
-            //         if (qry.incl.includes(a)) findProps.include.push(includes1[a])
-            //     }
-            // }
         }
 
         let data = await Socio.findAll(findProps)
@@ -152,7 +146,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        // ----- ELIMINAR ----- //
+       // --- ELIMINAR --- //
         const deletedCount = await Socio.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
@@ -170,7 +164,7 @@ const deleteBulk = async (req, res) => {
     try {
         const { ids } = req.body
 
-        // ----- ELIMINAR ----- //
+       // --- ELIMINAR --- //
         const deletedCount = await Socio.destroy({
             where: {
                 id: {
@@ -200,7 +194,7 @@ const updateBulk = async (req, res) => {
         const { ids, prop, val } = req.body
         const edit = { [prop]: val }
 
-        // ----- MODIFICAR ----- //
+       // --- MODIFICAR --- //
         await Socio.update(
             edit,
             {

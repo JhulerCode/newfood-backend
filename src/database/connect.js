@@ -1,6 +1,6 @@
 import sequelize from './sequelize.js'
 import "./models/_all.js"
-    // import initData from './initData.js'
+// import initData from './initData.js'
 // import { Empresa } from './models/Empresa.js'
 
 async function connect() {

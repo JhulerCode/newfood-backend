@@ -5,10 +5,10 @@ import { Colaborador } from './Colaborador.js'
 
 export const ComboArticulo = sequelize.define('combo_articulos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    articulo_principal: { type: DataTypes.STRING }, //required //linked
-    articulo: { type: DataTypes.STRING }, //required //linked
-    cantidad: { type: DataTypes.DOUBLE }, //required
-    orden: { type: DataTypes.INTEGER }, //required
+    articulo_principal: { type: DataTypes.STRING },
+    articulo: { type: DataTypes.STRING },
+    cantidad: { type: DataTypes.DOUBLE },
+    orden: { type: DataTypes.INTEGER },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
@@ -20,7 +20,7 @@ ComboArticulo.belongsTo(Articulo, { foreignKey: 'articulo_principal', as: 'artic
 Articulo.hasMany(ComboArticulo, { foreignKey: 'articulo', as: 'combos', onDelete: 'RESTRICT' })
 ComboArticulo.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
 
-Colaborador.hasMany(ComboArticulo, {foreignKey:'createdBy', onDelete:'RESTRICT'})
-ComboArticulo.belongsTo(Colaborador, {foreignKey:'createdBy', as:'createdBy1'})
-Colaborador.hasMany(ComboArticulo, {foreignKey:'updatedBy', onDelete:'RESTRICT'})
-ComboArticulo.belongsTo(Colaborador, {foreignKey:'updatedBy', as:'updatedBy1'})
+Colaborador.hasMany(ComboArticulo, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
+ComboArticulo.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
+Colaborador.hasMany(ComboArticulo, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
+ComboArticulo.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })

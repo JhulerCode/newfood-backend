@@ -5,8 +5,8 @@ import { Salon } from './Salon.js'
 
 export const Mesa = sequelize.define('mesas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    nombre: { type: DataTypes.STRING }, //required
-    activo: { type: DataTypes.BOOLEAN }, //required
+    nombre: { type: DataTypes.STRING },
+    activo: { type: DataTypes.BOOLEAN },
     salon: { type: DataTypes.STRING },
 
     unida: { type: DataTypes.BOOLEAN, defaultValue: false },

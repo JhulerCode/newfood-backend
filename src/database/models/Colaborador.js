@@ -3,30 +3,30 @@ import sequelize from '../sequelize.js'
 
 export const Colaborador = sequelize.define('colaboradores', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    nombres: { type: DataTypes.STRING }, //required
-    apellidos: { type: DataTypes.STRING }, //required
+    nombres: { type: DataTypes.STRING },
+    apellidos: { type: DataTypes.STRING },
 
-    doc_tipo: { type: DataTypes.STRING }, //required
-    doc_numero: { type: DataTypes.STRING }, //required
+    doc_tipo: { type: DataTypes.STRING },
+    doc_numero: { type: DataTypes.STRING },
 
     fecha_nacimiento: { type: DataTypes.DATEONLY },
     sexo: { type: DataTypes.STRING },
 
     correo: { type: DataTypes.STRING },
     telefono: { type: DataTypes.STRING },
-    ubigeo: { type: DataTypes.STRING }, //required
+    ubigeo: { type: DataTypes.STRING },
     direccion: { type: DataTypes.STRING },
 
-    cargo: { type: DataTypes.STRING }, //required
+    cargo: { type: DataTypes.STRING },
     sueldo: { type: DataTypes.DECIMAL(10, 2) },
     activo: { type: DataTypes.BOOLEAN },
 
-    has_signin: { type: DataTypes.BOOLEAN }, //required
-    usuario: { type: DataTypes.STRING }, //required
-    contrasena: { type: DataTypes.STRING }, //required
+    has_signin: { type: DataTypes.BOOLEAN },
+    usuario: { type: DataTypes.STRING },
+    contrasena: { type: DataTypes.STRING },
     lastSignin: { type: DataTypes.DATE },
     lastUpdatePassword: { type: DataTypes.DATE },
-    permisos: { type: DataTypes.JSON }, //required
+    permisos: { type: DataTypes.JSON },
     vista_inicial: { type: DataTypes.STRING },
 
     theme: { type: DataTypes.STRING, defaultValue: '1' },

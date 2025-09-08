@@ -9,7 +9,7 @@ const create = async (req, res) => {
             nombre, impresora, activo,
         } = req.body
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const nuevo = await ProduccionArea.create(
             {
                 nombre, impresora, activo,
@@ -33,7 +33,7 @@ const update = async (req, res) => {
             nombre, impresora, activo,
         } = req.body
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await ProduccionArea.update(
             {
                 nombre, impresora, activo,
@@ -45,7 +45,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-            // ----- DEVOLVER ----- //
+           // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -127,7 +127,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const deletedCount = await ProduccionArea.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }

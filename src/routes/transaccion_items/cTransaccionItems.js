@@ -17,7 +17,7 @@ const create = async (req, res) => {
             transaccion,
         } = req.body
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await TransaccionItem.create({
             tipo, fecha,
             articulo, cantidad,
@@ -27,7 +27,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        // ----- GUARAR KARDEX ----- //
+       // --- GUARAR KARDEX --- //
         await Kardex.create({
             tipo, fecha,
             articulo, cantidad,
@@ -38,12 +38,12 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        // ----- ACTUALIZAR STOCK ----- //
+       // --- ACTUALIZAR STOCK --- //
         await actualizarStock(tipo, articulo, cantidad, transaction)
 
         await transaction.commit()
 
-        // ----- DEVOLVER ----- //
+       // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
     }
@@ -81,7 +81,7 @@ const update = async (req, res) => {
         })
 
         if (affectedRows > 0) {
-            // ----- ACTUALIZAR KARDEX ----- //
+           // --- ACTUALIZAR KARDEX --- //
             await Kardex.update({
                 tipo, fecha,
                 articulo, cantidad,
@@ -94,10 +94,10 @@ const update = async (req, res) => {
                 transaction
             })
 
-            // ----- ACTUALIZAR STOCK ----- //
+           // --- ACTUALIZAR STOCK --- //
             if (cantidad_anterior != cantidad) {
                 const cantidad1 = cantidad_anterior - cantidad
-                const tipo1 = cantidad1 > 0 ? 2 : 1 // si la cantidad1 es positiva, se está reduciendo el stock (tipo 2), si es negativa, se está aumentando (tipo 1)
+                const tipo1 = cantidad1 > 0 ? 2 : 1
                 await actualizarStock(tipo1, articulo, Math.abs(cantidad1), transaction)
             }
 
@@ -117,7 +117,6 @@ const update = async (req, res) => {
 }
 
 async function actualizarStock(tipo, articulo, cantidad, transaction) {
-    // console.log(tipo, articulo, cantidad)
     const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
     const tipoInfo = transaccion_tiposMap[tipo]
 
@@ -160,7 +159,7 @@ const delet = async (req, res) => {
             transaction
         })
 
-        // ----- ACTUALIZAR STOCK ----- //
+       // --- ACTUALIZAR STOCK --- //
         const tipo1 = tipo == 1 ? 2 : 1
         await actualizarStock(tipo1, articulo, cantidad, transaction)
 

@@ -19,7 +19,7 @@ const create = async (req, res) => {
             transaccion,
         } = req.body
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await Kardex.create({
             tipo, fecha,
             articulo, cantidad,
@@ -29,7 +29,7 @@ const create = async (req, res) => {
         }, { transaction })
 
 
-        // ----- ACTUALIZAR STOCK ----- //
+       // --- ACTUALIZAR STOCK --- //
         const kardex_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = kardex_tiposMap[tipo]
 
@@ -53,35 +53,6 @@ const create = async (req, res) => {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
-
-// const update = async (req, res) => {
-//     try {
-//         const { colaborador } = req.user
-//         const { id } = req.params
-//         const {
-//             tipo, fecha,
-//             articulo, cantidad,
-//             observacion, calidad_revisado,
-//             transaccion, produccion_orden, maquina,
-//         } = req.body
-
-//         await Kardex.update({
-//             tipo, fecha,
-//             articulo, cantidad,
-//             is_lote_padre, stock, lote_padre,
-//             observacion, calidad_revisado,
-//             transaccion, produccion_orden, maquina,
-//             updatedBy: colaborador
-//         }, { where: { id } })
-
-//         const data = await Kardex.findByPk(id)
-
-//         res.json({ code: 0, data })
-//     }
-//     catch (error) {
-//         res.status(500).json({ code: -1, msg: error.message, error })
-//     }
-// }
 
 const find = async (req, res) => {
     try {
@@ -175,7 +146,7 @@ const find = async (req, res) => {
             const kardex_tiposMap = cSistema.arrayMap('kardex_tipos')
 
             for (const a of data) {
-                // DATOS DE LOTE PADRE
+                // --- DATOS DE LOTE PADRE --- //
                 if (a.tipo) {
                     const tipoInfo = kardex_tiposMap[a.tipo]
 
@@ -199,13 +170,13 @@ const delet = async (req, res) => {
         const { id } = req.params
         const { tipo, articulo, cantidad } = req.body
 
-        // ----- ELIMINAR ----- //
+       // --- ELIMINAR --- //
         await Kardex.destroy({
             where: { id },
             transaction
         })
 
-        // ----- ACTUALIZAR STOCK ----- //
+       // --- ACTUALIZAR STOCK --- //
         const kardex_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = kardex_tiposMap[tipo]
 
@@ -232,7 +203,6 @@ const delet = async (req, res) => {
 
 
 export default {
-    // update,
     find,
     delet,
     create,

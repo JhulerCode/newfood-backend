@@ -1,21 +1,18 @@
-import { fn, col } from 'sequelize'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { DineroMovimiento } from '../../database/models/DineroMovimiento.js'
 import { PagoMetodo } from '../../database/models/PagoMetodo.js'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
-// import { CajaMovimiento } from '../../database/models/CajaMovimiento.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
-import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
-import { existe, applyFilters } from '../../utils/mine.js'
+import { Transaccion } from '../../database/models/Transaccion.js'
+import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
-import { Articulo } from '../../database/models/Articulo.js'
 
 const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
-        // ----- CREAR ----- //
+        // --- CREAR --- //
         const nuevo = await CajaApertura.create({
             fecha_apertura, monto_apertura,
             estado: 1,
@@ -45,7 +42,7 @@ const cerrar = async (req, res) => {
             return res.json({ code: 1, msg: 'No se puede cerrar caja con pedidos pendientes' })
         }
 
-        // ----- ACTUALIZAR ----- //
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await CajaApertura.update(
             {
                 fecha_cierre, monto_cierre,
@@ -218,7 +215,7 @@ const findResumen = async (req, res) => {
                     if (a.operacion == 1) {
                         if (a.pago_metodo == 1) send.efectivo_ingresos_total += Number(a.monto)
 
-                        ///// ----- MÉTODOS DE PAGO ----- /////
+                        // --- MÉTODOS DE PAGO --- //
                         const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
                         if (i === -1) {
                             send.venta_pago_metodos.push({
@@ -279,9 +276,9 @@ const findResumen = async (req, res) => {
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         for (const a of comprobantes) {
-            ///// ----- ACEPTADOS ----- /////
+            // --- ACEPTADOS --- //
             if (a.estado == 1) {
-                ///// ----- TIPOS DE COMPROBANTES ----- /////
+                // --- TIPOS DE COMPROBANTES --- //
                 const i = send.venta_comprobantes.findIndex(b => b.id == a.venta_tipo_documento_codigo)
                 if (i === -1) {
                     send.venta_comprobantes.push({
@@ -296,7 +293,7 @@ const findResumen = async (req, res) => {
                     send.venta_comprobantes[i].cantidad++
                 }
 
-                // ///// ----- CANALES ----- /////
+                // --- CANALES --- //
                 const j = send.venta_canales.findIndex(b => b.id == a.transaccion1.venta_canal)
                 if (j === -1) {
                     send.venta_canales.push({
@@ -310,7 +307,7 @@ const findResumen = async (req, res) => {
                     send.venta_canales[j].value += Number(a.monto)
                 }
 
-                ///// ----- COMPROBANTES ----- /////
+                // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
 
                 send.comprobantes_aceptados.push({
@@ -319,7 +316,7 @@ const findResumen = async (req, res) => {
                     monto: Number(a.monto),
                 })
 
-                ///// ----- PRODUCTOS ----- /////
+                // --- PRODUCTOS --- //
                 for (const b of a.comprobante_items) {
                     const k = send.productos.findIndex(c => c.id == b.articulo)
                     const prd = calcularUno({
@@ -347,7 +344,7 @@ const findResumen = async (req, res) => {
                     }
                 }
 
-                ///// ----- CRÉDITO ----- /////
+                // --- CRÉDITO --- //
                 if (a.pago_condicion == 2) {
                     send.ventas_credito_total += Number(a.monto)
 
@@ -360,9 +357,9 @@ const findResumen = async (req, res) => {
                 }
             }
 
-            ///// ----- ANULADOS ----- /////
+            // --- ANULADOS --- //
             if (a.estado == 0) {
-                ///// ----- COMPROBANTES ----- /////
+                // --- COMPROBANTES --- //
                 send.comprobantes_anulados_total += Number(a.monto)
 
                 send.comprobantes_anulados.push({
@@ -371,7 +368,7 @@ const findResumen = async (req, res) => {
                     monto: Number(a.monto),
                 })
 
-                ///// ----- PRODUCTOS ----- /////
+                // --- PRODUCTOS --- //
                 for (const b of a.comprobante_items) {
                     const k = send.productos_anulados.findIndex(c => c.id == b.articulo)
                     const prd = calcularUno({
@@ -400,9 +397,9 @@ const findResumen = async (req, res) => {
                 }
             }
 
-            ///// ----- CANJEADOS ----- /////
+            // --- CANJEADOS --- //
             if (a.estado == 3) {
-                ///// ----- COMPROBANTES ----- /////
+                // --- COMPROBANTES --- //
                 send.comprobantes_canjeados.push({
                     id: a.serie_correlativo,
                     tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,

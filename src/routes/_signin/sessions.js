@@ -30,18 +30,6 @@ function actualizarSesion(id, values) {
     }
 }
 
-// function limpiarSesionesExpiradas() {
-//     const ahora = Math.floor(Date.now() / 1000); // en segundos
-//     for (const [userId, sesion] of sessionStore.entries()) {
-//         if (sesion.exp < ahora) {
-//             sessionStore.delete(userId);
-//         }
-//     }
-// }
-
-// Ejecutar cada 5 minutos
-// setInterval(limpiarSesionesExpiradas, 5 * 60 * 1000);
-
 export {
     sessionStore,
     guardarSesion,

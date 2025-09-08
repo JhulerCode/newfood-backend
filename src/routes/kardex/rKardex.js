@@ -22,13 +22,6 @@ router.post(
     controller.create
 )
 
-// router.patch(
-//     '/:id',
-//     verifyPermiso([
-//     ]),
-//     controller.update
-// )
-
 router.delete(
     '/:id',
     verifyPermiso([

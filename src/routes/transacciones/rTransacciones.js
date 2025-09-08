@@ -44,12 +44,11 @@ router.delete(
     '/:id',
     verifyPermiso([
         'vCompras:eliminar',
-        // 'vPedidos:eliminar',
     ]),
     controller.delet
 )
 
-///// ----- PARA VENTAS ----- /////
+// --- PARA VENTAS --- //
 router.patch(
     '/anular/:id',
     verifyPermiso([

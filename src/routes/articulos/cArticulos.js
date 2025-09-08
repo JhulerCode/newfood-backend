@@ -1,4 +1,4 @@
-import { Op, Sequelize } from 'sequelize'
+import { Op } from 'sequelize'
 import sequelize from '../../database/sequelize.js'
 import { Articulo } from '../../database/models/Articulo.js'
 import { ArticuloCategoria } from '../../database/models/ArticuloCategoria.js'
@@ -9,7 +9,7 @@ import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import { deleteFile } from '../../utils/uploadFiles.js'
 
-const includes1 = {
+const include1 = {
     categoria1: {
         model: ArticuloCategoria,
         as: 'categoria1',
@@ -62,10 +62,10 @@ const create = async (req, res) => {
             precio_venta,
         } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Articulo, { nombre }, res) == true) return
 
-        // ----- CREAR ----- //
+        // --- CREAR --- //
         const nuevo = await Articulo.create({
             codigo_barra, nombre, unidad, marca, activo,
             igv_afectacion,
@@ -77,7 +77,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        ///// ----- COMBO ITEMS ----- /////
+        // --- COMBO ITEMS --- //
         if (is_combo == true) {
             const komboItems = combo_articulos.map(a => ({
                 articulo_principal: nuevo.id,
@@ -122,10 +122,10 @@ const update = async (req, res) => {
             patch_mode,
         } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Articulo, { nombre, codigo_barra, id }, res) == true) return
 
-        // ----- ACTUALIZAR ----- //
+        // --- ACTUALIZAR --- //
         const send = {
             codigo_barra, nombre, unidad, marca, activo,
             igv_afectacion,
@@ -154,7 +154,7 @@ const update = async (req, res) => {
                 }
             }
 
-            ///// ----- COMBO ITEMS ----- /////
+            // --- COMBO ITEMS --- //
             await ComboArticulo.destroy({
                 where: { articulo_principal: id },
                 transaction
@@ -189,7 +189,7 @@ const update = async (req, res) => {
 
 async function loadOne(id) {
     let data = await Articulo.findByPk(id, {
-        include: [includes1.categoria1, includes1.produccion_area1]
+        include: [include1.categoria1, include1.produccion_area1]
     })
 
     if (data) {
@@ -226,24 +226,21 @@ const find = async (req, res) => {
             if (qry.cols) {
                 findProps.attributes = findProps.attributes.concat(qry.cols)
 
-                // if (qry.cols.includes('stock')) findProps.attributes.push(sqlStock)
-                // if (qry.cols.includes('valor')) findProps.attributes.push(sqlValor)
-
-                // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('categoria')) findProps.include.push(includes1.categoria1)
-                if (qry.cols.includes('produccion_area')) findProps.include.push(includes1.produccion_area1)
+                // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
+                if (qry.cols.includes('categoria')) findProps.include.push(include1.categoria1)
+                if (qry.cols.includes('produccion_area')) findProps.include.push(include1.produccion_area1)
             }
 
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }
             }
         }
 
         let data = await Articulo.findAll(findProps)
 
-        // ----- AGREAGAR LOS REF QUE NO ESTÁN EN LA BD ----- //
+        // --- AGREAGAR LOS REF QUE NO ESTÁN EN LA BD --- //
         if (data.length > 0 && qry.cols) {
             data = data.map(a => a.toJSON())
 
@@ -270,7 +267,7 @@ const findById = async (req, res) => {
         const { id } = req.params
 
         let data = await Articulo.findByPk(id, {
-            include: [includes1.combo_articulos]
+            include: [include1.combo_articulos]
         })
 
         if (data) {
@@ -292,7 +289,7 @@ const delet = async (req, res) => {
 
         if (foto_path != null) deleteFile(foto_path)
 
-        // ----- ELIMINAR ----- //
+        // --- ELIMINAR --- //
         const deletedCount = await Articulo.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
@@ -310,23 +307,18 @@ const createBulk = async (req, res) => {
     try {
         const { tipo, articulos } = req.body
         const { colaborador } = req.user
-        // console.log(articulos)
+
         const send = articulos.map(a => ({
-            // codigo_barra: a.EAN,
             nombre: a.Nombre,
             unidad: a.Unidad,
             marca: a.Marca,
 
-            // vende: tipo == 1 ? false : true,
-            // has_fv: tipo == 1 ? false : true,
             activo: true,
 
             igv_afectacion: a.Tributo,
 
             tipo,
             categoria: a.Categoria,
-            // produccion_tipo: a.Tipo_produccion,
-            // filtrantes: a.Sobres_caja,
             is_combo: false,
 
             createdBy: colaborador
@@ -350,7 +342,7 @@ const deleteBulk = async (req, res) => {
     try {
         const { ids } = req.body
 
-        // ----- ELIMINAR ----- //
+        // --- ELIMINAR --- //
         const deletedCount = await Articulo.destroy({
             where: {
                 id: {
@@ -381,7 +373,7 @@ const updateBulk = async (req, res) => {
 
         const edit = { [prop]: val }
 
-        // ----- MODIFICAR ----- //
+        // --- MODIFICAR --- //
         await Articulo.update(
             edit,
             {

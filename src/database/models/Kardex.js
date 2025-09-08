@@ -7,16 +7,16 @@ import { Comprobante } from './Comprobante.js'
 
 export const Kardex = sequelize.define('kardexes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    tipo: { type: DataTypes.SMALLINT }, //required
-    fecha: { type: DataTypes.DATEONLY }, //required
+    tipo: { type: DataTypes.SMALLINT },
+    fecha: { type: DataTypes.DATEONLY },
 
-    articulo: { type: DataTypes.STRING }, //required //linked
-    cantidad: { type: DataTypes.DECIMAL(10, 2) }, //required
+    articulo: { type: DataTypes.STRING },
+    cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
     observacion: { type: DataTypes.STRING },
     estado: { type: DataTypes.STRING },
 
-    transaccion: { type: DataTypes.STRING }, //required //linked
+    transaccion: { type: DataTypes.STRING },
     comprobante: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },

@@ -8,11 +8,11 @@ import { Transaccion } from './Transaccion.js'
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     empresa_telefono: { type: DataTypes.STRING },
-    socio: { type: DataTypes.STRING }, //linked
+    socio: { type: DataTypes.STRING },
     pago_condicion: { type: DataTypes.STRING },
     monto: { type: DataTypes.DECIMAL(10, 2) },
-    transaccion: { type: DataTypes.STRING }, //linked
-    caja_apertura: { type: DataTypes.STRING }, //linked
+    transaccion: { type: DataTypes.STRING },
+    caja_apertura: { type: DataTypes.STRING },
     estado: { type: DataTypes.STRING },
     canjeado_por: { type: DataTypes.STRING },
 
@@ -92,7 +92,7 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     codigo_sunat: { type: DataTypes.STRING },
     codigo_producto: { type: DataTypes.STRING },
 
-    comprobante: { type: DataTypes.STRING }, //required //linked
+    comprobante: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }

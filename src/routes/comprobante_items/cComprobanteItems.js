@@ -1,19 +1,9 @@
-import sequelize from '../../database/sequelize.js'
-import { literal } from 'sequelize'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
-import { Empresa } from '../../database/models/Empresa.js'
-import { Socio } from '../../database/models/Socio.js'
-import { PagoComprobante } from '../../database/models/PagoComprobante.js'
-import { Kardex } from '../../database/models/Kardex.js'
 import { Articulo } from '../../database/models/Articulo.js'
-import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.js'
-import { Colaborador } from '../../database/models/Colaborador.js'
-import { CajaApertura } from '../../database/models/CajaApertura.js'
-import { DineroMovimiento } from "../../database/models/DineroMovimiento.js"
 import cSistema from "../_sistema/cSistema.js"
 import { applyFilters, redondear } from '../../utils/mine.js'
 
-const includes1 = {
+const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
@@ -24,24 +14,7 @@ const includes1 = {
         as: 'articulo1',
         attributes: ['nombre']
     }
-    // socio1: {
-    //     model: Socio,
-    //     as: 'socio1',
-    //     attributes: ['id', 'nombres']
-    // },
-    // createdBy1: {
-    //     model: Colaborador,
-    //     as: 'createdBy1',
-    //     attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
-    // },
 }
-
-// const sqls1 = {
-//     pagos_monto: [
-//         literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.comprobante = "comprobantes"."id")`),
-//         "pagos_monto"
-//     ]
-// }
 
 const find = async (req, res) => {
     try {
@@ -57,7 +30,7 @@ const find = async (req, res) => {
         if (qry) {
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }
             }
 
@@ -103,12 +76,6 @@ const find = async (req, res) => {
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
             }
-
-            // if (qry.sqls) {
-            //     for (const a of qry.sqls) {
-            //         if (sqls1[a]) findProps.attributes.push(sqls1[a])
-            //     }
-            // }
         }
 
         let data = await ComprobanteItem.findAll(findProps)

@@ -12,7 +12,7 @@ const update = async (req, res) => {
             pc_principal_ip, igv_porcentaje,
         } = req.body
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await Empresa.update(
             {
                 ruc, razon_social, nombre_comercial,

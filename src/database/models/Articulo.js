@@ -17,20 +17,20 @@ const precios_semana_default = [
 export const Articulo = sequelize.define('articulos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     codigo_barra: { type: DataTypes.STRING },
-    nombre: { type: DataTypes.STRING }, //required
-    unidad: { type: DataTypes.STRING }, //required
+    nombre: { type: DataTypes.STRING },
+    unidad: { type: DataTypes.STRING },
     marca: { type: DataTypes.STRING },
-    activo: { type: DataTypes.BOOLEAN }, //required
+    activo: { type: DataTypes.BOOLEAN },
     foto_path: { type: DataTypes.STRING },
 
-    tipo: { type: DataTypes.STRING }, //required
-    categoria: { type: DataTypes.STRING }, //required //linked
+    tipo: { type: DataTypes.STRING },
+    categoria: { type: DataTypes.STRING },
 
     produccion_area: { type: DataTypes.STRING },
     has_receta: { type: DataTypes.BOOLEAN },
     is_combo: { type: DataTypes.BOOLEAN },
 
-    igv_afectacion: { type: DataTypes.STRING }, //required
+    igv_afectacion: { type: DataTypes.STRING },
     precio_venta: { type: DataTypes.DOUBLE },
     precios_semana: { type: DataTypes.JSON, defaultValue: precios_semana_default },
     stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },

@@ -11,12 +11,12 @@ import { CajaApertura } from './CajaApertura.js'
 
 export const Transaccion = sequelize.define('transacciones', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    tipo: { type: DataTypes.SMALLINT }, //required
-    fecha: { type: DataTypes.DATEONLY }, //required
-    socio: { type: DataTypes.STRING }, //required //linked
+    tipo: { type: DataTypes.SMALLINT },
+    fecha: { type: DataTypes.DATEONLY },
+    socio: { type: DataTypes.STRING },
 
-    pago_condicion: { type: DataTypes.STRING }, //required
-    monto: { type: DataTypes.DECIMAL(10, 2) }, //required
+    pago_condicion: { type: DataTypes.STRING },
+    monto: { type: DataTypes.DECIMAL(10, 2) },
 
     observacion: { type: DataTypes.STRING },
     estado: { type: DataTypes.STRING },
@@ -36,7 +36,7 @@ export const Transaccion = sequelize.define('transacciones', {
     venta_facturado: { type: DataTypes.BOOLEAN, defaultValue: false },
     venta_entregado: { type: DataTypes.BOOLEAN, defaultValue: false },
 
-    caja_apertura: { type: DataTypes.STRING }, //linked
+    caja_apertura: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
@@ -69,19 +69,19 @@ Transaccion.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' }
 
 export const TransaccionItem = sequelize.define('transaccion_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    articulo: { type: DataTypes.STRING }, //required //linked
-    cantidad: { type: DataTypes.DECIMAL(10, 2) }, //required
+    articulo: { type: DataTypes.STRING },
+    cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
-    pu: { type: DataTypes.DOUBLE }, //required
-    igv_afectacion: { type: DataTypes.STRING }, //required
-    igv_porcentaje: { type: DataTypes.DOUBLE }, //required
+    pu: { type: DataTypes.DOUBLE },
+    igv_afectacion: { type: DataTypes.STRING },
+    igv_porcentaje: { type: DataTypes.DOUBLE },
 
     descuento_tipo: { type: DataTypes.STRING },
     descuento_valor: { type: DataTypes.DOUBLE },
 
     observacion: { type: DataTypes.STRING },
 
-    transaccion: { type: DataTypes.STRING }, //required //linked
+    transaccion: { type: DataTypes.STRING },
 
     has_receta: { type: DataTypes.BOOLEAN },
     receta_insumos: { type: DataTypes.JSON },

@@ -4,18 +4,18 @@ import { Colaborador } from './Colaborador.js'
 
 export const Socio = sequelize.define('socios', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    tipo: { type: DataTypes.SMALLINT }, //required
+    tipo: { type: DataTypes.SMALLINT },
 
-    doc_tipo: { type: DataTypes.STRING }, //required
-    doc_numero: { type: DataTypes.STRING }, //required
-    nombres: { type: DataTypes.STRING }, //required
+    doc_tipo: { type: DataTypes.STRING },
+    doc_numero: { type: DataTypes.STRING },
+    nombres: { type: DataTypes.STRING },
 
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
     direccion: { type: DataTypes.STRING },
     referencia: { type: DataTypes.STRING },
 
-    activo: { type: DataTypes.BOOLEAN }, //required
+    activo: { type: DataTypes.BOOLEAN },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },

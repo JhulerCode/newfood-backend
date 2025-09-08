@@ -12,7 +12,7 @@ const create = async (req, res) => {
             nombre, activo, salon,
         } = req.body
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const nuevo = await Mesa.create(
             {
                 nombre, activo, salon,
@@ -41,7 +41,7 @@ const update = async (req, res) => {
         console.log(activo)
         console.log(salon)
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await Mesa.update(
             {
                 nombre, activo, salon,
@@ -53,7 +53,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-            // ----- DEVOLVER ----- //
+           // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -135,7 +135,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const deletedCount = await Mesa.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
@@ -175,12 +175,6 @@ const unir = async (req, res) => {
             }
         }
 
-        console.log(unidos)
-        console.log(unidosId)
-        console.log(principal)
-
-        // throw error
-
         await Mesa.update({
             unida: false,
             unidos,
@@ -213,11 +207,11 @@ const unir = async (req, res) => {
         if (pedidos.length > 0) {
             const pedidosId = pedidos.map(a => a.id)
 
-            ///// ----- DEFINIR PEDIDO PRINCIPAL ----- /////
+            // --- DEFINIR PEDIDO PRINCIPAL --- //
             const i = pedidos.findIndex(a => a.venta_mesa == principal.id)
             const pedidoId = i !== -1 ? pedidos[i].id : pedidos[0].id
 
-            ///// ----- ACTUALIZAR ITEMS ----- /////
+            // --- ACTUALIZAR ITEMS --- //
             await TransaccionItem.update({
                 transaccion: pedidoId,
                 updatedBy: colaborador
@@ -228,7 +222,7 @@ const unir = async (req, res) => {
                 transaction
             })
 
-            ///// ----- ELIMINAR LOS OTROS PEDIDOS ----- /////
+            // --- ELIMINAR LOS OTROS PEDIDOS --- //
             const pedidosSecundarios = pedidosId.filter(a => a != pedidoId)
             await Transaccion.destroy({
                 where: {
@@ -236,20 +230,8 @@ const unir = async (req, res) => {
                 },
                 transaction
             })
-            // if (pedidosSecundarios > 0) {
-            //     await Transaccion.update({
-            //         estado: '0',
-            //         anulado_motivo: `Unido a otra mesa`,
-            //         updatedBy: colaborador
-            //     }, {
-            //         where: {
-            //             id: { [Op.in]: pedidosSecundarios }
-            //         },
-            //         transaction
-            //     })
-            // }
 
-            ///// ----- ACTUALIZAR MESA EN PEDIDO PRINCIPAL ----- /////
+            // --- ACTUALIZAR MESA EN PEDIDO PRINCIPAL --- //
             await Transaccion.update({
                 venta_mesa: principal.id,
                 updatedBy: colaborador

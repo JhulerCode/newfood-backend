@@ -1,4 +1,3 @@
-// import { literal } from 'sequelize'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
@@ -63,12 +62,6 @@ const find = async (req, res) => {
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
             }
-
-            // if (qry.sqls) {
-            //     for (const a of qry.sqls) {
-            //         if (sqls1[a]) findProps.attributes.push(sqls1[a])
-            //     }
-            // }
         }
 
         let data = await DineroMovimiento.findAll(findProps)
@@ -102,7 +95,7 @@ const create = async (req, res) => {
             pago_metodo, monto,
             comrpobante, Transaccion, caja_apertura } = req.body
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await DineroMovimiento.create({
             fecha, tipo, operacion, detalle,
             pago_metodo, monto,
@@ -268,9 +261,9 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.comprobante1) {
-                        ///// ----- ANULADOS ----- /////
+                        // --- ANULADOS --- //
                         if (a.comprobante1.estado == 0) {
-                            ///// ----- COMPROBANTES ----- /////
+                            // --- COMPROBANTES --- //
                             send.comprobantes_anulados_total += Number(a.monto)
 
                             const j = send.comprobantes_anulados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
@@ -285,7 +278,7 @@ const findResumen = async (req, res) => {
                                 send.comprobantes_anulados[i].monto += Number(a.monto)
                             }
 
-                            ///// ----- PRODUCTOS ----- /////
+                            // --- PRODUCTOS --- //
                             for (const b of a.comprobante1.comprobante_items) {
                                 const k = send.productos_anulados.findIndex(c => c.id == b.articulo)
                                 const prd = calcularUno({
@@ -312,9 +305,9 @@ const findResumen = async (req, res) => {
                             }
                         }
 
-                        ///// ----- ACEPTADOS ----- /////
+                        // --- ACEPTADOS --- //
                         if (a.comprobante1.estado == 1) {
-                            ///// ----- TIPOS DE COMPROBANTES ----- /////
+                            // --- TIPOS DE COMPROBANTES --- //
                             const i = send.venta_comprobantes.findIndex(b => b.id == a.comprobante1.venta_tipo_documento_codigo)
                             if (i === -1) {
                                 send.venta_comprobantes.push({
@@ -329,7 +322,7 @@ const findResumen = async (req, res) => {
                                 send.venta_comprobantes[i].cantidad++
                             }
 
-                            ///// ----- COMPROBANTES ----- /////
+                            // --- COMPROBANTES --- //
                             send.comprobantes_aceptados_total += Number(a.monto)
 
                             const j = send.comprobantes_aceptados.findIndex(b => b.id == a.comprobante1.serie_correlativo)
@@ -344,7 +337,7 @@ const findResumen = async (req, res) => {
                                 send.comprobantes_aceptados[i].monto += Number(a.monto)
                             }
 
-                            ///// ----- PRODUCTOS ----- /////
+                            // --- PRODUCTOS --- //
                             for (const b of a.comprobante1.comprobante_items) {
                                 const k = send.productos.findIndex(c => c.id == b.articulo)
                                 const prd = calcularUno({
@@ -372,8 +365,7 @@ const findResumen = async (req, res) => {
                                 }
                             }
 
-                            ///// ----- MÉTODOS DE PAGO ----- /////
-                            // console.log(1)
+                            // --- MÉTODOS DE PAGO --- //
                             const l = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
                             if (l === -1) {
                                 send.venta_pago_metodos.push({

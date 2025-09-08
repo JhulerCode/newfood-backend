@@ -7,10 +7,10 @@ const create = async (req, res) => {
         const { colaborador } = req.user
         const { tipo, nombre, color, activo } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+       // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(ArticuloCategoria, { nombre }, res) == true) return
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await ArticuloCategoria.create({
             tipo, nombre, color, activo,
             createdBy: colaborador,
@@ -31,10 +31,10 @@ const update = async (req, res) => {
         const { id } = req.params
         const { tipo, nombre, color, activo } = req.body
 
-        // ----- VERIFY SI EXISTE NOMBRE ----- //
+       // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(ArticuloCategoria, { nombre, id }, res) == true) return
 
-        // ----- ACTUALIZAR ----- //
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await ArticuloCategoria.update(
             {
                 tipo, nombre, color, activo,
@@ -131,7 +131,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        // ----- ELIMINAR ----- //
+       // --- ELIMINAR --- //
         const deletedCount = await ArticuloCategoria.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }

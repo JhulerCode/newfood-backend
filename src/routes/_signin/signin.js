@@ -39,8 +39,6 @@ const signin = async (req, res) => {
             permisos: data.permisos,
         })
 
-        // console.log(sessionStore)
-
         res.json({ code: 0, token })
     }
     catch (error) {

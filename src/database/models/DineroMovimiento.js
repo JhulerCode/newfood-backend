@@ -4,20 +4,19 @@ import { PagoMetodo } from './PagoMetodo.js'
 import { Comprobante } from './Comprobante.js'
 import { CajaApertura } from './CajaApertura.js'
 import { Transaccion } from './Transaccion.js'
-// import { Caja } from '../locales/Caja.js'
 
 export const DineroMovimiento = sequelize.define('dinero_movimientos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     fecha: { type: DataTypes.DATEONLY },
     tipo: { type: DataTypes.SMALLINT },
-    operacion: { type: DataTypes.STRING }, //linked
+    operacion: { type: DataTypes.STRING },
     detalle: { type: DataTypes.STRING },
 
-    pago_metodo: { type: DataTypes.STRING }, //linked
+    pago_metodo: { type: DataTypes.STRING },
     monto: { type: DataTypes.DECIMAL(10, 2) },
 
-    comprobante: { type: DataTypes.STRING }, //linked
-    caja_apertura: { type: DataTypes.STRING }, //linked
+    comprobante: { type: DataTypes.STRING },
+    caja_apertura: { type: DataTypes.STRING },
 
     estado: { type: DataTypes.STRING, defaultValue: '2' },
 

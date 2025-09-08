@@ -51,7 +51,7 @@ const create = async (req, res) => {
         const { colaborador } = req.user
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
-        // ----- CREAR ----- //
+       // --- CREAR --- //
         const nuevo = await RecetaInsumo.create({
             articulo_principal, articulo, cantidad, orden,
             createdBy: colaborador
@@ -72,7 +72,7 @@ const update = async (req, res) => {
         const { id } = req.params
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
-        // ----- ACTUALIZAR ----- //
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await RecetaInsumo.update(
             {
                 cantidad, orden,
@@ -102,10 +102,6 @@ async function loadOne(id) {
         }
     })
 
-    // if (data) {
-    //     data = data.toJSON()
-    // }
-
     return data
 }
 
@@ -113,7 +109,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        // ----- ELIMINAR ----- //
+       // --- ELIMINAR --- //
         const deletedCount = await RecetaInsumo.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }

@@ -1,5 +1,5 @@
 import sequelize from '../../database/sequelize.js'
-import { literal, where } from 'sequelize'
+import { literal } from 'sequelize'
 import { Comprobante, ComprobanteItem } from '../../database/models/Comprobante.js'
 import { Empresa } from '../../database/models/Empresa.js'
 import { Socio } from '../../database/models/Socio.js'
@@ -16,12 +16,9 @@ import { Mesa } from '../../database/models/Mesa.js'
 import { Salon } from '../../database/models/Salon.js'
 import { PagoMetodo } from '../../database/models/PagoMetodo.js'
 import PdfPrinter from 'pdfmake'
-import { uploadsPath, getFilePath, getFile } from '../../utils/uploadFiles.js'
-import path from 'path'
-import fs from 'fs'
 import dayjs from "dayjs"
 
-const includes1 = {
+const include1 = {
     socio1: {
         model: Socio,
         as: 'socio1',
@@ -57,10 +54,10 @@ const create = async (req, res) => {
         const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
         const caja_apertura = await CajaApertura.findOne({ where: { estado: '1' } })
 
-        // ----- VERIFY SI CAJA ESTÁ APERTURADA ----- //
+        // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
         if (caja_apertura == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
 
-        // ----- CREAR ----- //
+        // --- CREAR --- //
         const nuevo = await Comprobante.create({
             socio,
             pago_condicion,
@@ -88,7 +85,7 @@ const create = async (req, res) => {
             venta_serie: pago_comprobante.serie,
             venta_numero: pago_comprobante.correlativo,
             venta_fecha_emision: fecha,
-            venta_hora_emision: '10:00:00',
+            venta_hora_emision: dayjs().format('HH:mm:ss'),
             venta_fecha_vencimiento: '',
             venta_moneda_id: '2', // NO SÉ
             venta_forma_pago_id: '1', // NO SÉ
@@ -102,7 +99,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        // ----- GUARDAR ITEMS ----- //
+        // --- GUARDAR ITEMS --- //
         const items = comprobante_items.map(a => ({
             articulo: a.articulo,
             pu: a.pu,
@@ -123,7 +120,7 @@ const create = async (req, res) => {
         }))
         await ComprobanteItem.bulkCreate(items, { transaction })
 
-        // ----- ACTUALIZAR CORRELATIVO ----- //
+        // --- ACTUALIZAR CORRELATIVO --- //
         await PagoComprobante.update(
             { correlativo: pago_comprobante.correlativo + 1 },
             {
@@ -132,7 +129,7 @@ const create = async (req, res) => {
             }
         )
 
-        // ----- GUARDAR KARDEX ----- //
+        // --- GUARDAR KARDEX --- //
         const kardexItems = []
         for (const a of comprobante_items) {
             if (a.is_combo == true) {
@@ -194,7 +191,7 @@ const create = async (req, res) => {
         }
         await Kardex.bulkCreate(kardexItems, { transaction })
 
-        // ----- ACTUALIZAR STOCK ----- //
+        // --- ACTUALIZAR STOCK --- //
         const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = transaccion_tiposMap[2]
         for (const a of kardexItems) {
@@ -209,9 +206,8 @@ const create = async (req, res) => {
             )
         }
 
-        ///// ----- ACTUALIZAR PEDIDO ITEMS ----- /////
+        // --- ACTUALIZAR PEDIDO ITEMS --- //
         for (const a of comprobante_items) {
-            // console.log(a.cantidad, a.venta_entregado, Number(a.cantidad) + Number(a.venta_entregado))
             await TransaccionItem.update(
                 {
                     venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
@@ -226,7 +222,7 @@ const create = async (req, res) => {
             )
         }
 
-        ///// ----- GUARDAR PAGOS ----- /////
+        // --- GUARDAR PAGOS --- //
         if (pago_condicion == 1) {
             const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
                 fecha,
@@ -244,7 +240,7 @@ const create = async (req, res) => {
 
         await transaction.commit()
 
-        ///// ----- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO ----- /////
+        // --- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO --- //
         const pedido_items = await TransaccionItem.findAll({
             where: { transaccion: transaccion.id }
         })
@@ -264,7 +260,7 @@ const create = async (req, res) => {
             )
         }
 
-        // ----- DEVOLVER ----- //
+        // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
     }
@@ -277,7 +273,7 @@ const create = async (req, res) => {
 
 async function loadOne(id) {
     let data = await Comprobante.findByPk(id, {
-        include: [includes1.socio1, includes1.createdBy1]
+        include: [include1.socio1, include1.createdBy1]
     })
 
     if (data) {
@@ -307,7 +303,7 @@ const find = async (req, res) => {
         if (qry) {
             if (qry.incl) {
                 for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(includes1[a])
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }
             }
 
@@ -320,8 +316,8 @@ const find = async (req, res) => {
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
-                // ----- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD ----- //
-                if (qry.cols.includes('socio')) findProps.include.push(includes1.socio1)
+                // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
+                if (qry.cols.includes('socio')) findProps.include.push(include1.socio1)
             }
 
             if (qry.sqls) {
@@ -427,19 +423,19 @@ const actualizarPago = async (req, res) => {
         if (modal_mode == 1) {
             caja_apertura1 = await CajaApertura.findOne({ where: { estado: '1' } })
 
-            ///// ----- VERIFY SI CAJA ESTÁ APERTURADA ----- /////
+            // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
             if (caja_apertura1 == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
         }
 
         if (modal_mode == 2) {
-            ///// ----- ELIMINAR PAGOS ANTERIORES ----- /////
+            // --- ELIMINAR PAGOS ANTERIORES --- //
             await DineroMovimiento.destroy({
                 where: { comprobante: id },
                 transaction
             })
         }
 
-        ///// ----- GUARDAR PAGOS ----- /////
+        // --- GUARDAR PAGOS --- //
         const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
             fecha: modal_mode == 1 ? caja_apertura1.fecha_apertura : venta_fecha_emision,
             tipo: 1,
@@ -471,7 +467,7 @@ const anular = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
 
-        ///// ---- ANULAR ----- /////
+        // --- ANULAR --- //
         await Comprobante.update(
             {
                 estado: 0,
@@ -483,7 +479,7 @@ const anular = async (req, res) => {
             }
         )
 
-        ///// ---- ANULAR PAGOS ----- /////
+        // --- ANULAR PAGOS --- //
         await DineroMovimiento.update(
             {
                 estado: 0,
@@ -505,9 +501,7 @@ const anular = async (req, res) => {
 }
 
 function makePdf(doc, res) {
-    // const doc = res.data
-
-    ///// ----- TABLE ITEMS ----- /////
+    // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
         { text: p.producto, style: 'tableItem', noWrap: false }, // permite saltos de línea
         { text: p.cantidad, style: 'tableItem', alignment: 'right' },
@@ -519,21 +513,21 @@ function makePdf(doc, res) {
         },
     ])
 
-    ///// ----- TIPO DE ATENCIÓN ----- /////
+    // --- TIPO DE ATENCIÓN --- //
     if (doc.transaccion1.venta_canal == 1) {
         doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
     } else {
         doc.atencion = doc.venta_canal1.nombre
     }
 
-    ///// ----- SUBTOTAL ----- /////
+    // --- SUBTOTAL --- //
     doc.subtotal = (
         Number(doc.venta_total_gravada) +
         Number(doc.venta_total_exonerada) +
         Number(doc.venta_total_inafecta)
     ).toFixed(2)
 
-    ///// ----- PAGOS ----- /////
+    // --- PAGOS --- //
     const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
     doc.vuelto = totalPagado - Number(doc.monto)
     const pagosStack =
@@ -549,7 +543,7 @@ function makePdf(doc, res) {
             }
             : null
 
-    ///// ----- PARA DELIVERY ----- /////
+    // --- PARA DELIVERY --- //
     const deliveryStack =
         doc.transaccion1.venta_tipo == 3
             ? {
@@ -566,7 +560,7 @@ function makePdf(doc, res) {
             }
             : null
 
-    ///// ----- DEFINICIÓN DEL PDF ----- /////
+    // --- DEFINICIÓN DEL PDF --- //
     const docDefinition = {
         pageSize: {
             width: 80 * 2.83465,
@@ -576,7 +570,7 @@ function makePdf(doc, res) {
     }
 
     docDefinition.content = [
-        ///// ----- EMPRESA ----- /////
+        // --- EMPRESA --- //
         {
             stack: [
                 doc.empresa_razon_social,
@@ -586,17 +580,16 @@ function makePdf(doc, res) {
             ],
             style: 'empresa',
         },
-        ///// ----- TIPO DE DOCUMENTO ----- /////
+        // --- TIPO DE DOCUMENTO --- //
         {
             stack: [doc.tipo.nombre, `${doc.venta_serie}-${doc.venta_numero}`],
             style: 'tipo_doc',
         },
-        ///// ----- CLIENTE ----- /////
+        // --- CLIENTE --- //
         {
             stack: [
                 {
-                    // text: `FECHA DE EMISIÓN: ${dayjs(doc.createdAt).format('DD-MM-YYYY HH:mm')}`,
-                    text: `FECHA DE EMISIÓN: ${doc.createdAt}`,
+                    text: `FECHA DE EMISIÓN: ${dayjs(doc.createdAt).format('DD-MM-YYYY HH:mm')}`,
                     style: 'datosExtra',
                 },
                 { text: `ATENCIÓN: ${doc.atencion}`, style: 'datosExtra' },
@@ -615,7 +608,7 @@ function makePdf(doc, res) {
             ],
             style: 'cliente_datos',
         },
-        ///// ----- TABLA ----- /////
+        // --- TABLA --- //
         {
             table: {
                 widths: ['*', 'auto', 'auto', 'auto'], // se adapta a todo el ancho
@@ -644,7 +637,7 @@ function makePdf(doc, res) {
                 },
             },
         },
-        ///// ----- TOTALES ----- /////
+        // --- TOTALES --- //
         {
             stack: [
                 {
@@ -686,7 +679,7 @@ function makePdf(doc, res) {
             ],
             margin: [0, 10, 0, 10],
         },
-        ///// ----- DATOS EXTRA ----- /////
+        // --- DATOS EXTRA --- //
         {
             stack: [
                 { text: `SON: ${numeroATexto(doc.monto)} SOLES`, style: 'datosExtra' },
@@ -696,11 +689,11 @@ function makePdf(doc, res) {
                 },
             ],
         },
-        ///// ----- PAGOS ----- /////
+        // --- PAGOS --- //
         ...(pagosStack ? [pagosStack] : []),
-        ///// ----- DELIVERY ----- /////
+        // --- DELIVERY --- //
         ...(deliveryStack ? [deliveryStack] : []),
-        ///// ----- HASH COMPROBANTE SUNAT ----- /////
+        // --- HASH COMPROBANTE SUNAT --- //
         { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa', margin: [0, 10, 0, 0] },
     ]
 
@@ -733,32 +726,7 @@ function makePdf(doc, res) {
         res.send(result)
     })
     pdfDoc.end()
-
-    // const pdfDoc = printer.createPdfKitDocument(docDefinition)
-    // const fileName = `${doc.venta_serie}-${doc.venta_numero}.pdf`
-    // const filePath = path.join(uploadsPath, fileName)
-    // const stream = fs.createWriteStream(filePath)
-
-    // pdfDoc.pipe(stream)
-    // pdfDoc.end()
-
-    // stream.on('finish', () => {
-    //     res.sendFile(filePath)
-    //     res.json({ code: 0, data: fileName })
-    // })
 }
-
-// const loadPdf = async (req, res) => {
-//     // const { id } = req.params
-//     const file = getFile('asdasd.pdf')
-//     const rutaArchivo = getFilePath('asdasd.pdf')
-
-//     if (file) {
-//         res.sendFile(rutaArchivo)
-//     } else {
-//         res.status(404).json({ msg: 'Archivo no encontrado' })
-//     }
-// }
 
 const canjear = async (req, res) => {
     const transaction = await sequelize.transaction()
@@ -779,7 +747,7 @@ const canjear = async (req, res) => {
             ]
         })
 
-        ///// ----- CREAR NUEVO COMPROBANTE ----- /////
+        // --- CREAR NUEVO COMPROBANTE --- //
         const cliente = await Socio.findByPk(socio)
         const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
 
@@ -810,7 +778,7 @@ const canjear = async (req, res) => {
             venta_serie: pago_comprobante.serie,
             venta_numero: pago_comprobante.correlativo,
             venta_fecha_emision: fecha,
-            venta_hora_emision: '10:00:00',
+            venta_hora_emision: dayjs().format('HH:mm:ss'),
             venta_fecha_vencimiento: '',
             venta_moneda_id: comprobante.venta_moneda_id,
             venta_forma_pago_id: comprobante.venta_forma_pago_id,
@@ -824,7 +792,7 @@ const canjear = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-        ///// ----- GUARDAR ITEMS ----- /////
+        // --- GUARDAR ITEMS --- //
         const items = comprobante.comprobante_items.map(a => ({
             articulo: a.articulo,
             pu: a.pu,
@@ -845,7 +813,7 @@ const canjear = async (req, res) => {
         }))
         await ComprobanteItem.bulkCreate(items, { transaction })
 
-        ///// ----- ACTUALIZAR CORRELATIVO ----- /////
+        // --- ACTUALIZAR CORRELATIVO --- //
         await PagoComprobante.update(
             { correlativo: pago_comprobante.correlativo + 1 },
             {
@@ -854,7 +822,7 @@ const canjear = async (req, res) => {
             }
         )
 
-        ///// ----- ESTADO CANJEADO ----- /////
+        // --- ESTADO CANJEADO --- //
         await Comprobante.update(
             {
                 estado: 3,
@@ -867,7 +835,7 @@ const canjear = async (req, res) => {
             }
         )
 
-        ///// ----- CAMBIAR PAGOS ----- /////
+        // --- CAMBIAR PAGOS --- //
         await DineroMovimiento.update(
             {
                 comprobante: nuevo.id,
@@ -946,7 +914,7 @@ const resumen = async (req, res) => {
         const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
-        ///// ----- INDICES AUXILIARES ----- /////
+        // --- INDICES AUXILIARES --- //
         const pagoMetodosMap = {}
         const comprobanteTiposMap = {}
         const canalesMap = {}
@@ -954,11 +922,11 @@ const resumen = async (req, res) => {
         const mesesMap = {}
 
         for (const a of comprobantes) {
-            ///// ----- ACEPTADOS ----- /////
+            // --- ACEPTADOS --- //
             if (a.estado == 1) {
                 ventas.total += Number(a.monto)
 
-                ///// ----- MÉTODOS DE PAGO ----- /////
+                // --- MÉTODOS DE PAGO --- //
                 for (const b of a.dinero_movimientos) {
                     const mkey = b.pago_metodo
                     if (!pagoMetodosMap[mkey]) {
@@ -975,7 +943,7 @@ const resumen = async (req, res) => {
                     }
                 }
 
-                ///// ----- TIPOS DE COMPROBANTES ----- /////
+                // --- TIPOS DE COMPROBANTES --- //
                 const tKey = a.venta_tipo_documento_codigo
                 if (!comprobanteTiposMap[tKey]) {
                     const item = {
@@ -989,7 +957,7 @@ const resumen = async (req, res) => {
                     comprobanteTiposMap[tKey].value += Number(a.monto)
                 }
 
-                ///// ----- CANALES ----- /////
+                // --- CANALES --- //
                 const cKey = a.transaccion1.venta_canal
                 if (!canalesMap[cKey]) {
                     const item = {
@@ -1003,7 +971,7 @@ const resumen = async (req, res) => {
                     canalesMap[cKey].value += Number(a.monto)
                 }
 
-                ///// ----- PRODUCTOS ----- /////
+                // --- PRODUCTOS --- //
                 for (const b of a.comprobante_items) {
                     const prd = calcularUno({
                         pu: Number(b.pu),
@@ -1032,13 +1000,13 @@ const resumen = async (req, res) => {
                     }
                 }
 
-                ///// ----- TIEMPO ----- /////
+                // --- TIEMPO --- //
                 const mes = dayjs(a.venta_fecha_emision).format("YYYY-MMM")
                 if (!mesesMap[mes]) mesesMap[mes] = 0
                 mesesMap[mes] += Number(a.monto)
             }
 
-            ///// ----- ANULADOS ----- /////
+            // --- ANULADOS --- //
             if (a.estado == 0) {
                 anulados.total += Number(a.monto)
 

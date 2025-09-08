@@ -10,7 +10,7 @@ const update = async (req, res) => {
             nombre, serie, numero, correlativo, activo, estandar
         } = req.body
 
-        // ----- ACTUALIZAR -----//
+       // --- ACTUALIZAR --- //
         const [affectedRows] = await PagoComprobante.update(
             {
                 nombre, serie, numero, correlativo, activo, estandar,
@@ -22,7 +22,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-            // ----- DEVOLVER ----- //
+           // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
