@@ -50,6 +50,14 @@ router.delete(
 
 // --- PARA VENTAS --- //
 router.patch(
+    '/add-productos/:id',
+    verifyPermiso([
+        'vPedidos:addProductos',
+    ]),
+    controller.addProductos
+)
+
+router.patch(
     '/anular/:id',
     verifyPermiso([
         // 'vCompras:anular',

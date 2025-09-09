@@ -60,7 +60,7 @@ const create = async (req, res) => {
             }
         }
 
-       // --- CREAR --- //
+        // --- CREAR --- //
         const nuevo = await Transaccion.create({
             tipo, fecha, socio,
             pago_condicion, monto,
@@ -71,7 +71,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-       // --- GUARDAR ITEMS --- //
+        // --- GUARDAR ITEMS --- //
         const items = transaccion_items.map(a => ({
             articulo: a.articulo,
             cantidad: a.cantidad,
@@ -90,7 +90,7 @@ const create = async (req, res) => {
         await TransaccionItem.bulkCreate(items, { transaction })
 
         if (tipo == 1) {
-           // --- GUARAR KARDEX --- //
+            // --- GUARAR KARDEX --- //
             const kardexItems = transaccion_items.map(a => ({
                 tipo,
                 fecha,
@@ -103,7 +103,7 @@ const create = async (req, res) => {
 
             await Kardex.bulkCreate(kardexItems, { transaction })
 
-           // --- ACTUALIZAR STOCK --- //
+            // --- ACTUALIZAR STOCK --- //
             const transaccion_tiposMap = cSistema.arrayMap('kardex_tipos')
             const tipoInfo = transaccion_tiposMap[tipo]
 
@@ -122,7 +122,7 @@ const create = async (req, res) => {
 
         await transaction.commit()
 
-       // --- DEVOLVER --- //
+        // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
     }
@@ -161,31 +161,31 @@ const update = async (req, res) => {
         })
 
         if (affectedRows > 0) {
-            if (tipo == 2) {
-               // --- ELIMINAR ITEMS --- //
-                await TransaccionItem.destroy({
-                    where: { transaccion: id },
-                    transaction
-                })
+            // if (tipo == 2) {
+            //    // --- ELIMINAR ITEMS --- //
+            //     await TransaccionItem.destroy({
+            //         where: { transaccion: id },
+            //         transaction
+            //     })
 
-               // --- GUARDAR ITEMS --- //
-                const items = transaccion_items.map(a => ({
-                    articulo: a.articulo,
-                    cantidad: a.cantidad,
-                    pu: a.pu,
-                    igv_afectacion: a.igv_afectacion,
-                    igv_porcentaje: a.igv_porcentaje,
-                    observacion: a.observacion,
-                    transaccion: id,
-                    has_receta: a.has_receta,
-                    receta_insumos: a.receta_insumos,
-                    is_combo: a.is_combo,
-                    combo_articulos: a.combo_articulos,
-                    createdBy: colaborador
-                }))
+            //    // --- GUARDAR ITEMS --- //
+            //     const items = transaccion_items.map(a => ({
+            //         articulo: a.articulo,
+            //         cantidad: a.cantidad,
+            //         pu: a.pu,
+            //         igv_afectacion: a.igv_afectacion,
+            //         igv_porcentaje: a.igv_porcentaje,
+            //         observacion: a.observacion,
+            //         transaccion: id,
+            //         has_receta: a.has_receta,
+            //         receta_insumos: a.receta_insumos,
+            //         is_combo: a.is_combo,
+            //         combo_articulos: a.combo_articulos,
+            //         createdBy: colaborador
+            //     }))
 
-                await TransaccionItem.bulkCreate(items, { transaction })
-            }
+            //     await TransaccionItem.bulkCreate(items, { transaction })
+            // }
 
             await transaction.commit()
 
@@ -267,7 +267,7 @@ const find = async (req, res) => {
                 const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
                 findProps.attributes = findProps.attributes.concat(cols1)
 
-               // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
+                // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
                 if (qry.cols.includes('socio')) findProps.include.push(include1.socio1)
             }
 
@@ -407,6 +407,43 @@ const delet = async (req, res) => {
 
 
 // --- PARA VENTAS --- //
+const addProductos = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+        const { transaccion_items } = req.body
+
+        const items = transaccion_items.map(a => ({
+            articulo: a.articulo,
+            cantidad: a.cantidad,
+            pu: a.pu,
+            igv_afectacion: a.igv_afectacion,
+            igv_porcentaje: a.igv_porcentaje,
+            observacion: a.observacion,
+            transaccion: id,
+            has_receta: a.has_receta,
+            receta_insumos: a.receta_insumos,
+            is_combo: a.is_combo,
+            combo_articulos: a.combo_articulos,
+            createdBy: colaborador
+        }))
+
+        await TransaccionItem.bulkCreate(items, { transaction })
+
+        await transaction.commit()
+
+        const data = await loadOne(id)
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const anular = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -457,7 +494,7 @@ const cambiarMesa = async (req, res) => {
         const { id } = req.params
         const { venta_mesa } = req.body
 
-       // --- ENTREGAR Y FINALIZAR --- //
+        // --- ENTREGAR Y FINALIZAR --- //
         await Transaccion.update(
             {
                 venta_mesa,
@@ -478,7 +515,7 @@ const entregar = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
 
-       // --- ENTREGAR Y FINALIZAR --- //
+        // --- ENTREGAR Y FINALIZAR --- //
         await Transaccion.update(
             {
                 venta_entregado: true,
@@ -503,6 +540,7 @@ export default {
     findById,
     delet,
 
+    addProductos,
     anular,
     ventasPendientes,
     cambiarMesa,
