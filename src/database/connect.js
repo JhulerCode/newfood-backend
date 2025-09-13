@@ -16,7 +16,7 @@ async function connect() {
     // console.log('Tabla alterada')
 
     // await sequelize.sync({ alter: true })
-    // console.log('Base de datos forzada')
+    // console.log('Base de datos alterada')
 
     // await initData()
 }

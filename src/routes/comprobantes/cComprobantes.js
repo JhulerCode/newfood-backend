@@ -17,6 +17,14 @@ import { Salon } from '../../database/models/Salon.js'
 import { PagoMetodo } from '../../database/models/PagoMetodo.js'
 import PdfPrinter from 'pdfmake'
 import dayjs from "dayjs"
+import { comprobanteHtml } from '../../utils/layouts.js'
+import { Resend } from 'resend'
+import config from '../../config.js'
+
+import { crearXml } from '../../utils/sunat/crearXml.js'
+import { firmarXml } from '../../utils/sunat/firmarXml.js'
+import { enviarSunat } from '../../utils/sunat/enviarSunat.js'
+
 
 const include1 = {
     socio1: {
@@ -58,7 +66,7 @@ const create = async (req, res) => {
         if (caja_apertura == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
 
         // --- CREAR --- //
-        const nuevo = await Comprobante.create({
+        const send = {
             socio,
             pago_condicion,
             monto,
@@ -66,59 +74,84 @@ const create = async (req, res) => {
             caja_apertura: caja_apertura.id,
             estado,
 
-            empresa_ruc: empresa.ruc,
-            empresa_razon_social: empresa.razon_social,
-            empresa_nombre_comercial: empresa.nombre_comercial,
-            empresa_domicilio_fiscal: empresa.domicilio_fiscal,
-            empresa_ubigeo: empresa.ubigeo,
-            empresa_urbanizacion: empresa.urbanizacion,
-            empresa_distrito: empresa.distrito,
-            empresa_provincia: empresa.provincia,
-            empresa_departamento: empresa.departamento,
-            empresa_modo: '0', // NO SÉ
+            empresa: {
+                ruc: empresa.ruc,
+                razon_social: empresa.razon_social,
+                nombre_comercial: empresa.nombre_comercial,
+                domicilio_fiscal: empresa.domicilio_fiscal,
+                ubigeo: empresa.ubigeo,
+                urbanizacion: empresa.urbanizacion,
+                distrito: empresa.distrito,
+                provincia: empresa.provincia,
+                departamento: empresa.departamento,
+            },
+            cliente: {
+                razon_social_nombres: cliente.nombres,
+                doc_numero: cliente.doc_numero,
+                doc_tipo: cliente.doc_tipo,
+                direccion: cliente.direccion,
+            },
 
-            cliente_razon_social_nombres: cliente.nombres,
-            cliente_numero_documento: cliente.doc_numero,
-            cliente_codigo_tipo_entidad: cliente.doc_tipo,
-            cliente_cliente_direccion: cliente.direccion, // QUÉ PASA SI ES DNI
+            doc_tipo,
+            serie: pago_comprobante.serie,
+            numero: pago_comprobante.correlativo,
+            fecha_emision: fecha,
+            hora_emision: dayjs().format('HH:mm:ss'),
+            fecha_vencimiento: '',
 
-            venta_serie: pago_comprobante.serie,
-            venta_numero: pago_comprobante.correlativo,
-            venta_fecha_emision: fecha,
-            venta_hora_emision: dayjs().format('HH:mm:ss'),
-            venta_fecha_vencimiento: '',
-            venta_moneda_id: '2', // NO SÉ
-            venta_forma_pago_id: '1', // NO SÉ
-            venta_total_gravada: total_gravada,
-            venta_total_igv: total_igv,
-            venta_total_exonerada: total_exonerada,
-            venta_total_inafecta: total_inafecta,
-            venta_tipo_documento_codigo: doc_tipo,
-            venta_nota: '', // NO SÉ
+            moneda: 'PEN',
+            total_gravada: total_gravada,
+            total_exonerada: total_exonerada,
+            total_inafecta: total_inafecta,
+            total_gratuito: 0,
+            total_gratuito_igv: 0,
+            total_igv: total_igv,
+            total_descuento: a.total_descuento,
+            total_bolsa: 0,
+
+            nota: '',
 
             createdBy: colaborador
-        }, { transaction })
+        }
 
-        // --- GUARDAR ITEMS --- //
-        const items = comprobante_items.map(a => ({
-            articulo: a.articulo,
-            pu: a.pu,
-            igv_porcentaje: a.igv_porcentaje,
-            descuento_tipo: a.descuento_tipo,
-            descuento_valor: a.descuento_valor,
+        // const nuevo = await Comprobante.create(newComprobante, { transaction })
 
-            producto: a.nombre,
-            codigo_unidad: a.unidad,
-            cantidad: a.cantidad,
-            precio_base: a.vu, // CUANDO HAY DESCUENTO ES: a.vu - a.vu_desc
-            tipo_igv_codigo: a.igv_afectacion,
-            codigo_sunat: '-', // NO SÉ
-            codigo_producto: '-',
+        // // --- GUARDAR ITEMS --- //
+        const items = []
+        let i = 1
+        for (const a of comprobante_items) {
+            items.push({
+                articulo: a.articulo,
+                pu: a.pu,
+                igv_porcentaje: a.igv_porcentaje,
+                // descuento_tipo: a.descuento_tipo,
+                // descuento_valor: a.descuento_valor,
 
-            comprobante: nuevo.id,
-            createdBy: colaborador
-        }))
-        await ComprobanteItem.bulkCreate(items, { transaction })
+                descripcion: a.nombre,
+                unidad: a.unidad,
+                cantidad: a.cantidad,
+                vu: a.vu,
+                igv_afectacion: a.igv_afectacion,
+                codigo_sunat: '-',
+                codigo_producto: `P00${i}`,
+                has_bolsa_tax: false,
+                descuento_vu: a.descuento_vu,
+
+                // comprobante: nuevo.id,
+                createdBy: colaborador
+            })
+        }
+        send.items = items
+        // await ComprobanteItem.bulkCreate(items, { transaction })
+
+        if (['01', '03'].includes(doc_tipo)) {
+            const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
+            crearXml(fileName, send)
+            firmarXml(fileName)
+            enviarSunat(fileName)
+        }
+
+        throw error
 
         // --- ACTUALIZAR CORRELATIVO --- //
         await PagoComprobante.update(
@@ -350,65 +383,107 @@ const find = async (req, res) => {
     }
 }
 
-const findById = async (req, res) => {
+const getPdf = async (req, res) => {
     try {
         const { id } = req.params
 
-        let data = await Comprobante.findByPk(id, {
-            include: [
-                {
-                    model: ComprobanteItem,
-                    as: 'comprobante_items',
-                },
-                {
-                    model: Transaccion,
-                    as: 'transaccion1',
-                    attributes: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
-                    include: {
-                        model: Mesa,
-                        as: 'venta_mesa1',
-                        attributes: ['id', 'nombre'],
-                        include: {
-                            model: Salon,
-                            as: 'salon1',
-                            attributes: ['id', 'nombre']
-                        }
-                    }
-                },
-                {
-                    model: DineroMovimiento,
-                    as: 'dinero_movimientos',
-                    attributes: ['id', 'pago_metodo', 'monto'],
-                    include: {
-                        model: PagoMetodo,
-                        as: 'pago_metodo1',
-                        attributes: ['id', 'nombre']
-                    }
-                }
-            ]
-        })
+        // const empresa = await Empresa.findByPk(1)
+        const data = await getComprobante(id)
+        const buffer = await makePdf(data)
 
-        if (data) {
-            data = data.toJSON()
-
-            const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
-            const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
-            const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-            const venta_canalesMap = cSistema.arrayMap('venta_canales')
-
-            data.tipo = pago_comprobantesMap[data.venta_tipo_documento_codigo]
-            data.cliente_doc_tipo = documentos_identidadMap[data.cliente_codigo_tipo_entidad]
-            data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-            data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
-        }
-
-        makePdf(data, res)
-
-        // res.json({ code: 0, data })
+        res.setHeader("Content-Type", "application/pdf")
+        res.setHeader(
+            "Content-Disposition",
+            `inline; filename=${data.venta_serie}-${data.venta_numero}.pdf`
+        )
+        res.send(buffer)
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+const sendMail = async (req, res) => {
+    try {
+        const { id } = req.body
+
+        const data = await getComprobante(id)
+        const buffer = await makePdf(data)
+        const comprobante_numero = `${data.venta_serie}-${data.venta_numero}`
+        const html = comprobanteHtml(comprobante_numero)
+
+        const resend = new Resend(config.resendApiKey)
+        resend.emails.send({
+            from: 'onboarding@resend.dev',
+            to: 'jhuler.code@gmail.com',
+            subject: `Comprobante de pago ${comprobante_numero}`,
+            html,
+            attachments: [
+                {
+                    filename: `${comprobante_numero}.pdf`,
+                    content: buffer.toString("base64"),
+                    encoding: "base64",
+                },
+            ],
+        })
+
+        res.json({ code: 0 })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+async function getComprobante(id) {
+    let data = await Comprobante.findByPk(id, {
+        include: [
+            {
+                model: ComprobanteItem,
+                as: 'comprobante_items',
+            },
+            {
+                model: Transaccion,
+                as: 'transaccion1',
+                attributes: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
+                include: {
+                    model: Mesa,
+                    as: 'venta_mesa1',
+                    attributes: ['id', 'nombre'],
+                    include: {
+                        model: Salon,
+                        as: 'salon1',
+                        attributes: ['id', 'nombre']
+                    }
+                }
+            },
+            {
+                model: DineroMovimiento,
+                as: 'dinero_movimientos',
+                attributes: ['id', 'pago_metodo', 'monto'],
+                include: {
+                    model: PagoMetodo,
+                    as: 'pago_metodo1',
+                    attributes: ['id', 'nombre']
+                }
+            }
+        ]
+    })
+
+    if (data) {
+        data = data.toJSON()
+
+        const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
+        const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+        const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+        const venta_canalesMap = cSistema.arrayMap('venta_canales')
+
+        data.tipo = pago_comprobantesMap[data.venta_tipo_documento_codigo]
+        data.cliente_doc_tipo = documentos_identidadMap[data.cliente_codigo_tipo_entidad]
+        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+        data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
+    }
+
+    return data
 }
 
 const actualizarPago = async (req, res) => {
@@ -500,7 +575,8 @@ const anular = async (req, res) => {
     }
 }
 
-function makePdf(doc, res) {
+function makePdf(doc) {
+    // console.log(doc)
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
         { text: p.producto, style: 'tableItem', noWrap: false }, // permite saltos de línea
@@ -715,17 +791,19 @@ function makePdf(doc, res) {
         }
     }
 
-    const printer = new PdfPrinter(fonts)
-    const pdfDoc = printer.createPdfKitDocument(docDefinition)
-    let chunks = []
-    pdfDoc.on('data', chunk => { chunks.push(chunk) })
-    pdfDoc.on('end', () => {
-        const result = Buffer.concat(chunks)
-        res.setHeader('Content-Type', 'application/pdf')
-        res.setHeader('Content-Disposition', `inline; filename=${doc.venta_serie}-${doc.venta_numero}.pdf`)
-        res.send(result)
+    return new Promise((resolve, reject) => {
+        const printer = new PdfPrinter(fonts)
+        const pdfDoc = printer.createPdfKitDocument(docDefinition)
+
+        let chunks = []
+        pdfDoc.on("data", chunk => chunks.push(chunk))
+        pdfDoc.on("end", () => {
+            const buffer = Buffer.concat(chunks)
+            resolve(buffer)
+        })
+        pdfDoc.on("error", reject)
+        pdfDoc.end()
     })
-    pdfDoc.end()
 }
 
 const canjear = async (req, res) => {
@@ -1066,7 +1144,8 @@ function calcularUno(item) {
 export default {
     create,
     find,
-    findById,
+    getPdf,
+    sendMail,
     actualizarPago,
     anular,
     canjear,

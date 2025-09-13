@@ -7,4 +7,6 @@ export default {
     tokenMyApi: process.env.TOKEN_MY_API || '',
     
     dbUri: process.env.DB_URI || '',
+
+    resendApiKey: process.env.RESEND_API_KEY || '',
 }

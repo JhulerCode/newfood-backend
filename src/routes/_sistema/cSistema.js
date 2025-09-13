@@ -93,7 +93,129 @@ const sistemaData = {
     dinero_movimiento_estados: [
         { id: '0', nombre: 'ANULADO' },
         { id: '2', nombre: 'PROCESADO' },
-    ]
+    ],
+
+    tributos: {
+        "10": {
+            "codigo_tributo": "1000",
+            "codigo_internacional": "VAT",
+            "codigo": "IGV",
+            "nombre": "Gravado - Operación Onerosa"
+        },
+        "11": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Retiro por premio"
+        },
+        "12": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Retiro por donación"
+        },
+        "13": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Retiro"
+        },
+        "14": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Retiro por publicidad"
+        },
+        "15": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Bonificaciones"
+        },
+        "16": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – Retiro por entrega a trabajadores"
+        },
+        "17": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Gravado – IVAP"
+        },
+        "20": {
+            "codigo_tributo": "9997",
+            "codigo_internacional": "VAT",
+            "codigo": "EXO",
+            "nombre": "Exonerado - Operación Onerosa"
+        },
+        "21": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Exonerado – Transferencia Gratuita"
+        },
+        "30": {
+            "codigo_tributo": "9998",
+            "codigo_internacional": "FRE",
+            "codigo": "INA",
+            "nombre": "Inafecto - Operación Onerosa"
+        },
+        "31": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto – Retiro por Bonificación"
+        },
+        "32": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto – Retiro"
+        },
+        "33": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto – Retiro por Muestras Médicas"
+        },
+        "34": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto - Retiro por Convenio Colectivo"
+        },
+        "35": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto – Retiro por premio"
+        },
+        "36": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto - Retiro por publicidad"
+        },
+        "37": {
+            "codigo_tributo": "9996",
+            "codigo_internacional": "FRE",
+            "codigo": "GRA",
+            "nombre": "Inafecto - Retiro"
+        },
+        "40": {
+            "codigo_tributo": "9995",
+            "codigo_internacional": "FRE",
+            "codigo": "EXP",
+            "nombre": "Exportación"
+        }
+    },
+    ISC_SYSTEM_TYPE_MAP: {
+        '01': 'Sistema al valor', // [20]
+        '02': 'Aplicación del Monto Fijo', // [20, 42]
+        '03': 'Sistema de Precios de Venta al Público', // [20, 42]
+    }
 }
 
 function arrayMap(array) {

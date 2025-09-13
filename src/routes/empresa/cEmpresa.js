@@ -1,4 +1,6 @@
 import { Empresa } from '../../database/models/Empresa.js'
+import fs from "fs"
+import forge from "node-forge"
 
 const update = async (req, res) => {
     try {
@@ -51,6 +53,38 @@ const findById = async (req, res) => {
     }
 }
 
+function convertToPem() {
+    // === 1. Cargar PFX ===
+    const pfxData = fs.readFileSync("./certificado.pfx", "binary");
+    const password = "2801";
+
+    const p12Asn1 = forge.asn1.fromDer(pfxData);
+    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
+
+    // === 2. Extraer clave y certificado ===
+    let privateKeyPem, certificatePem;
+
+    for (const safeContent of p12.safeContents) {
+        for (const safeBag of safeContent.safeBags) {
+            if (safeBag.type === forge.pki.oids.pkcs8ShroudedKeyBag) {
+                // Convertir clave a PKCS#8
+                privateKeyPem = forge.pki.privateKeyInfoToPem(
+                    forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(safeBag.key))
+                )
+                // Convertir clave a PKCS#1
+                // privateKeyPem = forge.pki.privateKeyToPem(safeBag.key);
+            } else if (safeBag.type === forge.pki.oids.certBag) {
+                certificatePem = forge.pki.certificateToPem(safeBag.cert);
+            }
+        }
+    }
+
+    // === 3. Guardar archivos ===
+    fs.writeFileSync("./private_key.pem", privateKeyPem);
+    fs.writeFileSync("./cert.pem", certificatePem);
+
+    console.log("✅ Clave y certificado extraídos correctamente");
+}
 
 export default {
     findById,

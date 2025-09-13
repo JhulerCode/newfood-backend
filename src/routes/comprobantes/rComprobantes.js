@@ -13,11 +13,19 @@ router.get(
 )
 
 router.get(
-    '/uno/:id',
+    '/pdf/:id',
     verifyPermiso([
         'vReporteComprobantes:descargarPdf',
     ]),
-    controller.findById
+    controller.getPdf
+)
+
+router.post(
+    '/send-mail',
+    verifyPermiso([
+        'vReporteComprobantes:enviarCorreo',
+    ]),
+    controller.sendMail
 )
 
 router.post(
