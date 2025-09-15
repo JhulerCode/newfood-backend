@@ -220,7 +220,6 @@ function desarrolloXml(doc) {
                 <cbc:ID>FormaPago</cbc:ID>
                 <cbc:PaymentMeansID>Contado</cbc:PaymentMeansID>
             </cac:PaymentTerms>
-            
             `
         }
 
@@ -255,20 +254,25 @@ function desarrolloXml(doc) {
 
     // --- Impuestos --- //
     const builder1 = new Builder({ headless: true, rootName: 'cac:TaxTotal' })
-    xml += builder1.buildObject(response['cac:TaxTotal'])
+    xml += `
+    ${builder1.buildObject(response['cac:TaxTotal'])}
+    `
 
     // --- Totales --- //
     const builder2 = new Builder({ headless: true, rootName: 'cac:LegalMonetaryTotal' })
-    xml += builder2.buildObject(response['cac:LegalMonetaryTotal'])
+    xml += `
+    ${builder2.buildObject(response['cac:LegalMonetaryTotal'])}
+    `
 
     // --- Items --- //
     const builder3 = new Builder({ headless: true, rootName: 'cac:InvoiceLine' })
     for (const a of response.InvoiceLines) {
-        xml += builder3.buildObject(a)
+        xml += `
+        ${builder3.buildObject(a)}
+        `
     }
 
-    xml += `
-    </Invoice>`
+    xml += `</Invoice>`
 
     // xml = JSON.stringify(response)
     return xml
@@ -302,7 +306,9 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
     const vu_neto_sin_impuestos = product.vu - product.descuento_vu;
 
     // b. Valor de venta del ítem (sin IGV/ISC, después de descuentos por ítem)
-    const line_extension_amount = vu_neto_sin_impuestos * product.cantidad;
+    // const line_extension_amount = vu_neto_sin_impuestos * product.cantidad;
+    const line_extension_amount = tax_info.codigo_tributo == '9996' ? 0 : vu_neto_sin_impuestos * product.cantidad
+
 
     // c. Impuesto al Consumo de Bolsas de Plástico (ICBPER) unitario y total
     const icbper_unitario = (product.has_bolsa_tax === true) ? bolsa_tax_unit_amount : 0;
@@ -393,34 +399,12 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
         current_igv_taxable_amount_for_subtotal = line_extension_amount; // IVAP se calcula sobre vu_neto_sin_impuestos * cantidad
         current_igv_calculated_amount_for_subtotal = ivap_calculated_amount_total;
         current_igv_percent_value = product.ivap_porcentaje;
-        // } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) { // Exonerado, Inafecto, Exportación, Gratuito
-        //     if (!['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
-        //         current_igv_calculated_amount_for_subtotal = 0;
-        //         current_igv_percent_value = 0;
-        //         // La base imponible puede seguir siendo line_extension_amount para propósitos informativos, o 0 si no hay base para IGV.
-        //     }
-        // }
-    } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) {
-        // La lógica para current_igv_calculated_amount_for_subtotal para 9996 debe ser condicional
-        // (igual a la lógica original del código fuente antes de mi sugerencia anterior).
-        // Para otros códigos no gravados de este grupo (9997, 9998, 9995), el IGV es 0.
-        if (tax_info.codigo_tributo !== "9996" || !['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
+    } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) { // Exonerado, Inafecto, Exportación, Gratuito
+        if (!['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
             current_igv_calculated_amount_for_subtotal = 0;
             current_igv_percent_value = 0;
+            // La base imponible puede seguir siendo line_extension_amount para propósitos informativos, o 0 si no hay base para IGV.
         }
-        // Lógica para establecer la base imponible (TaxableAmount)
-        if (tax_info.codigo_tributo === "9996" || tax_info.codigo_tributo === "9998" || tax_info.codigo_tributo === "9997") {
-            // Para operaciones Gratuitas, Inafectas o Exoneradas con valor referencial,
-            // la base imponible del subtotal de impuestos (TaxableAmount) debe ser el valor referencial total del ítem.
-            current_igv_taxable_amount_for_subtotal = alternative_contition_price_amount * product.cantidad;
-        } else if (tax_info.codigo_tributo === "9995") { // Exportación
-            // Para exportación, la base imponible es el valor de venta del ítem, aunque el IGV sea 0.
-            current_igv_taxable_amount_for_subtotal = line_extension_amount;
-        } else {
-            // Para cualquier otro caso de tipo no gravado sin un tratamiento específico conocido.
-            current_igv_taxable_amount_for_subtotal = 0;
-        }
-        // console.log(2, current_igv_percent_value) // Línea original de depuración, se puede eliminar si no es necesaria.
     }
 
     // Solo añadir TaxSubtotal si hay un monto calculado de IGV/IVAP o una base imponible positiva.
@@ -454,7 +438,10 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
                 },
                 "cac:TaxScheme": {
                     "cbc:ID": {
-                        "$": { "schemeID": "UN/ECE 5153", "schemeAgencyID": "6" },
+                        "$": {
+                            "schemeID": "UN/ECE 5153",
+                            "schemeAgencyID": "6"
+                        },
                         "_": tax_info.codigo_tributo
                     },
                     "cbc:Name": tax_info.codigo, // e.g., "IGV", "GRA", "EXO", "INA", "EXP"
@@ -462,7 +449,10 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
                 }
             }
         });
-        total_tax_amount_item += current_igv_calculated_amount_for_subtotal;
+
+        if (!['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
+            total_tax_amount_item += current_igv_calculated_amount_for_subtotal
+        }
     }
 
     // d. Subtotal de ISC
@@ -505,30 +495,34 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
         tax_subtotals_array.push({
             "cbc:TaxableAmount": { // Para impuestos fijos, puede ser 0 o la base calculada.
                 "$": { "currencyID": CURRENCY_ID },
-                "_": bolsa_tax_calculated_amount_total.toFixed(2)
+                "_": 0
             },
             "cbc:TaxAmount": {
                 "$": { "currencyID": CURRENCY_ID },
                 "_": bolsa_tax_calculated_amount_total.toFixed(2)
             },
+            "cbc:BaseUnitMeasure": {
+                "$": { "unitCode": "NIU" },
+                "_": product.cantidad, // número de bolsas
+            },
             "cac:TaxCategory": {
-                // "cbc:ID": {
-                //     "$": { "schemeID": "UN/ECE 5305", "schemeName": "Tax Category Identifier", "schemeAgencyName": "United Nations Economic Commission for Europe" },
-                //     "_": bolsa_tax_info.categoria_impuesto_id // 'O' para otros tributos no afectos al IGV usualmente
-                // },
-                // "cbc:Percent": "0.00", // Es un monto fijo, no un porcentaje de base
-                // "cbc:TaxExemptionReasonCode": {
-                //     // No aplica código de afectación IGV directo, se usa un genérico o se omite
-                //     "$": { "listAgencyName": "PE:SUNAT", "listName": "SUNAT:Codigo de Tipo de Afectación del IGV", "listURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo07" },
-                //     "_": "99" // Código para "Otros" o no especificado
-                // },
+                "cbc:ID": {
+                    "$": {
+                        "schemeID": "UN/ECE 5305",
+                        "schemeName": "Tax Category Identifier",
+                        "schemeAgencyName": "United Nations Economic Commission for Europe"
+                    },
+                    "_": bolsa_tax_info.categoria_impuesto_id // 'O' para otros tributos no afectos al IGV usualmente
+                },
+                "cbc:PerUnitAmount": {
+                    "$": { "currencyID": CURRENCY_ID },
+                    "_": bolsa_tax_unit_amount.toFixed(2)
+                },
                 "cac:TaxScheme": {
                     "cbc:ID": {
-                        // "$": { "schemeID": "UN/ECE 5153", "schemeAgencyID": "6" },
                         "$": {
-                            "schemeName": "Codigo de tributos",
-                            "schemeAgencyName": "PE:SUNAT",
-                            "schemeURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05"
+                            "schemeID": "UN/ECE 5153",
+                            "schemeAgencyID": "6"
                         },
                         "_": bolsa_tax_info.codigo_tributo
                     },
@@ -606,10 +600,11 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
         "cac:SellersItemIdentification": {
             "cbc:ID": product.codigo
         },
-        "cac:CommodityClassification": {
-            "cbc:ItemClassificationCode": product.codigo_sunat
-        }
+        // "cac:CommodityClassification": {
+        //     "cbc:ItemClassificationCode": product.codigo_sunat
+        // }
     }
+    
     send["cac:Price"] = {
         "cbc:PriceAmount": {
             "$": { "currencyID": CURRENCY_ID },
@@ -640,10 +635,13 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
         totalLineExtensionAmount += parseFloat(line["cbc:LineExtensionAmount"]["_"])
 
         // 2. Acumular el monto total de impuestos por ítem para el total de la factura
+        // const codigo_tributo = line["cac:TaxTotal"]["cac:TaxSubtotal"]["cac:TaxCategory"]["cac:TaxScheme"]["cbc:ID"]
+        // if (codigo_tributo == '1000') {
         totalTaxAmountInvoice += parseFloat(line["cac:TaxTotal"]["cbc:TaxAmount"]["_"])
+        // }
 
         // 3. Acumular los descuentos a nivel de ítem (getInvoiceLine genera ChargeIndicator: false para descuentos)
-        if (line["cac:AllowanceCharge"] && line["cac:AllowanceCharge"]["cbc:ChargeIndicator"] === false) {
+        if (line["cac:AllowanceCharge"]) {
             totalAllowanceAmount += parseFloat(line["cac:AllowanceCharge"]["cbc:Amount"]["_"]);
         }
 

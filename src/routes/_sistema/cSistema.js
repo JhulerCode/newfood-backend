@@ -130,11 +130,6 @@ const sistemaData = {
         "ICBPER": { "codigo_tributo": "7152", "codigo_internacional": "OTH", "codigo": "ICBPER", "nombre": "Impuesto a la bolsa plastica", "categoria_impuesto_id": "O" }, // Bolsa Plástica [4]
         "OTROS_TRIBUTOS": { "codigo_tributo": "9999", "codigo_internacional": "OTH", "codigo": "OTROS", "nombre": "Otros tributos", "categoria_impuesto_id": "S" } // Otros tributos [4]
     },
-    ISC_SYSTEM_TYPE_MAP: {
-        '01': 'Sistema al valor', // [20]
-        '02': 'Aplicación del Monto Fijo', // [20, 42]
-        '03': 'Sistema de Precios de Venta al Público', // [20, 42]
-    }
 }
 
 function arrayMap(array) {
