@@ -72,7 +72,8 @@ async function enviarSoap(soapXml) {
             auth: { username: USUARIO, password: CLAVE },
         });
     } catch (err) {
-        throw new Error(`Error enviando a SUNAT: ${err.response?.data || err.message}`);
+        const xmlResponse = err.response
+        return xmlResponse
     }
 }
 
@@ -80,8 +81,9 @@ async function enviarSoap(soapXml) {
 async function procesarRespuesta(xmlResponse) {
     try {
         // 1️⃣ Extraer Base64 del CDR
+        // console.log(xmlResponse)
         const match = xmlResponse.match(/<applicationResponse>([\s\S]*?)<\/applicationResponse>/);
-
+        
         if (match) {
             const base64Cdr = match[1];
             const cdrZipBuffer = Buffer.from(base64Cdr, "base64");
@@ -112,11 +114,11 @@ async function procesarRespuesta(xmlResponse) {
 
             const fault = soapJson["soap-env:Envelope"]?.["soap-env:Body"]?.["soap-env:Fault"];
             if (!fault) throw new Error("No se encontró Fault en respuesta de SUNAT");
-            console.log(fault)
+
             const codigo = fault.faultcode || fault["faultcode"];
             const mensaje = fault.faultstring || fault["faultstring"];
-
-            return { tipo: "fault", codigo, descripcion: mensaje };
+            
+            return { tipo: "fault", codigo, descripcion: mensaje }
         }
     } catch (err) {
         throw new Error(`Error procesando respuesta de SUNAT: ${err.message}`);
@@ -137,20 +139,20 @@ export async function enviarSunat(fileName) {
 
         // 4️⃣ Enviar a SUNAT
         const response = await enviarSoap(soapXml);
-        console.log("✅ SUNAT respondió, procesando CDR...");
-
+        console.log("✅ SUNAT respondió, procesando...");
+        
         // 5️⃣ Procesar respuesta
         const resultado = await procesarRespuesta(response.data);
         if (resultado.tipo == 'cdr') {
-            console.log("✅ CDR JSON:", resultado);
+            console.log("✅ Respuesta SUNAT:", resultado);
             return resultado
         }
         else {
-            console.log('❌ SUNAT respondió:', resultado)
+            console.log('❌ Respuesta SUNAT:', resultado)
             return resultado
         }
     } catch (err) {
-        console.error("❌ Error en enviarFactura:", err.message);
+        console.error("❌ Error en enviar comprobante:", err.message);
         return null;
     }
 }

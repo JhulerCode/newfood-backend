@@ -1,6 +1,7 @@
 import fs from "fs"
 import path from "path"
 import { fileURLToPath } from 'url'
+import { numeroATexto } from "../mine.js"
 import cSistema from "../../routes/_sistema/cSistema.js"
 import { Builder } from "xml2js"
 
@@ -85,8 +86,9 @@ function desarrolloXml(doc) {
     }
 
     // --- Encabezado --- //
+    // let xml = '<?xml version="1.0" encoding="UTF-8"?>' + linea_inicio
     let xml = '<?xml version="1.0" encoding="ISO-8859-1" standalone="no"?>' + linea_inicio
-
+    
     // --- Espacio para la firma --- //
     xml += `
     <ext:UBLExtensions>
@@ -220,7 +222,6 @@ function desarrolloXml(doc) {
                 <cbc:ID>FormaPago</cbc:ID>
                 <cbc:PaymentMeansID>Contado</cbc:PaymentMeansID>
             </cac:PaymentTerms>
-            
             `
         }
 
@@ -357,7 +358,6 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
     if (['10', '11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
         igv_unitario = base_para_igv_unit * (product.igv_porcentaje / 100);
     }
-
     const igv_calculated_amount_total = igv_unitario * product.cantidad; // IGV total para la línea
 
     // h. Precio de Venta Unitario final (Punto 38 - alternative_contition_price_amount)
@@ -385,42 +385,18 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
 
     // c. Subtotal de IGV/IVAP
     let current_igv_taxable_amount_for_subtotal = base_para_igv_total_line; // Base imponible corregida
-    let current_igv_calculated_amount_for_subtotal = igv_calculated_amount_total; // Monto de IGV calculado previamente
-    let current_igv_percent_value = product.igv_porcentaje; // Porcentaje de IGV previamente establecido
+    let current_igv_calculated_amount_for_subtotal = igv_calculated_amount_total;
+    let current_igv_percent_value = product.igv_porcentaje;
 
     // Ajuste para IVAP si aplica
     if (tax_info.codigo_tributo === "1016") { // IVAP
         current_igv_taxable_amount_for_subtotal = line_extension_amount; // IVAP se calcula sobre vu_neto_sin_impuestos * cantidad
         current_igv_calculated_amount_for_subtotal = ivap_calculated_amount_total;
         current_igv_percent_value = product.ivap_porcentaje;
-        // } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) { // Exonerado, Inafecto, Exportación, Gratuito
-        //     if (!['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
-        //         current_igv_calculated_amount_for_subtotal = 0;
-        //         current_igv_percent_value = 0;
-        //         // La base imponible puede seguir siendo line_extension_amount para propósitos informativos, o 0 si no hay base para IGV.
-        //     }
-        // }
-    } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) {
-        // La lógica para current_igv_calculated_amount_for_subtotal para 9996 debe ser condicional
-        // (igual a la lógica original del código fuente antes de mi sugerencia anterior).
-        // Para otros códigos no gravados de este grupo (9997, 9998, 9995), el IGV es 0.
-        if (tax_info.codigo_tributo !== "9996" || !['11', '12', '13', '14', '15', '16'].includes(igv_afectacion_code)) {
-            current_igv_calculated_amount_for_subtotal = 0;
-            current_igv_percent_value = 0;
-        }
-        // Lógica para establecer la base imponible (TaxableAmount)
-        if (tax_info.codigo_tributo === "9996" || tax_info.codigo_tributo === "9998" || tax_info.codigo_tributo === "9997") {
-            // Para operaciones Gratuitas, Inafectas o Exoneradas con valor referencial,
-            // la base imponible del subtotal de impuestos (TaxableAmount) debe ser el valor referencial total del ítem.
-            current_igv_taxable_amount_for_subtotal = alternative_contition_price_amount * product.cantidad;
-        } else if (tax_info.codigo_tributo === "9995") { // Exportación
-            // Para exportación, la base imponible es el valor de venta del ítem, aunque el IGV sea 0.
-            current_igv_taxable_amount_for_subtotal = line_extension_amount;
-        } else {
-            // Para cualquier otro caso de tipo no gravado sin un tratamiento específico conocido.
-            current_igv_taxable_amount_for_subtotal = 0;
-        }
-        // console.log(2, current_igv_percent_value) // Línea original de depuración, se puede eliminar si no es necesaria.
+    } else if (["9997", "9998", "9995", "9996"].includes(tax_info.codigo_tributo)) { // Exonerado, Inafecto, Exportación, Gratuito
+        current_igv_calculated_amount_for_subtotal = 0;
+        current_igv_percent_value = 0;
+        // La base imponible puede seguir siendo line_extension_amount para propósitos informativos, o 0 si no hay base para IGV.
     }
 
     // Solo añadir TaxSubtotal si hay un monto calculado de IGV/IVAP o una base imponible positiva.
@@ -544,80 +520,70 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
     const price_priceAmount = tax_info.codigo_tributo == '9996' ? 0 : product.vu;
 
     // --- 5. Retorna la estructura final del cac:InvoiceLine ---
-    const send = { "cbc:ID": product.i }
-    send["cbc:InvoicedQuantity"] = {
-        "$": {
-            "unitCode": product.unidad,
-            "unitCodeListID": "UN/ECE rec 20",
-            "unitCodeListAgencyName": "United Nations Economic Commission for Europe"
+    return {
+        "cbc:ID": 1, // Número de orden del Ítem. Esto debería ser dinámico si hay múltiples ítems.
+        "cbc:InvoicedQuantity": {
+            "$": {
+                "unitCode": product.unidad,
+                "unitCodeListID": "UN/ECE rec 20",
+                "unitCodeListAgencyName": "United Nations Economic Commission for Europe"
+            },
+            "_": product.cantidad.toFixed(2)
         },
-        "_": product.cantidad.toFixed(2)
-    }
-
-    send["cbc:LineExtensionAmount"] = {
-        "$": { "currencyID": CURRENCY_ID },
-        "_": line_extension_amount.toFixed(2)
-    }
-
-    send["cac:PricingReference"] = {
-        "cac:AlternativeConditionPrice": {
-            "cbc:PriceAmount": {
-                "$": { "currencyID": CURRENCY_ID },
-                "_": alternative_contition_price_amount.toFixed(10)
-            },
-            "cbc:PriceTypeCode": {
-                "$": {
-                    "listAgencyName": "PE:SUNAT",
-                    "listName": "Tipo de Precio",
-                    "listURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo16"
+        "cbc:LineExtensionAmount": {
+            // CORREGIDO: Usar currencyID en lugar de unitCode para este atributo.
+            "$": { "currencyID": CURRENCY_ID },
+            "_": line_extension_amount.toFixed(10)
+        },
+        "cac:PricingReference": {
+            "cac:AlternativeConditionPrice": {
+                "cbc:PriceAmount": {
+                    "$": { "currencyID": CURRENCY_ID },
+                    "_": alternative_contition_price_amount.toFixed(2)
                 },
-                "_": codigo_tipo_precio
-            },
-        }
-    }
-
-    if (discount_multiplier_factor_numeric > 0) {
-        send["cac:AllowanceCharge"] = {
+                "cbc:PriceTypeCode": {
+                    "$": {
+                        "listAgencyName": "PE:SUNAT",
+                        "listName": "Tipo de Precio",
+                        "listURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo16"
+                    },
+                    "_": codigo_tipo_precio
+                },
+            }
+        },
+        "cac:AllowanceCharge": { // Este bloque representa el descuento por ítem.
             "cbc:ChargeIndicator": false, // `false` indica descuento
             "cbc:AllowanceChargeReasonCode": {
-                "$": {
-                    "listAgencyName": "PE:SUNAT",
-                    "listName": "Cargo/descuento",
-                    "listURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo53"
-                },
+                "$": { "listAgencyName": "PE:SUNAT", "listName": "Cargo/descuento", "listURI": "urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo53" },
                 "_": "00" // Código "00" para "OTROS DESCUENTOS"
             },
             "cbc:MultiplierFactorNumeric": discount_multiplier_factor_numeric.toFixed(5),
             "cbc:Amount": { "$": { "currencyID": CURRENCY_ID }, "_": discount_amount.toFixed(2) },
             "cbc:BaseAmount": { "$": { "currencyID": CURRENCY_ID }, "_": discount_base_amount.toFixed(2) }
-        }
-    }
-
-    send["cac:TaxTotal"] = {
-        "cbc:TaxAmount": {
-            "$": { "currencyID": CURRENCY_ID },
-            "_": total_tax_amount_item.toFixed(2)
         },
-        "cac:TaxSubtotal": tax_subtotals_array
-    }
-
-    send["cac:Item"] = {
-        "cbc:Description": product.descripcion,
-        "cac:SellersItemIdentification": {
-            "cbc:ID": product.codigo
+        "cac:TaxTotal": {
+            "cbc:TaxAmount": {
+                "$": { "currencyID": CURRENCY_ID },
+                "_": total_tax_amount_item.toFixed(2)
+            },
+            "cac:TaxSubtotal": tax_subtotals_array
         },
-        "cac:CommodityClassification": {
-            "cbc:ItemClassificationCode": product.codigo_sunat
+        "cac:Item": {
+            "cbc:Description": product.descripcion,
+            "cac:SellersItemIdentification": {
+                "cbc:ID": product.codigo
+            },
+            "cac:CommodityClassification": {
+                "cbc:ItemClassificationCode": product.codigo_sunat
+            }
+        },
+        "cac:Price": {
+            "cbc:PriceAmount": {
+                "$": { "currencyID": CURRENCY_ID },
+                "_": price_priceAmount.toFixed(10)
+            }
         }
-    }
-    send["cac:Price"] = {
-        "cbc:PriceAmount": {
-            "$": { "currencyID": CURRENCY_ID },
-            "_": price_priceAmount.toFixed(10)
-        }
-    }
-
-    return send
+    };
 }
 
 function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, globalAllowanceAmount = 0, globalChargeAmount = 0, prepaidAmount = 0) {
@@ -630,11 +596,11 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
     // Mapa para agregar los TaxSubtotals por ID de esquema tributario (codigo_tributo)
     const aggregatedTaxSubtotals = {};
 
-    let i = 1
     for (const item of items) {
         const line = getInvoiceLine(item, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT)
-        InvoiceLines.push(line)
-        i = i + 1
+        InvoiceLines.push({
+            "cac:InvoiceLine": line
+        })
 
         // 1. Acumular el valor de venta de la línea (sin impuestos, descuentos ni cargos por línea)
         totalLineExtensionAmount += parseFloat(line["cbc:LineExtensionAmount"]["_"])
@@ -718,8 +684,7 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
 
     // Importe total de la venta, cesión en uso o del servicio prestado [75-78].
     // Es el monto final a pagar, que ajusta el precio inclusivo de impuestos con descuentos, cargos y anticipos.
-    // const payableAmount = taxInclusiveAmount - totalAllowanceAmount + totalChargeAmount - prepaidAmount;
-    const payableAmount = taxInclusiveAmount - globalAllowanceAmount + totalChargeAmount - prepaidAmount;
+    const payableAmount = taxInclusiveAmount - totalAllowanceAmount + totalChargeAmount - prepaidAmount;
 
     const legalMonetaryTotal = {
         "cbc:LineExtensionAmount": {
@@ -762,3 +727,453 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
         InvoiceLines
     };
 }
+
+
+
+// function desarrolloXml(doc) {
+//     const {
+//         pago_condicion,
+//         empresa, cliente,
+//         doc_tipo, serie, numero, fecha_emision, hora_emision, fecha_vencimiento,
+//         moneda, total_gravada, total_exonerada, total_inafecta,
+//         total_gratuito, total_gratuito_igv, total_igv, total_bolsa,
+//         total_descuento,
+//         orden_compra, guias_adjuntas,
+//         items,
+//     } = doc
+
+//     const local_anexo = '0000'
+//     const total_a_pagar = total_gravada + total_exonerada + total_inafecta + total_igv + total_bolsa
+
+//     let linea_inicio = ''
+//     let InvoiceTypeCode = ''
+//     let tag_total_pago = ''
+//     let tipo_operacion = '0101'
+//     let tag_item = ''
+//     let tag_item_cantidad = ''
+
+//     if (['01', '03'].includes(doc_tipo)) {
+//         linea_inicio = `
+//         <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
+//             xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
+//             xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2"
+//             xmlns:ccts="urn:un:unece:uncefact:documentation:2" xmlns:ds="http://www.w3.org/2000/09/xmldsig#"
+//             xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2"
+//             xmlns:qdt="urn:oasis:names:specification:ubl:schema:xsd:QualifiedDatatypes-2"
+//             xmlns:udt="urn:un:unece:uncefact:data:specification:UnqualifiedDataTypesSchemaModule:2"
+//             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+//         `
+
+//         InvoiceTypeCode = `
+//         <cbc:InvoiceTypeCode listID="${tipo_operacion}" listAgencyName="PE:SUNAT" listName="Tipo de Documento"
+//             listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo01" name="Tipo de Operacion"
+//             listSchemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo51">${doc_tipo}</cbc:InvoiceTypeCode>
+//         `
+
+//         tag_total_pago = 'LegalMonetaryTotal'
+//         tag_item = 'InvoiceLine'
+//         tag_item_cantidad = 'InvoicedQuantity'
+//     }
+
+//     // --- Encabezado --- //
+//     let xml = '<?xml version="1.0" encoding="UTF-8" standalone="no"?>' + linea_inicio
+
+//     // --- Espacio para la firma --- //
+//     xml += `
+//     <ext:UBLExtensions>
+//         <ext:UBLExtension>
+//             <ext:ExtensionContent></ext:ExtensionContent>
+//         </ext:UBLExtension>
+//     </ext:UBLExtensions>
+//     `
+
+//     // --- Datos generales --- //
+//     xml += `
+//     <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+//     <cbc:CustomizationID>2.0</cbc:CustomizationID>
+//     <cbc:ID>${serie}-${numero}</cbc:ID>
+//     <cbc:IssueDate>${fecha_emision}</cbc:IssueDate>
+//     <cbc:IssueTime>${hora_emision}</cbc:IssueTime>
+//     `
+
+//     if (['01', '03'].includes(doc_tipo)) {
+//         if (fecha_vencimiento != null && fecha_vencimiento != '') {
+//             xml += `<cbc:DueDate>${fecha_vencimiento}</cbc:DueDate>`
+//         }
+//     }
+
+//     // --- Tipo de documento --- //
+//     xml += InvoiceTypeCode
+
+//     // <cbc:Note languageLocaleID="1000">${numeroATexto(total_a_pagar)}</cbc:Note>
+//     // --- Moneda --- //
+//     xml += `
+//     <cbc:DocumentCurrencyCode listID="ISO 4217 Alpha" listName="Currency"
+//         listAgencyName="United Nations Economic Commission for Europe">${moneda}</cbc:DocumentCurrencyCode>
+//     `
+
+//     // --- Orden de compra --- //
+//     if (['01', '03'].includes(doc_tipo)) {
+//         if (orden_compra != null && orden_compra != "") {
+//             xml += `
+//             <cac:OrderReference>
+//                 <cbc:ID>${orden_compra}</cbc:ID>
+//             </cac:OrderReference>';
+//             `
+//         }
+//     }
+
+//     // --- Guías relacionadas --- //
+//     if (guias_adjuntas != null && guias_adjuntas.length > 0) {
+//         guias_adjuntas.forEach(guia => {
+//             xml += `
+//             <cac:DespatchDocumentReference>
+//                 <cbc:ID>${guia.serie}-${guia.numero}</cbc:ID>
+//                 <cbc:DocumentTypeCode listAgencyName="PE:SUNAT" listName="Tipo de Documento"
+//                     listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo01">${guia.codigo_documento}</cbc:DocumentTypeCode>
+//             </cac:DespatchDocumentReference>
+//             `
+//         })
+//     }
+
+//     // --- Empresa emisora --- //
+//     xml += `
+//     <cac:Signature>
+//         <cbc:ID>${empresa.ruc}</cbc:ID>
+//         <cac:SignatoryParty>
+//             <cac:PartyIdentification>
+//                 <cbc:ID>${empresa.ruc}</cbc:ID>
+//             </cac:PartyIdentification>
+//             <cac:PartyName>
+//                 <cbc:Name>${empresa.razon_social}</cbc:Name>
+//             </cac:PartyName>
+//         </cac:SignatoryParty>
+//         <cac:DigitalSignatureAttachment>
+//             <cac:ExternalReference>
+//                 <cbc:URI>${empresa.ruc}</cbc:URI>
+//             </cac:ExternalReference>
+//         </cac:DigitalSignatureAttachment>
+//     </cac:Signature>
+//     `
+
+//     // --- Proveedor --- //
+//     xml += `
+//     <cac:AccountingSupplierParty>
+//         <cac:Party>
+//             <cac:PartyIdentification>
+//                 <cbc:ID schemeID="6" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT"
+//                     schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${empresa.ruc}</cbc:ID>
+//             </cac:PartyIdentification>
+//             <cac:PartyName>
+//                 <cbc:Name>${empresa.nombre_comercial}</cbc:Name>
+//             </cac:PartyName>
+//             <cac:PartyLegalEntity>
+//                 <cbc:RegistrationName>${empresa.razon_social}</cbc:RegistrationName>
+//                 <cac:RegistrationAddress>
+//                     <cbc:ID schemeName="Ubigeos" schemeAgencyName="PE:INEI">${empresa.ubigeo}</cbc:ID>
+//                     <cbc:AddressTypeCode listAgencyName="PE:SUNAT" listName="Establecimientos anexos">${local_anexo}</cbc:AddressTypeCode>
+//                     <cbc:CityName>${empresa.provincia}</cbc:CityName>
+//                     <cbc:CountrySubentity>${empresa.departamento}</cbc:CountrySubentity>
+//                     <cbc:District>${empresa.distrito}</cbc:District>
+//                     <cac:AddressLine>
+//                         <cbc:Line>${empresa.domicilio_fiscal}</cbc:Line>
+//                     </cac:AddressLine>
+//                     <cac:Country>
+//                         <cbc:IdentificationCode listID="ISO 3166-1"
+//                             listAgencyName="United Nations Economic Commission for Europe"
+//                             listName="Country">PE</cbc:IdentificationCode>
+//                     </cac:Country>
+//                 </cac:RegistrationAddress>
+//             </cac:PartyLegalEntity>
+//         </cac:Party>
+//     </cac:AccountingSupplierParty>
+//     `
+
+//     // Cliente
+//     xml += `
+//     <cac:AccountingCustomerParty>
+//         <cac:Party>
+//             <cac:PartyIdentification>
+//                 <cbc:ID schemeID="${cliente.doc_tipo}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT"
+//                     schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${cliente.doc_numero}</cbc:ID>
+//             </cac:PartyIdentification>
+//             <cac:PartyLegalEntity>
+//                 <cbc:RegistrationName>${cliente.razon_social_nombres}</cbc:RegistrationName>
+//             </cac:PartyLegalEntity>
+//         </cac:Party>
+//     </cac:AccountingCustomerParty>
+//     `
+
+//     // --- Forma de pago --- //
+//     if (['01', '03', '07'].includes(doc_tipo)) {
+//         if (pago_condicion == 1) {
+//             xml += `
+//             <cac:PaymentTerms>
+//                 <cbc:ID>FormaPago</cbc:ID>
+//                 <cbc:PaymentMeansID>Contado</cbc:PaymentMeansID>
+//             </cac:PaymentTerms>
+//             `
+//         }
+
+//         if (pago_condicion == 2) {
+//             xml += `
+//             <cac:PaymentTerms>
+//                 <cbc:ID>FormaPago</cbc:ID>
+//                 <cbc:PaymentMeansID>Credito</cbc:PaymentMeansID>
+//                 <cbc:Amount currencyID="${moneda}">${total_a_pagar}</cbc:Amount>
+//             </cac:PaymentTerms>
+//             `
+
+//             if (cuotas && cuotas.length > 0) {
+//                 let contar_cuota = 1
+//                 for (const cuota of cuotas) {
+//                     xml += `
+//                     <cac:PaymentTerms>
+//                         <cbc:ID>FormaPago</cbc:ID>
+//                         <cbc:PaymentMeansID>Cuota00${contar_cuota}</cbc:PaymentMeansID>
+//                         <cbc:Amount currencyID="${moneda}">${cuota.monto}</cbc:Amount>
+//                         <cbc:PaymentDueDate>${cuota.fecha}</cbc:PaymentDueDate>
+//                     </cac:PaymentTerms>
+//                     `
+//                     contar_cuota++
+//                 }
+
+//             }
+//         }
+//     }
+
+//     // --- Impuestos totales --- //
+//     const docTaxTotal = (total_igv + total_bolsa).toFixed(2)
+//     xml += `
+//     <cac:TaxTotal>
+//         <cbc:TaxAmount currencyID="${moneda}">${docTaxTotal}</cbc:TaxAmount>
+//     `
+
+//     if (total_gravada != null && total_gravada > 0) {
+//         xml += `
+//         <cac:TaxSubtotal>
+//             <cbc:TaxableAmount currencyID="${moneda}">${total_gravada.toFixed(2)}</cbc:TaxableAmount>
+//             <cbc:TaxAmount currencyID="${moneda}">${total_igv.toFixed(2)}</cbc:TaxAmount>
+//             <cac:TaxCategory>
+//                 <cac:TaxScheme>
+//                     <cbc:ID schemeName="Codigo de tributos" schemeAgencyName="PE:SUNAT"
+//                         schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">1000</cbc:ID>
+//                     <cbc:Name>IGV</cbc:Name>
+//                     <cbc:TaxTypeCode>VAT</cbc:TaxTypeCode>
+//                 </cac:TaxScheme>
+//             </cac:TaxCategory>
+//         </cac:TaxSubtotal>
+//         `
+//     }
+
+//     if (total_exonerada != null && total_exonerada > 0) {
+//         xml += `
+//         <cac:TaxSubtotal>
+//             <cbc:TaxableAmount currencyID="${moneda}">${total_exonerada.toFixed(2)}</cbc:TaxableAmount>
+//             <cbc:TaxAmount currencyID="${moneda}">0.00</cbc:TaxAmount>
+//             <cac:TaxCategory>
+//                 <cac:TaxScheme>
+//                     <cbc:ID schemeName="Codigo de tributos" schemeAgencyName="PE:SUNAT"
+//                         schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">9997</cbc:ID>
+//                     <cbc:Name>EXO</cbc:Name>
+//                     <cbc:TaxTypeCode>VAT</cbc:TaxTypeCode>
+//                 </cac:TaxScheme>
+//             </cac:TaxCategory>
+//         </cac:TaxSubtotal>
+//         `
+//     }
+
+//     if (total_inafecta != null && total_inafecta > 0) {
+//         xml += `
+//         <cac:TaxSubtotal>
+//             <cbc:TaxableAmount currencyID="${moneda}">${total_inafecta.toFixed(2)}</cbc:TaxableAmount>
+//             <cbc:TaxAmount currencyID="${moneda}">0.00</cbc:TaxAmount>
+//             <cac:TaxCategory>
+//                 <cac:TaxScheme>
+//                     <cbc:ID schemeName="Codigo de tributos" schemeAgencyName="PE:SUNAT"
+//                         schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">9998</cbc:ID>
+//                     <cbc:Name>INA</cbc:Name>
+//                     <cbc:TaxTypeCode>FRE</cbc:TaxTypeCode>
+//                 </cac:TaxScheme>
+//             </cac:TaxCategory>
+//         </cac:TaxSubtotal>
+//         `
+//     }
+
+//     if (total_gratuito != null && total_gratuito > 0) {
+//         xml += `
+//         <cac:TaxSubtotal>
+//             <cbc:TaxableAmount currencyID="${moneda}">${total_gratuito.toFixed(2)}</cbc:TaxableAmount>
+//             <cbc:TaxAmount currencyID="${moneda}">${total_gratuito_igv.toFixed(2)}</cbc:TaxAmount>
+//             <cac:TaxCategory>
+//                 <cac:TaxScheme>
+//                     <cbc:ID schemeName="Codigo de tributos" schemeAgencyName="PE:SUNAT"
+//                         schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">9996</cbc:ID>
+//                     <cbc:Name>GRA</cbc:Name>
+//                     <cbc:TaxTypeCode>FRE</cbc:TaxTypeCode>
+//                 </cac:TaxScheme>
+//             </cac:TaxCategory>
+//         </cac:TaxSubtotal>`
+//     }
+
+//     if (total_bolsa != null && total_bolsa > 0) {
+//         xml += `
+//         <cac:TaxSubtotal>
+//             <cbc:TaxAmount currencyID="${moneda}">${total_bolsa.toFixed(2)}</cbc:TaxAmount>
+//             <cac:TaxCategory>
+//                 <cac:TaxScheme>
+//                     <cbc:ID schemeAgencyName="PE:SUNAT" schemeName="Codigo de tributos"
+//                         schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">7152</cbc:ID>
+//                     <cbc:Name>ICBPER</cbc:Name>
+//                     <cbc:TaxTypeCode>OTH</cbc:TaxTypeCode>
+//                 </cac:TaxScheme>
+//             </cac:TaxCategory>
+//         </cac:TaxSubtotal>
+//         `
+//     }
+
+//     xml += `</cac:TaxTotal>`
+
+//     // --- Total resumen --- //
+//     const docLineExtensionAmount = total_gravada + total_exonerada + total_inafecta
+//     const docTaxInclusiveAmount = total_gravada + total_exonerada + total_inafecta + total_igv + total_bolsa
+//     const docPayableAmount = total_gravada + total_exonerada + total_inafecta + total_igv + total_bolsa
+//     xml += `
+//     <cac:${tag_total_pago}>
+//         <cbc:LineExtensionAmount currencyID="${moneda}">${docLineExtensionAmount.toFixed(2)}</cbc:LineExtensionAmount>
+//         <cbc:TaxInclusiveAmount currencyID="${moneda}">${docTaxInclusiveAmount.toFixed(2)}</cbc:TaxInclusiveAmount>
+//         <cbc:AllowanceTotalAmount currencyID="${moneda}">${total_descuento.toFixed(2)}</cbc:AllowanceTotalAmount>
+//         <cbc:ChargeTotalAmount currencyID="${moneda}">0.00</cbc:ChargeTotalAmount>
+//         <cbc:PrepaidAmount currencyID="${moneda}">0.00</cbc:PrepaidAmount>
+//         <cbc:PayableAmount currencyID="${moneda}">${docPayableAmount.toFixed(2)}</cbc:PayableAmount>
+//     </cac:${tag_total_pago}>
+//     `
+
+//     // --- Items --- //
+//     // let i = 1
+
+//     // for (const a of items) {
+//     //     const tributo = cSistema.sistemaData.CATALOGO_TRIBUTOS_SUNAT[a.igv_afectacion]
+
+//     //     // --- Inicio del bloque de item --- //
+//     //     const itemLineExtensionAmount = calcularValorVentaItem(a)
+//     //     const itemPriceAmount = calcularPrecioVentaUnitarioItem(a)
+//     //     const itemPriceTypeCode = determinarPriceTypeCode(tributo.codigo_tributo)
+//     //     xml += `
+//     //     <cac:${tag_item}>
+//     //         <cbc:ID>${i}</cbc:ID>
+//     //         <cbc:${tag_item_cantidad} unitCode="${a.unidad}" unitCodeListID="UN/ECE rec 20"
+//     //             unitCodeListAgencyName="United Nations Economic Commission for Europe">${a.cantidad}</cbc:${tag_item_cantidad}>
+//     //         <cbc:LineExtensionAmount currencyID="${moneda}">${itemLineExtensionAmount.toFixed(2)}</cbc:LineExtensionAmount>
+//     //         <cac:PricingReference>
+//     //             <cac:AlternativeConditionPrice>
+//     //                 <cbc:PriceAmount currencyID="${moneda}">${itemPriceAmount.toFixed(10)}</cbc:PriceAmount>
+//     //                 <cbc:PriceTypeCode listName="Tipo de Precio" listAgencyName="PE:SUNAT"
+//     //                     listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo16">${itemPriceTypeCode}</cbc:PriceTypeCode>
+//     //             </cac:AlternativeConditionPrice>
+//     //         </cac:PricingReference>
+//     //     `
+//     //     // --- Descuento por item --- //
+//     //     if (a.descuento_vu > 0) {
+//     //         const descAmount = a.descuento_vu * a.cantidad
+//     //         const descBaseAmount = a.vu * a.cantidad
+//     //         const multiplier = descAmount / descBaseAmount
+//     //         determinarDescuentoPorItem(a)
+
+//     //         xml += `
+//     //         <cac:AllowanceCharge>
+//     //             <cbc:ChargeIndicator>false</cbc:ChargeIndicator>
+//     //             <cbc:AllowanceChargeReasonCode listAgencyName="PE:SUNAT" listName="Cargo/descuento"
+//     //                 listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo53">00</cbc:AllowanceChargeReasonCode>
+//     //             <cbc:MultiplierFactorNumeric>${multiplier.toFixed(5)}</cbc:MultiplierFactorNumeric>
+//     //             <cbc:Amount currencyID="${moneda}">${descAmount.toFixed(2)}</cbc:Amount>
+//     //             <cbc:BaseAmount currencyID="${moneda}">${descBaseAmount.toFixed(2)}</cbc:BaseAmount>
+//     //         </cac:AllowanceCharge>
+//     //         `
+//     //     }
+
+//     //     // --- TaxTotal + TaxSubtotal --- //
+//     //     const itemIcbPer = a.has_bolsa_tax == true ? a.cantidad * icbper : 0
+//     //     const itemTaxAmount = setTaxAmount(a, tributo.codigo_tributo) + itemIcbPer
+//     //     const itemTaxableAmount = (a.vu - a.descuento_vu) * a.cantidad
+//     //     const tax_by_product = setTaxByProduct(a, tributo.codigo_tributo, total_gratuito_igv)
+//     //     xml += `
+//     //         <cac:TaxTotal>
+//     //             <cbc:TaxAmount currencyID="${moneda}">${itemTaxAmount.toFixed(2)}</cbc:TaxAmount>
+//     //             <cac:TaxSubtotal>
+//     //                 <cbc:TaxableAmount currencyID="${moneda}">${itemTaxableAmount.toFixed(2)}</cbc:TaxableAmount>
+//     //                 <cbc:TaxAmount currencyID="${moneda}">${tax_by_product.toFixed(2)}</cbc:TaxAmount>
+//     //                 <cac:TaxCategory>
+//     //                     <cbc:Percent>${a.igv_porcentaje}</cbc:Percent>
+//     //                     <cbc:TaxExemptionReasonCode listAgencyName="PE:SUNAT"
+//     //                         listName="Afectacion del IGV"
+//     //                         listURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo07">${a.igv_afectacion}</cbc:TaxExemptionReasonCode>
+//     //                     <cac:TaxScheme>
+//     //                         <cbc:ID>${tributo.codigo_tributo}</cbc:ID>
+//     //                         <cbc:Name>${tributo.codigo}</cbc:Name>
+//     //                         <cbc:TaxTypeCode>${tributo.codigo_internacional}</cbc:TaxTypeCode>
+//     //                     </cac:TaxScheme>
+//     //                 </cac:TaxCategory>
+//     //             </cac:TaxSubtotal>
+//     //     `
+
+//     //     // --- ICBPER por bolsa --- //
+//     //     if (a.has_bolsa_tax == true) {
+//     //         xml += `
+//     //             <cac:TaxSubtotal>
+//     //                 <cbc:TaxAmount currencyID="${moneda}">${itemIcbPer.toFixed(2)}</cbc:TaxAmount>
+//     //                 <cbc:BaseUnitMeasure unitCode="NIU">${a.cantidad}</cbc:BaseUnitMeasure>
+//     //                 <cac:TaxCategory>
+//     //                     <cbc:PerUnitAmount currencyID="${moneda}">${icbper}</cbc:PerUnitAmount>
+//     //                     <cac:TaxScheme>
+//     //                         <cbc:ID schemeAgencyName="PE:SUNAT" schemeName="Codigo de tributos"
+//     //                             schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo05">7152</cbc:ID>
+//     //                         <cbc:Name>ICBPER</cbc:Name>
+//     //                         <cbc:TaxTypeCode>OTH</cbc:TaxTypeCode>
+//     //                     </cac:TaxScheme>
+//     //                 </cac:TaxCategory>
+//     //             </cac:TaxSubtotal>
+//     //         `
+//     //     }
+
+//     //     xml += `</cac:TaxTotal>`
+
+//     //     // --- Item y Price --- //
+//     //     const price_priceAmount = tributo.codigo_tributo == '9996' ? 0 : a.vu
+//     //     xml += `
+//     //         <cac:Item>
+//     //             <cbc:Description>${a.descripcion}</cbc:Description>
+//     //             <cac:SellersItemIdentification>
+//     //                 <cbc:ID>${a.codigo_producto}</cbc:ID>
+//     //             </cac:SellersItemIdentification>
+//     //             <cac:CommodityClassification>
+//     //                 <cbc:ItemClassificationCode>${a.codigo_sunat}</cbc:ItemClassificationCode>
+//     //             </cac:CommodityClassification>
+//     //         </cac:Item>
+//     //         <cac:Price>
+//     //             <cbc:PriceAmount currencyID="${moneda}">${price_priceAmount.toFixed(10)}</cbc:PriceAmount>
+//     //         </cac:Price>
+//     //     </cac:${tag_item}>
+//     //     `
+
+//     //     i++;
+//     // }
+
+//     const response = generateInvoiceTotals(items, moneda, cSistema.sistemaData.CATALOGO_TRIBUTOS_SUNAT)
+
+//     const builder1 = new Builder({ headless: true, rootName: 'cac:TaxTotal' })
+//     xml += builder1.buildObject(response['cac:TaxTotal'])
+
+//     const builder2 = new Builder({ headless: true, rootName: 'cac:LegalMonetaryTotal' })
+//     xml += builder2.buildObject(response['cac:LegalMonetaryTotal'])
+
+//     const builder3 = new Builder({ headless: true, rootName: 'cac:InvoiceLine' })
+//     for (const a of response.InvoiceLines) {
+//         xml += builder3.buildObject(a)
+//     }
+
+//     xml += `
+//     </Invoice>`
+//     return xml
+//     // return JSON.stringify(getInvoiceLine(items[0], moneda, cSistema.sistemaData.CATALOGO_TRIBUTOS_SUNAT))
+// }

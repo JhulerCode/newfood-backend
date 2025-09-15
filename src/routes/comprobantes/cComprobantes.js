@@ -53,7 +53,7 @@ const create = async (req, res) => {
         const { colaborador } = req.user
         const {
             fecha, doc_tipo, socio, pago_condicion, estado, monto,
-            total_gravada, total_exonerada, total_inafecta, total_igv,
+            total_gravada, total_exonerada, total_inafecta, total_igv, total_descuento,
             comprobante_items, transaccion, pago_metodos,
         } = req.body
 
@@ -106,7 +106,7 @@ const create = async (req, res) => {
             total_gratuito: 0,
             total_gratuito_igv: 0,
             total_igv: total_igv,
-            total_descuento: a.total_descuento,
+            total_descuento: total_descuento,
             total_bolsa: 0,
 
             nota: '',
@@ -126,20 +126,24 @@ const create = async (req, res) => {
                 igv_porcentaje: a.igv_porcentaje,
                 // descuento_tipo: a.descuento_tipo,
                 // descuento_valor: a.descuento_valor,
-
+                
+                i,
                 descripcion: a.nombre,
                 unidad: a.unidad,
                 cantidad: a.cantidad,
                 vu: a.vu,
-                igv_afectacion: a.igv_afectacion,
+                // igv_afectacion: a.igv_afectacion,
+                igv_afectacion: '12',
                 codigo_sunat: '-',
-                codigo_producto: `P00${i}`,
+                codigo: `P00${i}`,
                 has_bolsa_tax: false,
                 descuento_vu: a.descuento_vu,
 
                 // comprobante: nuevo.id,
                 createdBy: colaborador
             })
+
+            i++
         }
         send.items = items
         // await ComprobanteItem.bulkCreate(items, { transaction })
@@ -149,6 +153,8 @@ const create = async (req, res) => {
             crearXml(fileName, send)
             firmarXml(fileName)
             enviarSunat(fileName)
+            // firmarXml('20604051984-03-B001-33936.xml')
+            // enviarSunat('20604051984-03-B001-33936.xml')
         }
 
         throw error

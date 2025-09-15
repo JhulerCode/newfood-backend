@@ -1,5 +1,4 @@
 node_modules
 .env
-/sunat
 uploads
 src/database/initData.js

@@ -95,121 +95,40 @@ const sistemaData = {
         { id: '2', nombre: 'PROCESADO' },
     ],
 
-    tributos: {
-        "10": {
-            "codigo_tributo": "1000",
-            "codigo_internacional": "VAT",
-            "codigo": "IGV",
-            "nombre": "Gravado - Operación Onerosa"
-        },
-        "11": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Retiro por premio"
-        },
-        "12": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Retiro por donación"
-        },
-        "13": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Retiro"
-        },
-        "14": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Retiro por publicidad"
-        },
-        "15": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Bonificaciones"
-        },
-        "16": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – Retiro por entrega a trabajadores"
-        },
-        "17": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Gravado – IVAP"
-        },
-        "20": {
-            "codigo_tributo": "9997",
-            "codigo_internacional": "VAT",
-            "codigo": "EXO",
-            "nombre": "Exonerado - Operación Onerosa"
-        },
-        "21": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Exonerado – Transferencia Gratuita"
-        },
-        "30": {
-            "codigo_tributo": "9998",
-            "codigo_internacional": "FRE",
-            "codigo": "INA",
-            "nombre": "Inafecto - Operación Onerosa"
-        },
-        "31": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto – Retiro por Bonificación"
-        },
-        "32": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto – Retiro"
-        },
-        "33": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto – Retiro por Muestras Médicas"
-        },
-        "34": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto - Retiro por Convenio Colectivo"
-        },
-        "35": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto – Retiro por premio"
-        },
-        "36": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto - Retiro por publicidad"
-        },
-        "37": {
-            "codigo_tributo": "9996",
-            "codigo_internacional": "FRE",
-            "codigo": "GRA",
-            "nombre": "Inafecto - Retiro"
-        },
-        "40": {
-            "codigo_tributo": "9995",
-            "codigo_internacional": "FRE",
-            "codigo": "EXP",
-            "nombre": "Exportación"
-        }
+    CATALOGO_TRIBUTOS_SUNAT: {
+        // IGV
+        "10": { "codigo_tributo": "1000", "codigo_internacional": "VAT", "codigo": "IGV", "nombre": "Gravado - Operación Onerosa", "categoria_impuesto_id": "S" }, // Gravado [1]
+        "17": { "codigo_tributo": "1016", "codigo_internacional": "VAT", "codigo": "IVAP", "nombre": "Gravado - IVAP", "categoria_impuesto_id": "S" }, // IVAP, también puede ser 9996 [2]
+
+        // Retiros Gravados (comportamiento similar a 'Gravado' si aplica tax)
+        "11": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Retiro por premio", "categoria_impuesto_id": "S" }, // Gravado [2]
+        "12": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Retiro por donación", "categoria_impuesto_id": "S" }, // Gravado [2]
+        "13": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Retiro", "categoria_impuesto_id": "S" }, // Gravado [2]
+        "14": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Retiro por publicidad", "categoria_impuesto_id": "S" }, // Gravado [2]
+        "15": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Bonificaciones", "categoria_impuesto_id": "S" }, // Gravado [2]
+        "16": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Gravado – Retiro por entrega a trabajadores", "categoria_impuesto_id": "S" }, // Gravado [2]
+
+        // Exonerados
+        "20": { "codigo_tributo": "9997", "codigo_internacional": "VAT", "codigo": "EXO", "nombre": "Exonerado - Operación Onerosa", "categoria_impuesto_id": "E" }, // Exonerado [2, 67]
+        "21": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "GRA", "nombre": "Exonerado - Transferencia gratuita", "categoria_impuesto_id": "E" }, // Exonerado [2]
+
+        // Inafectos
+        "30": { "codigo_tributo": "9998", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto - Operación Onerosa", "categoria_impuesto_id": "O" }, // Inafecto [2, 73]
+        "31": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto – Retiro por Bonificación", "categoria_impuesto_id": "O" }, // Inafecto [2, 129]
+        "32": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto – Retiro", "categoria_impuesto_id": "O" }, // Inafecto [2]
+        "33": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto – Retiro por Muestras Médicas", "categoria_impuesto_id": "O" }, // Inafecto [2]
+        "34": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto - Retiro por Convenio Colectivo", "categoria_impuesto_id": "O" }, // Inafecto [2]
+        "35": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto – Retiro por premio", "categoria_impuesto_id": "O" }, // Inafecto [3]
+        "36": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto - Retiro por publicidad", "categoria_impuesto_id": "O" }, // Inafecto [3]
+        "37": { "codigo_tributo": "9996", "codigo_internacional": "FRE", "codigo": "INA", "nombre": "Inafecto - Transferencia gratuita", "categoria_impuesto_id": "O" }, // Inafecto [3]
+
+        // Exportación
+        "40": { "codigo_tributo": "9995", "codigo_internacional": "FRE", "codigo": "EXP", "nombre": "Exportación de Bienes o Servicios", "categoria_impuesto_id": "Z" }, // Exportación [3]
+
+        // Otros Tributos (se asumen códigos específicos, no de afectación IGV)
+        "ISC": { "codigo_tributo": "2000", "codigo_internacional": "EXC", "codigo": "ISC", "nombre": "Impuesto Selectivo al Consumo", "categoria_impuesto_id": "S" }, // ISC [4]
+        "ICBPER": { "codigo_tributo": "7152", "codigo_internacional": "OTH", "codigo": "ICBPER", "nombre": "Impuesto a la bolsa plastica", "categoria_impuesto_id": "O" }, // Bolsa Plástica [4]
+        "OTROS_TRIBUTOS": { "codigo_tributo": "9999", "codigo_internacional": "OTH", "codigo": "OTROS", "nombre": "Otros tributos", "categoria_impuesto_id": "S" } // Otros tributos [4]
     },
     ISC_SYSTEM_TYPE_MAP: {
         '01': 'Sistema al valor', // [20]
