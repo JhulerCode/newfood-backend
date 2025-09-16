@@ -77,7 +77,7 @@ const sistemaData = {
     ],
     pago_comprobantes: [
         { id: '01', nombre: 'FACTURA' },
-        { id: '03', nombre: 'BOLETA' },
+        { id: '03', nombre: 'BOLETA DE VENTA' },
         { id: 'NV', nombre: 'NOTA DE VENTA' },
     ],
     comprobante_estados: [

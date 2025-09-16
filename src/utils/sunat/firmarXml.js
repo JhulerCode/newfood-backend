@@ -55,7 +55,7 @@ export function firmarXml(fileName) {
 
         sig.computeSignature(unsignedXml, {
             prefix: 'ds',
-            attrs: { Id: "JdCodeSign" },
+            attrs: { Id: "SignJdCode" },
             location: {
                 reference: "//*[local-name(.)='ExtensionContent']",
                 action: "append",

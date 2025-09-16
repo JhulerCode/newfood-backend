@@ -10,16 +10,21 @@ import { Transaccion, TransaccionItem } from '../../database/models/Transaccion.
 import { Colaborador } from '../../database/models/Colaborador.js'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { DineroMovimiento } from "../../database/models/DineroMovimiento.js"
-import cSistema from "../_sistema/cSistema.js"
-import { applyFilters, numeroATexto } from '../../utils/mine.js'
 import { Mesa } from '../../database/models/Mesa.js'
 import { Salon } from '../../database/models/Salon.js'
 import { PagoMetodo } from '../../database/models/PagoMetodo.js'
-import PdfPrinter from 'pdfmake'
+import { applyFilters, numeroATexto } from '../../utils/mine.js'
+import cSistema from "../_sistema/cSistema.js"
 import dayjs from "dayjs"
-import { comprobanteHtml } from '../../utils/layouts.js'
-import { Resend } from 'resend'
+
+import PdfPrinter from 'pdfmake'
+import fs from "fs"
+import path from "path"
+import { fileURLToPath } from "url"
+
 import config from '../../config.js'
+import { Resend } from 'resend'
+import { comprobanteHtml } from '../../utils/layouts.js'
 
 import { crearXml } from '../../utils/sunat/crearXml.js'
 import { firmarXml } from '../../utils/sunat/firmarXml.js'
@@ -52,8 +57,9 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            fecha, doc_tipo, socio, pago_condicion, estado, monto,
-            total_gravada, total_exonerada, total_inafecta, total_igv, total_descuento,
+            fecha, doc_tipo, socio, pago_condicion, estado,
+            sub_total_ventas, anticipos, descuentos, valor_venta,
+            isc, igv, icbper, otros_cargos, otros_tributos, monto,
             comprobante_items, transaccion, pago_metodos,
         } = req.body
 
@@ -69,7 +75,6 @@ const create = async (req, res) => {
         const send = {
             socio,
             pago_condicion,
-            monto,
             transaccion: transaccion.id,
             caja_apertura: caja_apertura.id,
             estado,
@@ -99,16 +104,18 @@ const create = async (req, res) => {
             fecha_emision: fecha,
             hora_emision: dayjs().format('HH:mm:ss'),
             fecha_vencimiento: '',
-
             moneda: 'PEN',
-            // total_gravada: total_gravada,
-            // total_exonerada: total_exonerada,
-            // total_inafecta: total_inafecta,
-            // total_gratuito: 0,
-            // total_gratuito_igv: 0,
-            // total_igv: total_igv,
-            // total_descuento: total_descuento,
-            // total_bolsa: 0,
+
+            sub_total_ventas,
+            anticipos,
+            descuentos,
+            valor_venta,
+            isc,
+            igv,
+            icbper,
+            otros_cargos,
+            otros_tributos,
+            monto,
 
             nota: '',
 
@@ -513,8 +520,14 @@ async function getComprobante(id) {
     return data
 }
 
-function makePdf(doc) {
-    // console.log(doc)
+async function makePdf(doc) {
+    // --- LOGO --- //
+    let empresa = await Empresa.findByPk('1')
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = path.dirname(__filename)
+    const logoPath = path.join(__dirname, '..', '..', '..', 'uploads', empresa.logo)
+    const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
         { text: p.descripcion, style: 'tableItem', noWrap: false }, // permite saltos de línea
@@ -533,13 +546,6 @@ function makePdf(doc) {
     } else {
         doc.atencion = doc.venta_canal1.nombre
     }
-
-    // --- SUBTOTAL --- //
-    // doc.subtotal = (
-    //     Number(doc.venta_total_gravada) +
-    //     Number(doc.venta_total_exonerada) +
-    //     Number(doc.venta_total_inafecta)
-    // ).toFixed(2)
 
     // --- PAGOS --- //
     const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
@@ -574,6 +580,45 @@ function makePdf(doc) {
             }
             : null
 
+    // --- QR --- //
+    const qrStack = doc.doc_tipo == 'NV' ? null : {
+        qr: `${doc.empresa.ruc}|${doc.doc_tipo}|${doc.serie}|${doc.numero}|${doc.igv}|${doc.monto}|${doc.fecha_emision}|${doc.cliente.doc_tipo1.nombre}|${doc.cliente.doc_numero}|`,
+        fit: 120,
+        alignment: "center",
+        margin: [0, 10, 0, 10],
+    }
+
+    // --- SUNAT --- //
+    let sunatStack = null
+    if (doc.doc_tipo == '01') {
+        sunatStack = {
+            stack: [
+                {
+                    text: `Representacion impresa de la FACTURA ELECTRÓNICA`,
+                    style: 'empresa',
+                },
+                {
+                    text: `${doc.sunat_respuesta_descripcion}`,
+                    style: 'empresa',
+                },
+            ]
+        }
+    }
+    else if (doc.doc_tipo == '03') {
+        sunatStack = {
+            stack: [
+                {
+                    text: `Representacion impresa de la BOLETA DE VENTA ELECTRÓNICA`,
+                    style: 'empresa',
+                },
+                {
+                    text: `${doc.sunat_respuesta_descripcion}`,
+                    style: 'empresa',
+                },
+            ]
+        }
+    }
+
     // --- DEFINICIÓN DEL PDF --- //
     const docDefinition = {
         pageSize: {
@@ -584,6 +629,13 @@ function makePdf(doc) {
     }
 
     docDefinition.content = [
+        // --- LOGO --- //
+        {
+            image: 'data:image/png;base64,' + logoBase64, // el logo en base64
+            width: 100, // ajusta tamaño
+            alignment: "center", // opcional (left, center, right)
+            margin: [0, 0, 0, 10], // opcional: espacio abajo
+        },
         // --- EMPRESA --- //
         {
             stack: [
@@ -596,7 +648,7 @@ function makePdf(doc) {
         },
         // --- TIPO DE DOCUMENTO --- //
         {
-            stack: [doc.doc_tipo1.nombre, `${doc.serie}-${doc.numero}`],
+            stack: [`${doc.doc_tipo1.nombre} ELECTRÓNICA`, `${doc.serie}-${doc.numero}`],
             style: 'tipo_doc',
         },
         // --- CLIENTE --- //
@@ -616,7 +668,7 @@ function makePdf(doc) {
                     style: 'datosExtra',
                 },
                 {
-                    text: `DIRECCIÓN: ${doc.cliente.direccion}`,
+                    text: `DIRECCIÓN: ${doc.cliente.direccion || ""}`,
                     style: 'datosExtra',
                 },
             ],
@@ -656,37 +708,61 @@ function makePdf(doc) {
             stack: [
                 {
                     columns: [
-                        { text: 'OPE. GRAVADAS:', style: 'totalesLabel' },
-                        { text: doc.venta_total_gravada, style: 'totalesValue' },
+                        { text: 'Sub total ventas:', style: 'totalesLabel' },
+                        { text: doc.sub_total_ventas, style: 'totalesValue' },
+                    ],
+                },
+                // {
+                //     columns: [
+                //         { text: 'Anticipos:', style: 'totalesLabel' },
+                //         { text: doc.anticipos, style: 'totalesValue' },
+                //     ],
+                // },
+                {
+                    columns: [
+                        { text: 'Descuentos:', style: 'totalesLabel' },
+                        { text: doc.descuentos, style: 'totalesValue' },
                     ],
                 },
                 {
                     columns: [
-                        { text: 'OPE. EXONERDAS:', style: 'totalesLabel' },
-                        { text: doc.venta_total_exonerada, style: 'totalesValue' },
+                        { text: 'Valor venta:', style: 'totalesLabel' },
+                        { text: doc.valor_venta, style: 'totalesValue' },
                     ],
                 },
                 {
                     columns: [
-                        { text: 'OPE. INAFECTAS:', style: 'totalesLabel' },
-                        { text: doc.venta_total_inafecta, style: 'totalesValue' },
-                    ],
-                },
-                {
-                    columns: [
-                        { text: 'SUBTOTAL:', style: 'totalesLabel' },
-                        { text: doc.subtotal, style: 'totalesValue' },
+                        { text: 'ISC:', style: 'totalesLabel' },
+                        { text: doc.isc, style: 'totalesValue' },
                     ],
                 },
                 {
                     columns: [
                         { text: 'IGV:', style: 'totalesLabel' },
-                        { text: doc.venta_total_igv, style: 'totalesValue' },
+                        { text: doc.igv, style: 'totalesValue' },
                     ],
                 },
                 {
                     columns: [
-                        { text: 'TOTAL:', style: 'totalesLabel' },
+                        { text: 'ICBPER:', style: 'totalesLabel' },
+                        { text: doc.icbper, style: 'totalesValue' },
+                    ],
+                },
+                // {
+                //     columns: [
+                //         { text: 'Otros cargos:', style: 'totalesLabel' },
+                //         { text: doc.otros_cargos, style: 'totalesValue' },
+                //     ],
+                // },
+                // {
+                //     columns: [
+                //         { text: 'Otros tributos:', style: 'totalesLabel' },
+                //         { text: doc.otros_tributos, style: 'totalesValue' },
+                //     ],
+                // },
+                {
+                    columns: [
+                        { text: 'IMPORTE TOTAL:', style: 'totalesLabel' },
                         { text: doc.monto, style: 'totalesValue' },
                     ],
                 },
@@ -707,19 +783,22 @@ function makePdf(doc) {
         ...(pagosStack ? [pagosStack] : []),
         // --- DELIVERY --- //
         ...(deliveryStack ? [deliveryStack] : []),
-        // --- HASH COMPROBANTE SUNAT --- //
-        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa', margin: [0, 10, 0, 0] },
+        // --- QR --- //
+        ...(qrStack ? [qrStack] : []),
+        // --- SUNAT --- //
+        ...(sunatStack ? [sunatStack] : []),
+        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa', fontSize: 8, margin: [0, 10, 0, 0] },
     ]
 
     docDefinition.styles = {
         empresa: { fontSize: 10, alignment: 'center' },
         tipo_doc: { fontSize: 11, alignment: 'center', bold: true, margin: [0, 10, 0, 10] },
+        datosExtra: { fontSize: 10, margin: [0, 0, 0, 1] },
         cliente_datos: { fontSize: 10, alignment: 'left', margin: [0, 0, 0, 10] },
         tableHeader: { fontSize: 10, bold: true, margin: [0, 0, 0, 1] },
         tableItem: { fontSize: 10, margin: [0, 0, 0, 1] },
         totalesLabel: { fontSize: 10, margin: [0, 0, 0, 1] },
         totalesValue: { fontSize: 10, alignment: 'right', margin: [0, 0, 0, 1] },
-        datosExtra: { fontSize: 10, margin: [0, 0, 0, 1] },
     }
 
     const fonts = {

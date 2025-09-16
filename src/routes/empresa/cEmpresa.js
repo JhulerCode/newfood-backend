@@ -32,9 +32,9 @@ const update = async (req, res) => {
             logo, previous_logo,
             updatedBy: colaborador
         }
-        console.log(previous_logo)
+        // console.log(previous_logo)
         if (req.file) send.logo = req.file.filename
-        
+
         const [affectedRows] = await Empresa.update(
             send,
             {
@@ -47,7 +47,13 @@ const update = async (req, res) => {
                 deleteFile(previous_logo)
             }
 
-            const data = await Empresa.findByPk('1')
+            let data = await Empresa.findByPk('1')
+
+            if (data) {
+                data = data.toJSON()
+                data.previous_logo = data.logo
+            }
+
             res.json({ code: 0, data })
         }
         else {
