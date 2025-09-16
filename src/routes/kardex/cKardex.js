@@ -81,7 +81,7 @@ const find = async (req, res) => {
             comprobante1: {
                 model: Comprobante,
                 as: 'comprobante1',
-                attributes: ['id', 'venta_serie', 'venta_numero', 'serie_correlativo'],
+                attributes: ['id', 'serie', 'numero', 'serie_correlativo'],
                 include: [
                     {
                         model: Socio,

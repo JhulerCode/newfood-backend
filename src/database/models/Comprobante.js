@@ -7,7 +7,7 @@ import { Transaccion } from './Transaccion.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    empresa_telefono: { type: DataTypes.STRING },
+    // empresa_telefono: { type: DataTypes.STRING },
     socio: { type: DataTypes.STRING },
     pago_condicion: { type: DataTypes.STRING },
     monto: { type: DataTypes.DECIMAL(10, 2) },
@@ -18,6 +18,7 @@ export const Comprobante = sequelize.define('comprobantes', {
 
     empresa: { type: DataTypes.JSON },
     cliente: { type: DataTypes.JSON },
+    
     doc_tipo: { type: DataTypes.STRING },
     serie: { type: DataTypes.STRING },
     numero: { type: DataTypes.STRING },
@@ -25,11 +26,14 @@ export const Comprobante = sequelize.define('comprobantes', {
     hora_emision: { type: DataTypes.TIME },
     fecha_vencimiento: { type: DataTypes.STRING },
     moneda: { type: DataTypes.STRING },
-    total_gravada: { type: DataTypes.DECIMAL(10, 2) },
-    total_igv: { type: DataTypes.DECIMAL(10, 2) },
-    total_exonerada: { type: DataTypes.DECIMAL(10, 2) },
-    total_inafecta: { type: DataTypes.DECIMAL(10, 2) },
+    // total_gravada: { type: DataTypes.DECIMAL(10, 2) },
+    // total_igv: { type: DataTypes.DECIMAL(10, 2) },
+    // total_exonerada: { type: DataTypes.DECIMAL(10, 2) },
+    // total_inafecta: { type: DataTypes.DECIMAL(10, 2) },
     nota: { type: DataTypes.STRING },
+
+    sunat_respuesta_codigo: { type: DataTypes.STRING },
+    sunat_respuesta_descripcion: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
@@ -71,11 +75,11 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     unidad: { type: DataTypes.STRING },
     cantidad: { type: DataTypes.DOUBLE },
     vu: { type: DataTypes.DOUBLE },
-    tipo_igv_codigo: { type: DataTypes.STRING },
+    descuento_vu: { type: DataTypes.DOUBLE },
+    igv_afectacion: { type: DataTypes.STRING },
     codigo_sunat: { type: DataTypes.STRING },
-    codigo_producto: { type: DataTypes.STRING },
+    codigo: { type: DataTypes.STRING },
     has_bolsa_tax: { type: DataTypes.BOOLEAN },
-    descuento_precio_base: { type: DataTypes.DOUBLE },
 
     comprobante: { type: DataTypes.STRING },
 

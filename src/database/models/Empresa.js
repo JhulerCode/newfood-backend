@@ -16,6 +16,8 @@ export const Empresa = sequelize.define('empresas', {
 
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
+    logo: { type: DataTypes.STRING },
+    certificado_digital_tributario: { type: DataTypes.STRING },
 
     pc_principal_ip: { type: DataTypes.STRING },
     igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },

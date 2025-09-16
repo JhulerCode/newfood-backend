@@ -83,8 +83,9 @@ const sistemaData = {
     comprobante_estados: [
         { id: '0', nombre: 'ANULADO' },
         { id: '1', nombre: 'SIN ENVIAR' },
-        { id: '2', nombre: 'ACEPTADO' },
-        { id: '3', nombre: 'CANJEADO' },
+        { id: '2', nombre: 'ENVIADO' },
+        { id: '3', nombre: 'ACEPTADO' },
+        { id: '4', nombre: 'CANJEADO' },
     ],
     caja_apertura_estados: [
         { id: '1', nombre: 'ABIERTO' },
@@ -130,6 +131,7 @@ const sistemaData = {
         "ICBPER": { "codigo_tributo": "7152", "codigo_internacional": "OTH", "codigo": "ICBPER", "nombre": "Impuesto a la bolsa plastica", "categoria_impuesto_id": "O" }, // Bolsa Plástica [4]
         "OTROS_TRIBUTOS": { "codigo_tributo": "9999", "codigo_internacional": "OTH", "codigo": "OTROS", "nombre": "Otros tributos", "categoria_impuesto_id": "S" } // Otros tributos [4]
     },
+    bolsa_tax_unit_amount: 0.5
 }
 
 function arrayMap(array) {

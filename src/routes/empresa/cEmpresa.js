@@ -1,35 +1,52 @@
 import { Empresa } from '../../database/models/Empresa.js'
+import { deleteFile } from '../../utils/uploadFiles.js'
 import fs from "fs"
 import forge from "node-forge"
 
 const update = async (req, res) => {
     try {
-        const { id } = req.params
         const { colaborador } = req.user
+        const { id } = req.params
+
+        if (req.body.datos) {
+            const datos = JSON.parse(req.body.datos)
+            req.body = { ...datos }
+        }
+
         const {
             ruc, razon_social, nombre_comercial,
             domicilio_fiscal, ubigeo,
             urbanizacion, distrito, provincia, departamento,
             telefono, correo,
             pc_principal_ip, igv_porcentaje,
+            logo, previous_logo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
+        const send = {
+            ruc, razon_social, nombre_comercial,
+            domicilio_fiscal, ubigeo,
+            urbanizacion, distrito, provincia, departamento,
+            telefono, correo,
+            pc_principal_ip, igv_porcentaje,
+            logo, previous_logo,
+            updatedBy: colaborador
+        }
+        console.log(previous_logo)
+        if (req.file) send.logo = req.file.filename
+        
         const [affectedRows] = await Empresa.update(
-            {
-                ruc, razon_social, nombre_comercial,
-                domicilio_fiscal, ubigeo,
-                urbanizacion, distrito, provincia, departamento,
-                telefono, correo,
-                pc_principal_ip, igv_porcentaje,
-                updatedBy: colaborador
-            },
+            send,
             {
                 where: { id },
             }
         )
 
         if (affectedRows > 0) {
+            if (send.logo != previous_logo && previous_logo != null) {
+                deleteFile(previous_logo)
+            }
+
             const data = await Empresa.findByPk('1')
             res.json({ code: 0, data })
         }
@@ -44,7 +61,12 @@ const update = async (req, res) => {
 
 const findById = async (req, res) => {
     try {
-        const data = await Empresa.findByPk('1')
+        let data = await Empresa.findByPk('1')
+
+        if (data) {
+            data = data.toJSON()
+            data.previous_logo = data.logo
+        }
 
         res.json({ code: 0, data })
     }

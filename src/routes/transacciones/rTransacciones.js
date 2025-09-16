@@ -44,6 +44,7 @@ router.delete(
     '/:id',
     verifyPermiso([
         'vCompras:eliminar',
+        'vPedidos:eliminar',
     ]),
     controller.delet
 )

@@ -7,7 +7,7 @@ const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
-        attributes: ['venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'venta_fecha_emision', 'estado']
+        attributes: ['doc_tipo', 'serie', 'numero', 'fecha_emision', 'estado']
     },
     articulo1: {
         model: Articulo,
@@ -46,19 +46,19 @@ const find = async (req, res) => {
                 Object.assign(findProps.where, applyFilters(qry.fltr))
 
                 if (fltr1.comprobante_fecha) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.venta_fecha_emision$': fltr1.comprobante_fecha }))
+                    Object.assign(findProps.where, applyFilters({ '$comprobante1.fecha_emision$': fltr1.comprobante_fecha }))
                 }
 
                 if (fltr1.comprobante_tipo) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.venta_tipo_documento_codigo$': fltr1.comprobante_tipo }))
+                    Object.assign(findProps.where, applyFilters({ '$comprobante1.doc_tipo$': fltr1.comprobante_tipo }))
                 }
 
                 if (fltr1.comprobante_serie) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.venta_serie$': fltr1.comprobante_serie }))
+                    Object.assign(findProps.where, applyFilters({ '$comprobante1.serie$': fltr1.comprobante_serie }))
                 }
 
                 if (fltr1.comprobante_correlativo) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.venta_numero$': fltr1.comprobante_correlativo }))
+                    Object.assign(findProps.where, applyFilters({ '$comprobante1.numero$': fltr1.comprobante_correlativo }))
                 }
 
                 if (fltr1.comprobante_estado) {
@@ -87,7 +87,7 @@ const find = async (req, res) => {
             const comprobante_estadosMap = cSistema.arrayMap('comprobante_estados')
 
             for (const a of data) {
-                a.comprobante1.venta_tipo_documento_codigo1 = pago_comprobantesMap[a.comprobante1.venta_tipo_documento_codigo]
+                a.comprobante1.venta_tipo_documento_codigo1 = pago_comprobantesMap[a.comprobante1.doc_tipo]
                 a.comprobante_estado1 = comprobante_estadosMap[a.comprobante1.estado]
                 a.comprobante_estado = a.comprobante_estado1.id
 

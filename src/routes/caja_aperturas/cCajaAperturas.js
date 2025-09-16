@@ -248,7 +248,7 @@ const findResumen = async (req, res) => {
         send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
 
         const comprobantes = await Comprobante.findAll({
-            attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
+            attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
             order: [['createdAt', 'DESC']],
             where: {
                 caja_apertura: id,
@@ -257,12 +257,12 @@ const findResumen = async (req, res) => {
                 {
                     model: ComprobanteItem,
                     as: 'comprobante_items',
-                    attributes: ['id', 'articulo', 'producto', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+                    attributes: ['id', 'articulo', 'descripcion', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
                 },
                 {
                     model: Comprobante,
                     as: 'canjeado_por1',
-                    attributes: ['id', 'venta_tipo_documento_codigo', 'venta_serie', 'venta_numero', 'serie_correlativo'],
+                    attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
                 },
                 {
                     model: Transaccion,
@@ -277,13 +277,13 @@ const findResumen = async (req, res) => {
 
         for (const a of comprobantes) {
             // --- ACEPTADOS --- //
-            if (a.estado == 1) {
+            if (['1', '2', '3'].includes(a.estado)) {
                 // --- TIPOS DE COMPROBANTES --- //
-                const i = send.venta_comprobantes.findIndex(b => b.id == a.venta_tipo_documento_codigo)
+                const i = send.venta_comprobantes.findIndex(b => b.id == a.doc_tipo)
                 if (i === -1) {
                     send.venta_comprobantes.push({
-                        id: a.venta_tipo_documento_codigo,
-                        nombre: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                        id: a.doc_tipo,
+                        nombre: pago_comprobantesMap[a.doc_tipo].nombre,
                         monto: Number(a.monto),
                         cantidad: 1
                     })
@@ -309,10 +309,10 @@ const findResumen = async (req, res) => {
 
                 // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
-
+                console.log(1, a)
                 send.comprobantes_aceptados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
                     monto: Number(a.monto),
                 })
 
@@ -331,7 +331,7 @@ const findResumen = async (req, res) => {
                     if (k === -1) {
                         send.productos.push({
                             id: b.articulo,
-                            nombre: b.producto,
+                            nombre: b.descripcion,
                             cantidad: Number(b.cantidad),
                             monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
@@ -364,7 +364,7 @@ const findResumen = async (req, res) => {
 
                 send.comprobantes_anulados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
                     monto: Number(a.monto),
                 })
 
@@ -383,7 +383,7 @@ const findResumen = async (req, res) => {
                     if (k === -1) {
                         send.productos_anulados.push({
                             id: b.articulo,
-                            nombre: b.producto,
+                            nombre: b.descripcion,
                             cantidad: Number(b.cantidad),
                             monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
@@ -398,11 +398,11 @@ const findResumen = async (req, res) => {
             }
 
             // --- CANJEADOS --- //
-            if (a.estado == 3) {
+            if (a.estado == 4) {
                 // --- COMPROBANTES --- //
                 send.comprobantes_canjeados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.venta_tipo_documento_codigo].nombre,
+                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
                     monto: Number(a.monto),
                     canjeado_por: a.canjeado_por1.serie_correlativo
                 })

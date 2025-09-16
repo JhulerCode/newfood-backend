@@ -5,8 +5,6 @@ import cSistema from "../../routes/_sistema/cSistema.js"
 import { Builder } from "xml2js"
 
 // --- Variables generales --- //
-const bolsa_tax_unit_amount = 0.50
-
 export function crearXml(fileName, doc) {
     try {
         const __filename = fileURLToPath(import.meta.url)
@@ -40,18 +38,15 @@ export function crearXml(fileName, doc) {
 
 function desarrolloXml(doc) {
     const {
-        pago_condicion,
+        pago_condicion, monto,
         empresa, cliente,
         doc_tipo, serie, numero, fecha_emision, hora_emision, fecha_vencimiento,
-        moneda, total_gravada, total_exonerada, total_inafecta,
-        total_gratuito, total_gratuito_igv, total_igv, total_bolsa,
-        total_descuento,
+        moneda,
         orden_compra, guias_adjuntas,
         items,
     } = doc
 
     const local_anexo = '0000'
-    const total_a_pagar = total_gravada + total_exonerada + total_inafecta + total_igv + total_bolsa
 
     let linea_inicio = ''
     let InvoiceTypeCode = ''
@@ -228,7 +223,7 @@ function desarrolloXml(doc) {
             <cac:PaymentTerms>
                 <cbc:ID>FormaPago</cbc:ID>
                 <cbc:PaymentMeansID>Credito</cbc:PaymentMeansID>
-                <cbc:Amount currencyID="${moneda}">${total_a_pagar}</cbc:Amount>
+                <cbc:Amount currencyID="${moneda}">${monto}</cbc:Amount>
             </cac:PaymentTerms>
             `
 
@@ -274,11 +269,10 @@ function desarrolloXml(doc) {
 
     xml += `</Invoice>`
 
-    // xml = JSON.stringify(response)
     return xml
 }
 
-function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
+function generateInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, bolsa_tax_unit_amount) {
     const tributosCatalog = CATALOGO_TRIBUTOS_SUNAT;
 
     // --- 1. Aplicar valores por defecto al producto --- //
@@ -604,7 +598,7 @@ function getInvoiceLine(product, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT) {
         //     "cbc:ItemClassificationCode": product.codigo_sunat
         // }
     }
-    
+
     send["cac:Price"] = {
         "cbc:PriceAmount": {
             "$": { "currencyID": CURRENCY_ID },
@@ -619,7 +613,7 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
     let totalLineExtensionAmount = 0;    // Suma de cbc:LineExtensionAmount de todas las InvoiceLines
     let totalTaxAmountInvoice = 0;       // Suma de cbc:TaxAmount de todos los cac:TaxTotal a nivel de ítem
     let totalAllowanceAmount = globalAllowanceAmount; // Descuentos globales + suma de descuentos por ítem
-    let totalChargeAmount = globalChargeAmount;     // Cargos globales (asumiendo que getInvoiceLine no produce cargos por ítem en este contexto)
+    let totalChargeAmount = globalChargeAmount;     // Cargos globales (asumiendo que generateInvoiceLine no produce cargos por ítem en este contexto)
 
     const InvoiceLines = []
     // Mapa para agregar los TaxSubtotals por ID de esquema tributario (codigo_tributo)
@@ -627,7 +621,7 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
 
     let i = 1
     for (const item of items) {
-        const line = getInvoiceLine(item, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT)
+        const line = generateInvoiceLine(item, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, cSistema.sistemaData.bolsa_tax_unit_amount)
         InvoiceLines.push(line)
         i = i + 1
 
@@ -640,7 +634,7 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
         totalTaxAmountInvoice += parseFloat(line["cac:TaxTotal"]["cbc:TaxAmount"]["_"])
         // }
 
-        // 3. Acumular los descuentos a nivel de ítem (getInvoiceLine genera ChargeIndicator: false para descuentos)
+        // 3. Acumular los descuentos a nivel de ítem (generateInvoiceLine genera ChargeIndicator: false para descuentos)
         if (line["cac:AllowanceCharge"]) {
             totalAllowanceAmount += parseFloat(line["cac:AllowanceCharge"]["cbc:Amount"]["_"]);
         }
@@ -730,7 +724,8 @@ function generateInvoiceTotals(items, CURRENCY_ID, CATALOGO_TRIBUTOS_SUNAT, glob
         },
         "cbc:AllowanceTotalAmount": {
             "$": { "currencyID": CURRENCY_ID },
-            "_": totalAllowanceAmount.toFixed(2)
+            "_": globalAllowanceAmount.toFixed(2)
+            // "_": totalAllowanceAmount.toFixed(2)
         },
         "cbc:ChargeTotalAmount": {
             "$": { "currencyID": CURRENCY_ID },
