@@ -7,9 +7,9 @@ export const Empresa = sequelize.define('empresas', {
     ruc: { type: DataTypes.STRING },
     razon_social: { type: DataTypes.STRING },
     nombre_comercial: { type: DataTypes.STRING },
+    
     domicilio_fiscal: { type: DataTypes.STRING },
     ubigeo: { type: DataTypes.STRING },
-    urbanizacion: { type: DataTypes.STRING },
     distrito: { type: DataTypes.STRING },
     provincia: { type: DataTypes.STRING },
     departamento: { type: DataTypes.STRING },
@@ -17,10 +17,14 @@ export const Empresa = sequelize.define('empresas', {
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
     logo: { type: DataTypes.STRING },
-    certificado_digital_tributario: { type: DataTypes.STRING },
+
+    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
+    sol_usuario: { type: DataTypes.STRING },
+    sol_clave: { type: DataTypes.STRING },
+    cdt_clave: { type: DataTypes.STRING },
+    cdt: { type: DataTypes.STRING },
 
     pc_principal_ip: { type: DataTypes.STRING },
-    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
 
     updatedBy: { type: DataTypes.STRING }
 })

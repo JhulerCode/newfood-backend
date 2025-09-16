@@ -1,27 +1,18 @@
 import fs from "fs"
 import path from "path"
-import { fileURLToPath } from 'url'
 import cSistema from "../../routes/_sistema/cSistema.js"
+import { pathXml } from '../../utils/uploadFiles.js'
 import { Builder } from "xml2js"
 
 // --- Variables generales --- //
 export function crearXml(fileName, doc) {
     try {
-        const __filename = fileURLToPath(import.meta.url)
-        const __dirname = path.dirname(__filename)
-        const carpeta = path.join(__dirname, '..', '..', '..', 'sunat', 'xml')
-
         // Crear carpeta si no existe
-        if (!fs.existsSync(carpeta)) {
-            fs.mkdirSync(carpeta, { recursive: true })
-        }
-
-        const ruta = path.join(carpeta, fileName)
+        if (!fs.existsSync(pathXml)) fs.mkdirSync(pathXml, { recursive: true })
+        const ruta = path.join(pathXml, fileName)
 
         // Si ya existe, eliminarlo
-        if (fs.existsSync(ruta)) {
-            fs.unlinkSync(ruta)
-        }
+        if (fs.existsSync(ruta)) fs.unlinkSync(ruta)
 
         const xml = desarrolloXml(doc)
 
@@ -121,7 +112,7 @@ function desarrolloXml(doc) {
             xml += `
             <cac:OrderReference>
                 <cbc:ID>${orden_compra}</cbc:ID>
-            </cac:OrderReference>';
+            </cac:OrderReference>
             `
         }
     }

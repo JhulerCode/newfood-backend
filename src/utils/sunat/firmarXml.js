@@ -1,46 +1,37 @@
 import fs from "fs";
-import { SignedXml } from "xml-crypto"
+import { pathXml, pathSunat } from '../../utils/uploadFiles.js'
 import path from "path"
-import { fileURLToPath } from 'url'
+import { SignedXml } from "xml-crypto"
+import { DOMParser } from '@xmldom/xmldom'
 
-// --- Definir ruta --- //
-function setRuta(fileName) {
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = path.dirname(__filename)
-    const carpeta = path.join(__dirname, '..', '..', '..', 'sunat', 'xml')
-    return path.join(carpeta, fileName)
-}
-
-function setRuta2(fileName) {
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = path.dirname(__filename)
-    const carpeta = path.join(__dirname, '..', '..', '..', 'sunat')
-    return path.join(carpeta, fileName)
-}
-
-// --- Leer XML --- //
-function leerXml(fileName) {
-    try {
-        return fs.readFileSync(setRuta(fileName), "utf8");
-    } catch (err) {
-        throw new Error(`Error leyendo XML: ${err.message}`);
-    }
-}
+// // --- Leer XML --- //
+// function leerXml(fileName) {
+//     try {
+//         const ruta = path.join(pathXml, fileName)
+//         return fs.readFileSync(ruta, "utf8")
+//     } catch (err) {
+//         throw new Error(`Error leyendo XML: ${err.message}`)
+//     }
+// }
 
 export function firmarXml(fileName) {
     try {
         // 1️⃣ Leer XML
-        const unsignedXml = leerXml(fileName)
+        // const unsignedXml = leerXml(fileName)
+        const rutaUnsignedXml = path.join(pathXml, fileName)
+        const unsignedXml = fs.readFileSync(rutaUnsignedXml, "utf8")
+        const rutaCert = path.join(pathSunat, 'cert.pem')
+        const rutaKey = path.join(pathSunat, 'private_key.pem')
 
         const options = {
-            publicCert: fs.readFileSync(setRuta2("cert.pem"), "utf8"),
-            privateKey: fs.readFileSync(setRuta2("private_key.pem")),
+            publicCert: fs.readFileSync(rutaCert, "utf8"),
+            privateKey: fs.readFileSync(rutaKey),
             // signatureAlgorithm: "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256",
             signatureAlgorithm: "http://www.w3.org/2000/09/xmldsig#rsa-sha1",
             canonicalizationAlgorithm: "http://www.w3.org/TR/2001/REC-xml-c14n-20010315",
         };
 
-        var sig = new SignedXml(options);
+        var sig = new SignedXml(options)
 
         sig.addReference({
             xpath: "/*[local-name(.)='Invoice']",
@@ -62,7 +53,17 @@ export function firmarXml(fileName) {
             },
         });
 
-        fs.writeFileSync(setRuta(fileName), sig.getSignedXml(), "utf8")
+        // --- XML firmado ---
+        const signedXml = sig.getSignedXml()
+
+        // --- Obtener solo el SignatureValue ---
+        const doc = new DOMParser().parseFromString(signedXml, "application/xml")
+        const signatureValue = doc.getElementsByTagName("ds:DigestValue")[0].textContent
+
+        const ruta = path.join(pathXml, fileName)
+        fs.writeFileSync(ruta, signedXml, "utf8")
+
+        return signatureValue
     } catch (err) {
         console.error("❌ Error al firmar XML:", err.message)
         throw err

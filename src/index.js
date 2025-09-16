@@ -3,7 +3,7 @@ import cors from 'cors'
 import config from './config.js'
 import routes from './routes/index.js'
 import connDb from './database/connect.js'
-import { uploadsPath } from './utils/uploadFiles.js'
+import { pathUploads } from './utils/uploadFiles.js'
 
 const app = express()
 
@@ -15,7 +15,7 @@ const corsOptions = {
 app.use(cors(corsOptions))
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))
-app.use('/uploads', express.static(uploadsPath))
+app.use('/uploads', express.static(pathUploads))
 app.set('port', process.env.PORT || 3000)
 
 // --- RUTAS --- //

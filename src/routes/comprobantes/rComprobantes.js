@@ -20,6 +20,14 @@ router.get(
     controller.getPdf
 )
 
+router.get(
+    '/xml/:id',
+    verifyPermiso([
+        'vReporteComprobantes:descargarXml',
+    ]),
+    controller.downloadXml
+)
+
 router.post(
     '/send-mail',
     verifyPermiso([

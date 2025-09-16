@@ -1,7 +1,26 @@
 import { Empresa } from '../../database/models/Empresa.js'
-import { deleteFile } from '../../utils/uploadFiles.js'
+import { pathSunat, deleteFile } from '../../utils/uploadFiles.js'
+import path from "path"
 import fs from "fs"
 import forge from "node-forge"
+
+const findById = async (req, res) => {
+    try {
+        let data = await Empresa.findByPk('1', {
+            attributes: { exclude: ['cdt', 'cdt_clave'] }
+        })
+
+        if (data) {
+            data = data.toJSON()
+            data.previous_logo = data.logo
+        }
+
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
 
 const update = async (req, res) => {
     try {
@@ -15,21 +34,19 @@ const update = async (req, res) => {
 
         const {
             ruc, razon_social, nombre_comercial,
-            domicilio_fiscal, ubigeo,
-            urbanizacion, distrito, provincia, departamento,
-            telefono, correo,
-            pc_principal_ip, igv_porcentaje,
-            logo, previous_logo,
+            domicilio_fiscal, ubigeo, distrito, provincia, departamento,
+            telefono, correo, logo, previous_logo,
+            igv_porcentaje, sol_usuario, sol_clave,
+            pc_principal_ip,
         } = req.body
 
         // --- ACTUALIZAR --- //
         const send = {
             ruc, razon_social, nombre_comercial,
-            domicilio_fiscal, ubigeo,
-            urbanizacion, distrito, provincia, departamento,
-            telefono, correo,
-            pc_principal_ip, igv_porcentaje,
-            logo, previous_logo,
+            domicilio_fiscal, ubigeo, distrito, provincia, departamento,
+            telefono, correo, logo, previous_logo,
+            igv_porcentaje, sol_usuario, sol_clave,
+            pc_principal_ip,
             updatedBy: colaborador
         }
         // console.log(previous_logo)
@@ -65,32 +82,66 @@ const update = async (req, res) => {
     }
 }
 
-const findById = async (req, res) => {
+const updateCdt = async (req, res) => {
     try {
-        let data = await Empresa.findByPk('1')
+        const { colaborador } = req.user
+        const { id } = req.params
 
-        if (data) {
-            data = data.toJSON()
-            data.previous_logo = data.logo
+        if (req.body.datos) {
+            const datos = JSON.parse(req.body.datos)
+            req.body = { ...datos }
         }
 
-        res.json({ code: 0, data })
+        const {
+            cdt, cdt_clave,
+        } = req.body
+
+
+        // --- ACTUALIZAR --- //
+        const send = {
+            cdt, cdt_clave,
+            updatedBy: colaborador
+        }
+
+        if (req.file) send.cdt = req.file.filename
+
+        const [affectedRows] = await Empresa.update(
+            send,
+            {
+                where: { id },
+            }
+        )
+
+        if (affectedRows > 0) {
+            // if (send.cdt != previous_cdt && previous_cdt != null) {
+            //     deleteFile(previous_cdt)
+            // }
+            if (req.file) {
+                convertToPem(req.file.filename)
+            }
+
+            res.json({ code: 0 })
+        }
+        else {
+            res.json({ code: 1, msg: 'No se actualizó ningún registro' })
+        }
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-function convertToPem() {
+function convertToPem(fileName) {
     // === 1. Cargar PFX ===
-    const pfxData = fs.readFileSync("./certificado.pfx", "binary");
-    const password = "2801";
+    const ruta = path.join(pathSunat, fileName)
+    const pfxData = fs.readFileSync(ruta, "binary")
+    const password = "2801"
 
-    const p12Asn1 = forge.asn1.fromDer(pfxData);
-    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password);
+    const p12Asn1 = forge.asn1.fromDer(pfxData)
+    const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password)
 
     // === 2. Extraer clave y certificado ===
-    let privateKeyPem, certificatePem;
+    let privateKeyPem, certificatePem
 
     for (const safeContent of p12.safeContents) {
         for (const safeBag of safeContent.safeBags) {
@@ -100,21 +151,24 @@ function convertToPem() {
                     forge.pki.wrapRsaPrivateKey(forge.pki.privateKeyToAsn1(safeBag.key))
                 )
                 // Convertir clave a PKCS#1
-                // privateKeyPem = forge.pki.privateKeyToPem(safeBag.key);
+                // privateKeyPem = forge.pki.privateKeyToPem(safeBag.key)
             } else if (safeBag.type === forge.pki.oids.certBag) {
-                certificatePem = forge.pki.certificateToPem(safeBag.cert);
+                certificatePem = forge.pki.certificateToPem(safeBag.cert)
             }
         }
     }
 
     // === 3. Guardar archivos ===
-    fs.writeFileSync("./private_key.pem", privateKeyPem);
-    fs.writeFileSync("./cert.pem", certificatePem);
+    const rutaCert = path.join(pathSunat, './cert.pem')
+    const rutaKey = path.join(pathSunat, './private_key.pem')
+    fs.writeFileSync(rutaCert, certificatePem)
+    fs.writeFileSync(rutaKey, privateKeyPem)
 
-    console.log("✅ Clave y certificado extraídos correctamente");
+    console.log("✅ Clave y certificado extraídos correctamente")
 }
 
 export default {
     findById,
     update,
+    updateCdt
 }

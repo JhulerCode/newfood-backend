@@ -18,9 +18,9 @@ import cSistema from "../_sistema/cSistema.js"
 import dayjs from "dayjs"
 
 import PdfPrinter from 'pdfmake'
+import { pathXml, getFilePath } from '../../utils/uploadFiles.js'
 import fs from "fs"
 import path from "path"
-import { fileURLToPath } from "url"
 
 import config from '../../config.js'
 import { Resend } from 'resend'
@@ -158,14 +158,15 @@ const create = async (req, res) => {
         if (['01', '03'].includes(doc_tipo)) {
             const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
             crearXml(fileName, send)
-            firmarXml(fileName)
+            const hash = firmarXml(fileName)
             const sunat_respuesta = await enviarSunat(fileName)
 
             await Comprobante.update(
                 {
+                    hash,
                     estado: sunat_respuesta.tipo == 'cdr' ? 3 : 2,
                     sunat_respuesta_codigo: sunat_respuesta.codigo,
-                    sunat_respuesta_descripcion: sunat_respuesta.descripcion
+                    sunat_respuesta_descripcion: sunat_respuesta.descripcion,
                 },
                 {
                     where: { id: nuevo.id },
@@ -523,9 +524,7 @@ async function getComprobante(id) {
 async function makePdf(doc) {
     // --- LOGO --- //
     let empresa = await Empresa.findByPk('1')
-    const __filename = fileURLToPath(import.meta.url)
-    const __dirname = path.dirname(__filename)
-    const logoPath = path.join(__dirname, '..', '..', '..', 'uploads', empresa.logo)
+    const logoPath = getFilePath(empresa.logo)
     const logoBase64 = fs.readFileSync(logoPath).toString("base64");
 
     // --- TABLE ITEMS --- //
@@ -598,7 +597,7 @@ async function makePdf(doc) {
                     style: 'empresa',
                 },
                 {
-                    text: `${doc.sunat_respuesta_descripcion}`,
+                    text: `${doc.hash}`,
                     style: 'empresa',
                 },
             ]
@@ -612,7 +611,7 @@ async function makePdf(doc) {
                     style: 'empresa',
                 },
                 {
-                    text: `${doc.sunat_respuesta_descripcion}`,
+                    text: `${doc.hash}`,
                     style: 'empresa',
                 },
             ]
@@ -632,7 +631,7 @@ async function makePdf(doc) {
         // --- LOGO --- //
         {
             image: 'data:image/png;base64,' + logoBase64, // el logo en base64
-            width: 100, // ajusta tamaño
+            fit: [65 * 2.83465, 45 * 2.83465], // ajusta tamaño
             alignment: "center", // opcional (left, center, right)
             margin: [0, 0, 0, 10], // opcional: espacio abajo
         },
@@ -821,6 +820,19 @@ async function makePdf(doc) {
         pdfDoc.on("error", reject)
         pdfDoc.end()
     })
+}
+
+const downloadXml = async (req, res) => {
+    const { id } = req.params
+    const filePath = path.join(pathXml, id)
+
+    const exists = fs.existsSync(filePath)
+    if (exists) {
+        res.sendFile(filePath)    
+    }
+    else {
+        res.status(404).json({ msg: 'Archivo no encontrado' })
+    }
 }
 
 const actualizarPago = async (req, res) => {
@@ -1248,6 +1260,7 @@ export default {
     find,
     getPdf,
     sendMail,
+    downloadXml,
     actualizarPago,
     anular,
     canjear,
