@@ -1,6 +1,7 @@
 import signin from './_signin/signin.js'
 import sistema from './_sistema/rSistema.js'
 import verifyToken from '../middlewares/verifyToken.js'
+import decolecta from '../routes/_decolecta/rDecolecta.js'
 
 import articulo_categorias from './articulo_categorias/rArticuloCategorias.js'
 import articulos from './articulos/rArticulos.js'
@@ -31,6 +32,7 @@ function routes(app) {
     app.use('/signin', signin)
     app.use('/api', verifyToken)
     app.use('/api/sistema', sistema)
+    app.use('/api/decolecta', decolecta)
 
     app.use('/api/articulo_categorias', articulo_categorias)
     app.use('/api/articulos', articulos)
