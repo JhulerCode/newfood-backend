@@ -103,7 +103,7 @@ const create = async (req, res) => {
             numero: pago_comprobante.correlativo,
             fecha_emision: fecha,
             hora_emision: dayjs().format('HH:mm:ss'),
-            fecha_vencimiento: '',
+            fecha_vencimiento: null,
             moneda: 'PEN',
 
             sub_total_ventas,
@@ -418,6 +418,23 @@ const find = async (req, res) => {
     }
 }
 
+const findById = async (req, res) => {
+    try {
+        const { id } = req.params
+        const data = await getComprobante(id)
+        data.total_letras = numeroATexto(data.monto)
+        data.moneda1 = {
+            plural: 'SOLES',
+            singular: 'SOL'
+        }
+
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const getPdf = async (req, res) => {
     try {
         const { id } = req.params
@@ -582,7 +599,7 @@ async function makePdf(doc) {
     // --- QR --- //
     const qrStack = doc.doc_tipo == 'NV' ? null : {
         qr: `${doc.empresa.ruc}|${doc.doc_tipo}|${doc.serie}|${doc.numero}|${doc.igv}|${doc.monto}|${doc.fecha_emision}|${doc.cliente.doc_tipo1.nombre}|${doc.cliente.doc_numero}|`,
-        fit: 120,
+        fit: 100,
         alignment: "center",
         margin: [0, 10, 0, 10],
     }
@@ -729,24 +746,24 @@ async function makePdf(doc) {
                         { text: doc.valor_venta, style: 'totalesValue' },
                     ],
                 },
-                {
-                    columns: [
-                        { text: 'ISC:', style: 'totalesLabel' },
-                        { text: doc.isc, style: 'totalesValue' },
-                    ],
-                },
+                // {
+                //     columns: [
+                //         { text: 'ISC:', style: 'totalesLabel' },
+                //         { text: doc.isc, style: 'totalesValue' },
+                //     ],
+                // },
                 {
                     columns: [
                         { text: 'IGV:', style: 'totalesLabel' },
                         { text: doc.igv, style: 'totalesValue' },
                     ],
                 },
-                {
-                    columns: [
-                        { text: 'ICBPER:', style: 'totalesLabel' },
-                        { text: doc.icbper, style: 'totalesValue' },
-                    ],
-                },
+                // {
+                //     columns: [
+                //         { text: 'ICBPER:', style: 'totalesLabel' },
+                //         { text: doc.icbper, style: 'totalesValue' },
+                //     ],
+                // },
                 // {
                 //     columns: [
                 //         { text: 'Otros cargos:', style: 'totalesLabel' },
@@ -828,7 +845,7 @@ const downloadXml = async (req, res) => {
 
     const exists = fs.existsSync(filePath)
     if (exists) {
-        res.sendFile(filePath)    
+        res.sendFile(filePath)
     }
     else {
         res.status(404).json({ msg: 'Archivo no encontrado' })
@@ -1258,6 +1275,7 @@ function calcularUno(item) {
 export default {
     create,
     find,
+    findById,
     getPdf,
     sendMail,
     downloadXml,

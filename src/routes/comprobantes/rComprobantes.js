@@ -13,6 +13,12 @@ router.get(
 )
 
 router.get(
+    '/uno/:id',
+    verifyPermiso(['vReporteComprobantes:imprimir']),
+    controller.findById
+)
+
+router.get(
     '/pdf/:id',
     verifyPermiso([
         'vReporteComprobantes:descargarPdf',

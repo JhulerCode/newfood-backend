@@ -11,4 +11,6 @@ export default {
     resendApiKey: process.env.RESEND_API_KEY || '',
 
     decolectaApiKey: process.env.DECOLECTA_API_KEY || '',
+    
+    mifactApiKey: process.env.MIFACT_API_KEY || '',
 }

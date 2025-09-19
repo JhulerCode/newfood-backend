@@ -18,7 +18,7 @@ const include1 = {
     produccion_area1: {
         model: ProduccionArea,
         as: 'produccion_area1',
-        attributes: ['id', 'nombre']
+        attributes: ['id', 'nombre', 'impresora']
     },
     receta_insumos: {
         model: RecetaInsumo,
@@ -232,6 +232,7 @@ const find = async (req, res) => {
             }
 
             if (qry.incl) {
+                console.log(qry.incl)
                 for (const a of qry.incl) {
                     if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }
