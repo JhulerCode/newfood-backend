@@ -371,7 +371,7 @@ const create = async (req, res) => {
         }
 
         // --- DEVOLVER --- //
-        const data = await loadOne(nuevo.id)
+        const data = await getComprobante(nuevo.id)
         res.json({ code: 0, data, mifact })
     }
     catch (error) {
@@ -446,7 +446,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
         const data = await getComprobante(id)
-        data.total_letras = numeroATexto(data.monto)
+
         data.moneda1 = {
             plural: 'SOLES',
             singular: 'SOL'
@@ -967,23 +967,23 @@ const resumen = async (req, res) => {
 
 
 // --- Funciones --- //
-async function loadOne(id) {
-    let data = await Comprobante.findByPk(id, {
-        include: [include1.socio1, include1.createdBy1]
-    })
+// async function loadOne(id) {
+//     let data = await Comprobante.findByPk(id, {
+//         include: [include1.socio1, include1.createdBy1]
+//     })
 
-    if (data) {
-        data = data.toJSON()
+//     if (data) {
+//         data = data.toJSON()
 
-        const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-        const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+//         const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+//         const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
 
-        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-        data.estado1 = transaccion_estadosMap[data.estado]
-    }
+//         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+//         data.estado1 = transaccion_estadosMap[data.estado]
+//     }
 
-    return data
-}
+//     return data
+// }
 
 async function getComprobante(id) {
     let data = await Comprobante.findByPk(id, {
@@ -1032,6 +1032,9 @@ async function getComprobante(id) {
         data.cliente.doc_tipo1 = documentos_identidadMap[data.cliente.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
+
+        data.total_letras = numeroATexto(data.monto)
+        data.qr_string = `${data.empresa.ruc}|${data.doc_tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente.doc_tipo}|${data.cliente.doc_numero}|${data.hash}`
     }
 
     return data
@@ -1054,14 +1057,14 @@ async function makePdf(doc) {
             alignment: 'right',
         },
     ])
-
+    console.log(1)
     // --- TIPO DE ATENCIÓN --- //
     if (doc.transaccion1.venta_canal == 1) {
         doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
     } else {
         doc.atencion = doc.venta_canal1.nombre
     }
-
+    console.log(2)
     // --- PAGOS --- //
     const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
     doc.vuelto = totalPagado - Number(doc.monto)
@@ -1079,6 +1082,7 @@ async function makePdf(doc) {
             : null
 
     // --- PARA DELIVERY --- //
+    console.log(3)
     const deliveryStack =
         doc.transaccion1.venta_tipo == 3
             ? {
@@ -1096,9 +1100,10 @@ async function makePdf(doc) {
             : null
 
     // --- QR --- //
+    // "20100100100|01|F009|00000001|180.00|1180.00|2025-09-20|6|20601847834|IZVMmltTcKneNX1RyLO0zjlSqrk="
     const qrStack = doc.doc_tipo == 'NV' ? null : {
-        qr: `${doc.empresa.ruc}|${doc.doc_tipo}|${doc.serie}|${doc.numero}|${doc.igv}|${doc.monto}|${doc.fecha_emision}|${doc.cliente.doc_tipo1.nombre}|${doc.cliente.doc_numero}|`,
-        fit: 100,
+        qr: doc.qr_string,
+        fit: 115,
         alignment: "center",
         margin: [0, 10, 0, 10],
     }
@@ -1109,7 +1114,11 @@ async function makePdf(doc) {
         sunatStack = {
             stack: [
                 {
-                    text: `Representacion impresa de la FACTURA ELECTRÓNICA`,
+                    text: `Representacion impresa de la`,
+                    style: 'empresa',
+                },
+                {
+                    text: `FACTURA ELECTRÓNICA`,
                     style: 'empresa',
                 },
                 {
@@ -1123,7 +1132,11 @@ async function makePdf(doc) {
         sunatStack = {
             stack: [
                 {
-                    text: `Representacion impresa de la BOLETA DE VENTA ELECTRÓNICA`,
+                    text: `Representacion impresa de la`,
+                    style: 'empresa',
+                },
+                {
+                    text: `BOLETA DE VENTA ELECTRÓNICA`,
                     style: 'empresa',
                 },
                 {
@@ -1163,7 +1176,7 @@ async function makePdf(doc) {
         },
         // --- TIPO DE DOCUMENTO --- //
         {
-            stack: [`${doc.doc_tipo1.nombre} ELECTRÓNICA`, `${doc.serie}-${doc.numero}`],
+            stack: [`${doc.doc_tipo1.nombre}${doc.doc_tipo == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
             style: 'tipo_doc',
         },
         // --- CLIENTE --- //
@@ -1179,7 +1192,7 @@ async function makePdf(doc) {
                     style: 'datosExtra',
                 },
                 {
-                    text: `${doc.cliente.doc_tipo1.nombre}: ${doc.cliente.doc_numero}`,
+                    text: `${doc.cliente.doc_tipo == 0 ? 'DNI' : doc.cliente.doc_tipo1.nombre}: ${doc.cliente.doc_numero}`,
                     style: 'datosExtra',
                 },
                 {
@@ -1205,8 +1218,8 @@ async function makePdf(doc) {
             },
             layout: {
                 hLineWidth: function (i, node) {
-                    if (i === 0 || i === 1 || i === node.table.body.length) {
-                        return 1 // línea arriba del header, abajo del header y al final
+                    if (i === 1 || i === node.table.body.length) {
+                        return 1 // grosor de la línea
                     }
                     return 0 // sin líneas intermedias
                 },
@@ -1219,20 +1232,97 @@ async function makePdf(doc) {
             },
         },
         // --- TOTALES --- //
+        // {
+        //     stack: [
+        //         {
+        //             columns: [
+        //                 { text: 'Sub total ventas:', style: 'totalesLabel' },
+        //                 { text: doc.sub_total_ventas, style: 'totalesValue' },
+        //             ],
+        //         },
+        //         // {
+        //         //     columns: [
+        //         //         { text: 'Anticipos:', style: 'totalesLabel' },
+        //         //         { text: doc.anticipos, style: 'totalesValue' },
+        //         //     ],
+        //         // },
+        //         {
+        //             columns: [
+        //                 { text: 'Descuentos:', style: 'totalesLabel' },
+        //                 { text: doc.descuentos, style: 'totalesValue' },
+        //             ],
+        //         },
+        //         {
+        //             columns: [
+        //                 { text: 'Valor venta:', style: 'totalesLabel' },
+        //                 { text: doc.valor_venta, style: 'totalesValue' },
+        //             ],
+        //         },
+        //         // {
+        //         //     columns: [
+        //         //         { text: 'ISC:', style: 'totalesLabel' },
+        //         //         { text: doc.isc, style: 'totalesValue' },
+        //         //     ],
+        //         // },
+        //         {
+        //             columns: [
+        //                 { text: 'IGV:', style: 'totalesLabel' },
+        //                 { text: doc.igv, style: 'totalesValue' },
+        //             ],
+        //         },
+        //         // {
+        //         //     columns: [
+        //         //         { text: 'ICBPER:', style: 'totalesLabel' },
+        //         //         { text: doc.icbper, style: 'totalesValue' },
+        //         //     ],
+        //         // },
+        //         // {
+        //         //     columns: [
+        //         //         { text: 'Otros cargos:', style: 'totalesLabel' },
+        //         //         { text: doc.otros_cargos, style: 'totalesValue' },
+        //         //     ],
+        //         // },
+        //         // {
+        //         //     columns: [
+        //         //         { text: 'Otros tributos:', style: 'totalesLabel' },
+        //         //         { text: doc.otros_tributos, style: 'totalesValue' },
+        //         //     ],
+        //         // },
+        //         {
+        //             columns: [
+        //                 { text: 'IMPORTE TOTAL:', style: 'totalesLabel' },
+        //                 { text: doc.monto, style: 'totalesValue' },
+        //             ],
+        //         },
+        //     ],
+        //     margin: [0, 10, 0, 10],
+        // },
         {
             stack: [
                 {
                     columns: [
-                        { text: 'Sub total ventas:', style: 'totalesLabel' },
-                        { text: doc.sub_total_ventas, style: 'totalesValue' },
+                        { text: 'Ope. gravadas:', style: 'totalesLabel' },
+                        { text: doc.gravado, style: 'totalesValue' },
                     ],
                 },
                 // {
                 //     columns: [
-                //         { text: 'Anticipos:', style: 'totalesLabel' },
-                //         { text: doc.anticipos, style: 'totalesValue' },
+                //         { text: 'Ope. exoneradas:', style: 'totalesLabel' },
+                //         { text: doc.exonerado, style: 'totalesValue' },
                 //     ],
                 // },
+                // {
+                //     columns: [
+                //         { text: 'Ope. inafectas:', style: 'totalesLabel' },
+                //         { text: doc.inafecto, style: 'totalesValue' },
+                //     ],
+                // },
+                {
+                    columns: [
+                        { text: 'Ope. gratuitas:', style: 'totalesLabel' },
+                        { text: doc.gratuito, style: 'totalesValue' },
+                    ],
+                },
                 {
                     columns: [
                         { text: 'Descuentos:', style: 'totalesLabel' },
@@ -1241,8 +1331,8 @@ async function makePdf(doc) {
                 },
                 {
                     columns: [
-                        { text: 'Valor venta:', style: 'totalesLabel' },
-                        { text: doc.valor_venta, style: 'totalesValue' },
+                        { text: 'IGV:', style: 'totalesLabel' },
+                        { text: doc.igv, style: 'totalesValue' },
                     ],
                 },
                 // {
@@ -1251,38 +1341,20 @@ async function makePdf(doc) {
                 //         { text: doc.isc, style: 'totalesValue' },
                 //     ],
                 // },
-                {
-                    columns: [
-                        { text: 'IGV:', style: 'totalesLabel' },
-                        { text: doc.igv, style: 'totalesValue' },
-                    ],
-                },
                 // {
                 //     columns: [
                 //         { text: 'ICBPER:', style: 'totalesLabel' },
                 //         { text: doc.icbper, style: 'totalesValue' },
                 //     ],
                 // },
-                // {
-                //     columns: [
-                //         { text: 'Otros cargos:', style: 'totalesLabel' },
-                //         { text: doc.otros_cargos, style: 'totalesValue' },
-                //     ],
-                // },
-                // {
-                //     columns: [
-                //         { text: 'Otros tributos:', style: 'totalesLabel' },
-                //         { text: doc.otros_tributos, style: 'totalesValue' },
-                //     ],
-                // },
                 {
                     columns: [
-                        { text: 'IMPORTE TOTAL:', style: 'totalesLabel' },
+                        { text: 'Importe total:', style: 'totalesLabel' },
                         { text: doc.monto, style: 'totalesValue' },
                     ],
                 },
             ],
-            margin: [0, 10, 0, 10],
+            margin: [0, 5, 0, 10],
         },
         // --- DATOS EXTRA --- //
         {
