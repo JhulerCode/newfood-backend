@@ -17,7 +17,7 @@ export const Comprobante = sequelize.define('comprobantes', {
 
     empresa: { type: DataTypes.JSON },
     cliente: { type: DataTypes.JSON },
-    
+
     doc_tipo: { type: DataTypes.STRING },
     serie: { type: DataTypes.STRING },
     numero: { type: DataTypes.STRING },
@@ -26,19 +26,30 @@ export const Comprobante = sequelize.define('comprobantes', {
     fecha_vencimiento: { type: DataTypes.STRING },
     moneda: { type: DataTypes.STRING },
 
-    sub_total_ventas: { type: DataTypes.DECIMAL(10, 2) },
-    anticipos: { type: DataTypes.DECIMAL(10, 2) },
+    // sub_total_ventas: { type: DataTypes.DECIMAL(10, 2) },
+    // anticipos: { type: DataTypes.DECIMAL(10, 2) },
+    // descuentos: { type: DataTypes.DECIMAL(10, 2) },
+    // valor_venta: { type: DataTypes.DECIMAL(10, 2) },
+    // isc: { type: DataTypes.DECIMAL(10, 2) },
+    // igv: { type: DataTypes.DECIMAL(10, 2) },
+    // icbper: { type: DataTypes.DECIMAL(10, 2) },
+    // otros_cargos: { type: DataTypes.DECIMAL(10, 2) },
+    // otros_tributos: { type: DataTypes.DECIMAL(10, 2) },
+    
+    gravado: { type: DataTypes.DECIMAL(10, 2) },
+    exonerado: { type: DataTypes.DECIMAL(10, 2) },
+    inafecto: { type: DataTypes.DECIMAL(10, 2) },
+    gratuito: { type: DataTypes.DECIMAL(10, 2) },
     descuentos: { type: DataTypes.DECIMAL(10, 2) },
-    valor_venta: { type: DataTypes.DECIMAL(10, 2) },
-    isc: { type: DataTypes.DECIMAL(10, 2) },
     igv: { type: DataTypes.DECIMAL(10, 2) },
+    isc: { type: DataTypes.DECIMAL(10, 2) },
     icbper: { type: DataTypes.DECIMAL(10, 2) },
-    otros_cargos: { type: DataTypes.DECIMAL(10, 2) },
-    otros_tributos: { type: DataTypes.DECIMAL(10, 2) },
+
     monto: { type: DataTypes.DECIMAL(10, 2) },
     nota: { type: DataTypes.STRING },
 
     sunat_respuesta_codigo: { type: DataTypes.STRING },
+    sunat_respuesta_nota: { type: DataTypes.STRING },
     sunat_respuesta_descripcion: { type: DataTypes.STRING },
     hash: { type: DataTypes.STRING },
 
@@ -73,21 +84,24 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
 
     articulo: { type: DataTypes.STRING },
+    descripcion: { type: DataTypes.STRING },
+    codigo: { type: DataTypes.STRING },
+    codigo_sunat: { type: DataTypes.STRING },
+    unidad: { type: DataTypes.STRING },
+    cantidad: { type: DataTypes.DOUBLE },
+
     pu: { type: DataTypes.DOUBLE },
-    igv_porcentaje: { type: DataTypes.DOUBLE },
     descuento_tipo: { type: DataTypes.STRING },
     descuento_valor: { type: DataTypes.DOUBLE },
 
-    descripcion: { type: DataTypes.STRING },
-    unidad: { type: DataTypes.STRING },
-    cantidad: { type: DataTypes.DOUBLE },
-    vu: { type: DataTypes.DOUBLE },
-    descuento_vu: { type: DataTypes.DOUBLE },
     igv_afectacion: { type: DataTypes.STRING },
-    codigo_sunat: { type: DataTypes.STRING },
-    codigo: { type: DataTypes.STRING },
+    igv_porcentaje: { type: DataTypes.DOUBLE },
+    isc_porcentaje: { type: DataTypes.DOUBLE },
+    isc_monto_fijo_uni: { type: DataTypes.DOUBLE },
     has_bolsa_tax: { type: DataTypes.BOOLEAN },
 
+    // vu: { type: DataTypes.DOUBLE },
+    // descuento_vu: { type: DataTypes.DOUBLE },
     comprobante: { type: DataTypes.STRING },
 
     createdBy: { type: DataTypes.STRING },

@@ -232,7 +232,6 @@ const find = async (req, res) => {
             }
 
             if (qry.incl) {
-                console.log(qry.incl)
                 for (const a of qry.incl) {
                     if (qry.incl.includes(a)) findProps.include.push(include1[a])
                 }

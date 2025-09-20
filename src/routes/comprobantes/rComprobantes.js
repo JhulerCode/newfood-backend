@@ -26,14 +26,6 @@ router.get(
     controller.getPdf
 )
 
-router.get(
-    '/xml/:id',
-    verifyPermiso([
-        'vReporteComprobantes:descargarXml',
-    ]),
-    controller.downloadXml
-)
-
 router.post(
     '/send-mail',
     verifyPermiso([
@@ -80,6 +72,22 @@ router.get(
         'vDashboard:ver',
     ]),
     controller.resumen
+)
+
+
+// --- Mifact --- //
+router.get(
+    '/estado/uno',
+    verifyPermiso(['vReporteComprobantes:imprimir']),
+    controller.consultarEstado
+)
+
+router.get(
+    '/xml',
+    verifyPermiso([
+        'vReporteComprobantes:descargarXml',
+    ]),
+    controller.downloadXml
 )
 
 export default router
