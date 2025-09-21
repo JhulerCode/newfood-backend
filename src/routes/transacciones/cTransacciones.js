@@ -10,6 +10,8 @@ import { Colaborador } from '../../database/models/Colaborador.js'
 import { Mesa } from '../../database/models/Mesa.js'
 import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { Salon } from '../../database/models/Salon.js'
+import { ProduccionArea } from '../../database/models/ProduccionArea.js'
+import { PagoMetodo } from '../../database/models/PagoMetodo.js'
 
 const include1 = {
     socio1: {
@@ -147,7 +149,7 @@ const update = async (req, res) => {
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
-
+        console.log('ASD', venta_pago_con)
         const [affectedRows] = await Transaccion.update({
             tipo, fecha, socio,
             pago_condicion, monto,
@@ -317,7 +319,12 @@ const findById = async (req, res) => {
                         {
                             model: Articulo,
                             as: 'articulo1',
-                            attributes: ['nombre', 'unidad']
+                            attributes: ['nombre', 'unidad'],
+                            include: {
+                                model: ProduccionArea,
+                                as: 'produccion_area1',
+                                attributes: ['impresora']
+                            }
                         },
                     ]
                 },
@@ -329,6 +336,16 @@ const findById = async (req, res) => {
                 {
                     model: Mesa,
                     as: 'venta_mesa1',
+                    attributes: ['id', 'nombre'],
+                    include: {
+                        model: Salon,
+                        as: 'salon1',
+                        attributes: ['id', 'nombre']
+                    }
+                },
+                {
+                    model: PagoMetodo,
+                    as: 'venta_pago_metodo1',
                     attributes: ['id', 'nombre']
                 }
             ]

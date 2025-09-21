@@ -3,6 +3,7 @@ import { pathSunat, deleteFile } from '../../utils/uploadFiles.js'
 import path from "path"
 import fs from "fs"
 import forge from "node-forge"
+import { actualizarSesion } from '../_signin/sessions.js'
 
 const findById = async (req, res) => {
     try {
@@ -63,6 +64,8 @@ const update = async (req, res) => {
             if (send.logo != previous_logo && previous_logo != null) {
                 deleteFile(previous_logo)
             }
+
+            actualizarSesion(id, { empresa: send })
 
             let data = await Empresa.findByPk('1')
 

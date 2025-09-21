@@ -16,7 +16,7 @@ function borrarSesion(userId) {
 
 function actualizarSesion(id, values) {
     const sesion = obtenerSesion(id)
-    
+
     if (sesion) {
         if (values.nombres) sesion.nombres = values.nombres
         if (values.apellidos) sesion.apellidos = values.apellidos
@@ -27,6 +27,7 @@ function actualizarSesion(id, values) {
         if (values.format_date) sesion.format_date = values.format_date
         if (values.menu_visible != null) sesion.menu_visible = values.menu_visible
         if (values.permisos) sesion.permisos = values.permisos
+        if (values.empresa) sesion.empresa = values.empresa
     }
 }
 

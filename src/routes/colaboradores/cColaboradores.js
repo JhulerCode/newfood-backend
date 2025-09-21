@@ -4,8 +4,7 @@ import { Sequelize, Op } from 'sequelize'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import bcrypt from 'bcrypt'
-import { sessionStore, borrarSesion, actualizarSesion, obtenerSesion } from '../_signin/sessions.js'
-
+import { borrarSesion, actualizarSesion } from '../_signin/sessions.js'
 
 const create = async (req, res) => {
     const transaction = await sequelize.transaction()
@@ -24,7 +23,7 @@ const create = async (req, res) => {
 
         let { usuario, contrasena } = req.body
 
-       // --- VERIFY SI EXISTE NOMBRE --- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Colaborador, { nombres, apellidos }, res) == true) return
 
         if (usuario) {
@@ -36,7 +35,7 @@ const create = async (req, res) => {
             contrasena = null
         }
 
-       // --- CREAR --- //
+        // --- CREAR --- //
         const nuevo = await Colaborador.create({
             nombres, apellidos,
             doc_tipo, doc_numero,
@@ -48,7 +47,7 @@ const create = async (req, res) => {
             createdBy: colaborador
         }, { transaction })
 
-       // --- ACTUALIZAR CONTRASENA --- //
+        // --- ACTUALIZAR CONTRASENA --- //
         if (contrasena != '*****' && contrasena != null) {
             contrasena = await bcrypt.hash(contrasena, 10)
             await Colaborador.update(
@@ -62,7 +61,7 @@ const create = async (req, res) => {
 
         await transaction.commit()
 
-       // --- DEVOLVER --- //
+        // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
     }
@@ -89,7 +88,7 @@ const update = async (req, res) => {
 
         let { usuario, contrasena } = req.body
 
-       // --- VERIFY SI EXISTE NOMBRE --- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
         if (await existe(Colaborador, { nombres, apellidos, id }, res) == true) return
 
         if (usuario) {
@@ -100,11 +99,11 @@ const update = async (req, res) => {
             usuario = null
             contrasena = null
 
-           // --- ELIMINAR DE SESSIONSTORE --- //
+            // --- ELIMINAR DE SESSIONSTORE --- //
             borrarSesion(id)
         }
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await Colaborador.update(
             {
                 nombres, apellidos,
@@ -123,7 +122,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-           // --- ACTUALIZAR CONTRASENA --- //
+            // --- ACTUALIZAR CONTRASENA --- //
             if (contrasena == null) {
                 await Colaborador.update(
                     { contrasena: null },
@@ -147,12 +146,12 @@ const update = async (req, res) => {
                 }
             }
 
-           // --- ACTUALIZAR EN SESSIONSTORE --- //
+            // --- ACTUALIZAR EN SESSIONSTORE --- //
             actualizarSesion(id, { nombres, apellidos, cargo, vista_inicial, permisos })
 
             await transaction.commit()
 
-           // --- DEVOLVER --- //
+            // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -277,7 +276,7 @@ const preferencias = async (req, res) => {
 
         await Colaborador.update({ theme, color, format_date, menu_visible }, { where: { id } })
 
-       // --- ACTUALIZAR SESION --- //
+        // --- ACTUALIZAR SESION --- //
         actualizarSesion(id, { theme, color, format_date, menu_visible })
 
         res.json({ code: 0 })

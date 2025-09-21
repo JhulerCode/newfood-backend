@@ -5,6 +5,8 @@ import { guardarSesion, borrarSesion, sessionStore } from './sessions.js'
 
 import { Router } from "express"
 import { Colaborador } from '../../database/models/Colaborador.js'
+import { Empresa } from '../../database/models/Empresa.js'
+
 
 const router = Router()
 
@@ -16,6 +18,8 @@ const signin = async (req, res) => {
             where: { usuario },
             attributes: ['id', 'contrasena', 'nombres', 'apellidos', 'cargo', 'permisos', 'vista_inicial', 'theme', 'color', 'format_date', 'menu_visible'],
         })
+
+        const empresa = await Empresa.findByPk('1')
         
         if (data == null) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
         
@@ -37,6 +41,7 @@ const signin = async (req, res) => {
             format_date: data.format_date,
             menu_visible: data.menu_visible,
             permisos: data.permisos,
+            empresa: empresa,
         })
 
         res.json({ code: 0, token })
