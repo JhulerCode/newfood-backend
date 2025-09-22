@@ -8,6 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vPagoMetodos:listar',
+        'vPedidos:crear',
     ]),
     controller.find
 )

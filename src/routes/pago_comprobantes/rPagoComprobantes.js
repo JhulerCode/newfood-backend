@@ -8,6 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vPagoComprobantes:listar',
+        'vPedidos:generarComprobante',
     ]),
     controller.find
 )

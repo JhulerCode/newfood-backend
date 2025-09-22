@@ -7,7 +7,7 @@ const router = Router()
 router.get(
     '/',
     verifyPermiso([
-        'vPedidos:listar',
+        'vReporteComprobantes:listar',
     ]),
     controller.find
 )
@@ -78,14 +78,14 @@ router.get(
 // --- Mifact --- //
 router.get(
     '/estado/uno',
-    verifyPermiso(['vReporteComprobantes:imprimir']),
+    verifyPermiso(['vReporteComprobantes:consultarEstado']),
     controller.consultarEstado
 )
 
 router.get(
     '/xml',
     verifyPermiso([
-        'vReporteComprobantes:descargarXml',
+        'vReporteComprobantes:descargarXml', 'vReporteComprobantes:descargarCdr',
     ]),
     controller.downloadXml
 )

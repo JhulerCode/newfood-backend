@@ -8,9 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vColaboradores:listar',
-        'vFormatosBpm:crear', 'vFormatosBpm:ver', 'vFormatosBpm:editar',
-        'vFormatosPhs:crear', 'vFormatosPhs:ver', 'vFormatosPhs:editar',
-        'vActivityLogs:listar',
+        'vPedidos:crear',
     ]),
     controller.find
 )

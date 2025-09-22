@@ -11,6 +11,7 @@ router.get(
         'vInsumos:listar',
         'vProductos:listar',
         'vCombos:listar',
+        'vPedidos:crear', 'vPedidos:addProductos',
     ]),
     controller.find
 )

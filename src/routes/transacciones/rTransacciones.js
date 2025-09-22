@@ -26,7 +26,10 @@ router.get(
     '/uno/:id',
     verifyPermiso([
         'vCompras:ver', 'vCompras:editar',
-        'vPedidos:editar',
+        'vPedidos:ver',
+        // 'vPedidos:editar',
+        'vPedidos:imprimirComanda',
+        'vPedidos:imprimirPrecuenta',
     ]),
     controller.findById
 )
@@ -35,7 +38,8 @@ router.patch(
     '/:id',
     verifyPermiso([
         'vCompras:editar',
-        'vPedidos:editar',
+        // 'vPedidos:editar',
+        'vPedidos:editarDetalles',
     ]),
     controller.update
 )

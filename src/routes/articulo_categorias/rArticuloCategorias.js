@@ -8,6 +8,7 @@ router.get(
     '/',
     verifyPermiso([
         'vArticuloCategorias:listar',
+        'vPedidos:crear', 'vPedidos:addProductos',
     ]),
     controller.find
 )
