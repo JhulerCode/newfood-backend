@@ -63,7 +63,10 @@ const create = async (req, res) => {
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Articulo, { nombre }, res) == true) return
+        if (await existe(Articulo, { nombre }, res) == true) {
+            await transaction.rollback()
+            return
+        }
 
         // --- CREAR --- //
         const nuevo = await Articulo.create({
@@ -95,6 +98,8 @@ const create = async (req, res) => {
         res.json({ code: 0, data })
     }
     catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -123,7 +128,10 @@ const update = async (req, res) => {
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Articulo, { nombre, codigo_barra, id }, res) == true) return
+        if (await existe(Articulo, { nombre, codigo_barra, id }, res) == true) {
+            await transaction.rollback()
+            return
+        }
 
         // --- ACTUALIZAR --- //
         const send = {
@@ -183,6 +191,8 @@ const update = async (req, res) => {
         }
     }
     catch (error) {
+        await transaction.rollback()
+        
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }

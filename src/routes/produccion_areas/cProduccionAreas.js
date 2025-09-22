@@ -1,6 +1,7 @@
 import { ProduccionArea } from '../../database/models/ProduccionArea.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import { actualizarSesion } from '../_signin/sessions.js'
 
 const create = async (req, res) => {
     try {
@@ -45,6 +46,8 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
+            actualizarSesion(id, { impresora_caja: { id, nombre, impresora_tipo, impresora, activo } })
+
             // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })

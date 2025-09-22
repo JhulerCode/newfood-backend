@@ -13,6 +13,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     transaccion: { type: DataTypes.STRING },
     caja_apertura: { type: DataTypes.STRING },
     estado: { type: DataTypes.STRING },
+    anulado_motivo: { type: DataTypes.STRING },
     canjeado_por: { type: DataTypes.STRING },
 
     empresa: { type: DataTypes.JSON },
@@ -35,7 +36,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     // icbper: { type: DataTypes.DECIMAL(10, 2) },
     // otros_cargos: { type: DataTypes.DECIMAL(10, 2) },
     // otros_tributos: { type: DataTypes.DECIMAL(10, 2) },
-    
+
     gravado: { type: DataTypes.DECIMAL(10, 2) },
     exonerado: { type: DataTypes.DECIMAL(10, 2) },
     inafecto: { type: DataTypes.DECIMAL(10, 2) },

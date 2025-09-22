@@ -22,7 +22,7 @@ async function sendDoc(doc) {
         items,
         mifact,
     } = doc
-
+    
     const json_comprobante = {
         TOKEN: config.mifactApiKey,
         COD_TIP_NIF_EMIS: '6', //NO HAY
@@ -111,19 +111,21 @@ async function sendDoc(doc) {
     json_comprobante.COD_FORM_IMPR = mifact.cod_form_impr != null ? mifact.cod_form_impr : "004"
 
     // --- Asignación de totales finales a la cabecera --- //
-    json_comprobante.MNT_TOT_GRAVADO = gravado.toFixed(2)
-    json_comprobante.MNT_TOT_EXONERADO = exonerado.toFixed(2)
-    json_comprobante.MNT_TOT_INAFECTO = inafecto.toFixed(2)
-    json_comprobante.MNT_TOT_GRATUITO = gratuito.toFixed(2)
-    json_comprobante.MNT_TOT_DESCUENTO = descuentos.toFixed(2)
-    json_comprobante.MNT_TOT_TRIB_IGV = igv.toFixed(2)
-    if (isc > 0) json_comprobante.MNT_TOT_TRIB_ISC = isc.toFixed(2) //NO HAY
-    if (icbper > 0) json_comprobante.MNT_IMPUESTO_BOLSAS = icbper.toFixed(2)
-    json_comprobante.MNT_TOT = monto.toFixed(2)
+    json_comprobante.MNT_TOT_GRAVADO = Number(gravado).toFixed(2)
+    json_comprobante.MNT_TOT_EXONERADO = Number(exonerado).toFixed(2)
+    json_comprobante.MNT_TOT_INAFECTO = Number(inafecto).toFixed(2)
+    json_comprobante.MNT_TOT_GRATUITO = Number(gratuito).toFixed(2)
+    json_comprobante.MNT_TOT_DESCUENTO = Number(descuentos).toFixed(2)
+    json_comprobante.MNT_TOT_TRIB_IGV = Number(igv).toFixed(2)
+    if (isc > 0) json_comprobante.MNT_TOT_TRIB_ISC = Number(isc).toFixed(2) //NO HAY
+    if (icbper > 0) json_comprobante.MNT_IMPUESTO_BOLSAS = Number(icbper).toFixed(2)
+    json_comprobante.MNT_TOT = Number(monto).toFixed(2)
 
     // --- Items --- //
     json_comprobante.items = []
     for (const a of items) {
+        calculateInvoiceLineValues(a)
+
         const item = {
             COD_ITEM: a.codigo,
             COD_UNID_ITEM: a.unidad,
@@ -144,7 +146,7 @@ async function sendDoc(doc) {
         }
 
         // --- Agregar campos opcionales si tienen valor relevante --- //
-        if (a.codigo_sunat) item.COD_ITEM_SUNAT = a.codigo_sunat
+        if (a.codigo_sunat && a.codigo_sunat != '') item.COD_ITEM_SUNAT = a.codigo_sunat
         if (a.MNT_DSCTO_ITEM > 0) item.MNT_DSCTO_ITEM = a.MNT_DSCTO_ITEM.toFixed(2)
         if (a.COD_TIP_SIST_ISC) {
             item.COD_TIP_SIST_ISC = a.COD_TIP_SIST_ISC.toFixed(2)
@@ -176,9 +178,8 @@ async function anularDoc(doc) {
         TXT_DESC_MTVO: 'ANULACION POR ERROR',
         // COD_PTO_VENTA: "usuarioABCD" // usuario que solicita la anulacion
     }
-    console.log(send)
 
-    const res = await axios.post(mifact_urls.enviar, send)
+    const res = await axios.post(mifact_urls.anular, send)
 
     return res.data
 }
@@ -246,6 +247,12 @@ async function xmlDoc(doc) {
     // }
 }
 
+const codigosAfectacionGratuitas = [
+    '11', '12', '13', '14', '15', '16', // Gravado – Retiro por...
+    '21', // Exonerado - Transferencia gratuita
+    '31', '32', '33', '34', '35', '36', '37', // Inafecto – Retiro por... o Transferencia gratuita
+]
+
 function calculateInvoiceLineValues(item) {
     const cantidad = item.cantidad
     const pu = item.pu // Precio unitario de lista (con IGV/ISC)
@@ -272,7 +279,7 @@ function calculateInvoiceLineValues(item) {
 
     // 2. Determinar COD_TIP_PRC_VTA (Tipo de Precio de Venta)
     let cod_tip_prc_vta = '01' // Default: Precio unitario (incluye IGV)
-    if (this.codigosAfectacionGratuitas.includes(igv_afectacion)) {
+    if (codigosAfectacionGratuitas.includes(igv_afectacion)) {
         cod_tip_prc_vta = '02'
     }
 

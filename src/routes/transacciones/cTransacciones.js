@@ -149,7 +149,7 @@ const update = async (req, res) => {
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
-        console.log('ASD', venta_pago_con)
+        
         const [affectedRows] = await Transaccion.update({
             tipo, fecha, socio,
             pago_condicion, monto,

@@ -309,7 +309,7 @@ const findResumen = async (req, res) => {
 
                 // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
-                console.log(1, a)
+                
                 send.comprobantes_aceptados.push({
                     id: a.serie_correlativo,
                     tipo: pago_comprobantesMap[a.doc_tipo].nombre,

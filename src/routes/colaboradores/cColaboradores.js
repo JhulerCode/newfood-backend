@@ -24,10 +24,16 @@ const create = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Colaborador, { nombres, apellidos }, res) == true) return
+        if (await existe(Colaborador, { nombres, apellidos }, res) == true) {
+            await transaction.rollback()
+            return
+        }
 
         if (usuario) {
-            if (await existe(Colaborador, { usuario }, res) == true) return
+            if (await existe(Colaborador, { usuario }, res) == true) {
+                await transaction.rollback()
+                return
+            }
         }
 
         if (has_signin == false) {
@@ -66,6 +72,8 @@ const create = async (req, res) => {
         res.json({ code: 0, data })
     }
     catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -89,10 +97,16 @@ const update = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Colaborador, { nombres, apellidos, id }, res) == true) return
+        if (await existe(Colaborador, { nombres, apellidos, id }, res) == true) {
+            await transaction.rollback()
+            return
+        }
 
         if (usuario) {
-            if (await existe(Colaborador, { usuario, id }, res) == true) return
+            if (await existe(Colaborador, { usuario, id }, res) == true) {
+                await transaction.rollback()
+                return
+            }
         }
 
         if (has_signin == false) {

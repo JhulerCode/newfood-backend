@@ -36,11 +36,6 @@ const update = async (req, res) => {
             nombre, activo, salon,
         } = req.body
 
-        console.log(id)
-        console.log(nombre)
-        console.log(activo)
-        console.log(salon)
-
        // --- ACTUALIZAR --- //
         const [affectedRows] = await Mesa.update(
             {

@@ -8,7 +8,6 @@ const router = Router()
 const findDni = async (req, res) => {
     try {
         const { id } = req.params
-        console.log(id)
 
         const response = await axios.get(`https://api.decolecta.com/v1/reniec/dni?numero=${id}`, {
             headers: {

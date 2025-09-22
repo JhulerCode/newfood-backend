@@ -28,6 +28,7 @@ function actualizarSesion(id, values) {
         if (values.menu_visible != null) sesion.menu_visible = values.menu_visible
         if (values.permisos) sesion.permisos = values.permisos
         if (values.empresa) sesion.empresa = values.empresa
+        if (values.impresora_caja) sesion.impresora_caja = values.impresora_caja
     }
 }
 

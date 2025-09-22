@@ -75,7 +75,11 @@ const create = async (req, res) => {
         const caja_apertura = await CajaApertura.findOne({ where: { estado: '1' } })
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
-        if (caja_apertura == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
+        if (caja_apertura == null) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'La caja no está aperturada' })
+            return
+        }
 
         // --- CREAR --- //
         const send = {
@@ -164,22 +168,22 @@ const create = async (req, res) => {
                 has_bolsa_tax: a.has_bolsa_tax,
 
                 // --- mifact --- //
-                PRC_VTA_UNIT_ITEM: a.PRC_VTA_UNIT_ITEM,
-                VAL_UNIT_ITEM: a.VAL_UNIT_ITEM,
-                VAL_VTA_ITEM: a.VAL_VTA_ITEM,
-                MNT_BRUTO: a.MNT_BRUTO,
-                MNT_PV_ITEM: a.MNT_PV_ITEM,
+                // PRC_VTA_UNIT_ITEM: a.PRC_VTA_UNIT_ITEM,
+                // VAL_UNIT_ITEM: a.VAL_UNIT_ITEM,
+                // VAL_VTA_ITEM: a.VAL_VTA_ITEM,
+                // MNT_BRUTO: a.MNT_BRUTO,
+                // MNT_PV_ITEM: a.MNT_PV_ITEM,
 
-                COD_TIP_PRC_VTA: a.COD_TIP_PRC_VTA,
-                COD_TRIB_IGV_ITEM: a.COD_TRIB_IGV_ITEM,
-                POR_IGV_ITEM: a.POR_IGV_ITEM,
-                MNT_IGV_ITEM: a.MNT_IGV_ITEM,
+                // COD_TIP_PRC_VTA: a.COD_TIP_PRC_VTA,
+                // COD_TRIB_IGV_ITEM: a.COD_TRIB_IGV_ITEM,
+                // POR_IGV_ITEM: a.POR_IGV_ITEM,
+                // MNT_IGV_ITEM: a.MNT_IGV_ITEM,
 
-                MNT_DSCTO_ITEM: a.MNT_DSCTO_ITEM,
-                COD_TIP_SIST_ISC: a.COD_TIP_SIST_ISC,
-                MNT_ISC_ITEM: a.MNT_ISC_ITEM,
-                POR_ISC_ITEM: a.POR_ISC_ITEM,
-                IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
+                // MNT_DSCTO_ITEM: a.MNT_DSCTO_ITEM,
+                // COD_TIP_SIST_ISC: a.COD_TIP_SIST_ISC,
+                // MNT_ISC_ITEM: a.MNT_ISC_ITEM,
+                // POR_ISC_ITEM: a.POR_ISC_ITEM,
+                // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
                 createdBy: colaborador
@@ -190,25 +194,29 @@ const create = async (req, res) => {
         send.items = items
         await ComprobanteItem.bulkCreate(items, { transaction })
 
-        let mifact
+        let res_mifact
         if (['01', '03'].includes(doc_tipo)) {
             // const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
             // crearXml(fileName, send)
             // const hash = firmarXml(fileName)
             // const sunat_respuesta = await enviarSunat(fileName)
-            mifact = await sendDoc(send)
-            if (mifact.errors && mifact.errors != "") {
-                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: mifact })
+
+            // --- CREAR MIFACT --- //
+            res_mifact = await sendDoc(send)
+            if (res_mifact.errors && res_mifact.errors != "") {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
                 return
             }
 
+            // --- ACTUALIZAR RESPUESTA SUNAT --- //
             await Comprobante.update(
                 {
-                    hash: mifact.codigo_hash,
-                    estado: mifact.sunat_responsecode == 0 ? 3 : 2,
-                    sunat_respuesta_codigo: mifact.sunat_responsecode,
-                    sunat_respuesta_nota: mifact.sunat_note,
-                    sunat_respuesta_descripcion: mifact.sunat_description,
+                    hash: res_mifact.codigo_hash,
+                    estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
+                    sunat_respuesta_codigo: res_mifact.sunat_responsecode,
+                    sunat_respuesta_nota: res_mifact.sunat_note,
+                    sunat_respuesta_descripcion: res_mifact.sunat_description,
                 },
                 {
                     where: { id: nuevo.id },
@@ -372,7 +380,7 @@ const create = async (req, res) => {
 
         // --- DEVOLVER --- //
         const data = await getComprobante(nuevo.id)
-        res.json({ code: 0, data, mifact })
+        res.json({ code: 0, data, facturacion: res_mifact })
     }
     catch (error) {
         await transaction.rollback()
@@ -479,7 +487,7 @@ const getPdf = async (req, res) => {
 const sendMail = async (req, res) => {
     try {
         const { id, email_to_send } = req.body
-        console.log(email_to_send)
+        
         const data = await getComprobante(id)
         const buffer = await makePdf(data)
         const comprobante_numero = `${data.serie}-${data.numero}`
@@ -526,7 +534,11 @@ const actualizarPago = async (req, res) => {
             caja_apertura1 = await CajaApertura.findOne({ where: { estado: '1' } })
 
             // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
-            if (caja_apertura1 == null) return res.json({ code: 1, msg: 'La caja no está aperturada' })
+            if (caja_apertura1 == null) {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'La caja no está aperturada' })
+                return
+            }
         }
 
         if (modal_mode == 2) {
@@ -570,14 +582,22 @@ const anular = async (req, res) => {
         const { id } = req.params
         const { item, anulado_motivo } = req.body
 
-        const mifact = await anularDoc(item)
+        // --- ANULAR MIFACT --- //
+        let res_mifact
+        if (item.doc_tipo != 'NV') {
+            res_mifact = await anularDoc(item)
+            if (res_mifact.errors && res_mifact.errors != "") {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res_mifact })
+                return
+            }
+        }
 
-        res.json({ code: 0, mifact })
-        return
         // --- ANULAR --- //
         await Comprobante.update(
             {
                 estado: 0,
+                anulado_motivo,
                 updatedBy: colaborador
             },
             {
@@ -600,9 +620,11 @@ const anular = async (req, res) => {
 
         await transaction.commit()
 
-        res.json({ code: 0, mifact })
+        res.json({ code: 0, data: res_mifact })
 
     } catch (error) {
+        await transaction.rollback()
+        
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -614,7 +636,7 @@ const canjear = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
         const {
-            fecha_emision, doc_tipo, socio
+            fecha_emision, doc_tipo, doc_tipo1, socio
         } = req.body
 
         const comprobante = await Comprobante.findByPk(id, {
@@ -626,9 +648,20 @@ const canjear = async (req, res) => {
             ]
         })
 
+        // --- ANULAR MIFACT --- //
+        let res1_mifact
+        if (comprobante.doc_tipo != 'NV') {
+            res1_mifact = await anularDoc(comprobante)
+            if (res1_mifact.errors && res1_mifact.errors != "") {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res1_mifact })
+                return
+            }
+        }
+
         // --- CREAR NUEVO COMPROBANTE --- //
         const cliente = await Socio.findByPk(socio)
-        const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
+        const pago_comprobante = await PagoComprobante.findByPk(doc_tipo1)
 
         const send = {
             socio,
@@ -644,7 +677,7 @@ const canjear = async (req, res) => {
             },
             estado: 1,
 
-            doc_tipo,
+            doc_tipo: doc_tipo1,
             serie: pago_comprobante.serie,
             numero: pago_comprobante.correlativo,
             fecha_emision,
@@ -674,7 +707,7 @@ const canjear = async (req, res) => {
         // --- GUARDAR ITEMS --- //
         const items = []
         for (const a of comprobante.comprobante_items) {
-            calculateInvoiceLineValues(a)
+            // calculateInvoiceLineValues(a)
 
             items.push({
                 articulo: a.articulo,
@@ -695,22 +728,22 @@ const canjear = async (req, res) => {
                 has_bolsa_tax: a.has_bolsa_tax,
 
                 // --- mifact --- //
-                PRC_VTA_UNIT_ITEM: a.PRC_VTA_UNIT_ITEM,
-                VAL_UNIT_ITEM: a.VAL_UNIT_ITEM,
-                VAL_VTA_ITEM: a.VAL_VTA_ITEM,
-                MNT_BRUTO: a.MNT_BRUTO,
-                MNT_PV_ITEM: a.MNT_PV_ITEM,
+                // PRC_VTA_UNIT_ITEM: a.PRC_VTA_UNIT_ITEM,
+                // VAL_UNIT_ITEM: a.VAL_UNIT_ITEM,
+                // VAL_VTA_ITEM: a.VAL_VTA_ITEM,
+                // MNT_BRUTO: a.MNT_BRUTO,
+                // MNT_PV_ITEM: a.MNT_PV_ITEM,
 
-                COD_TIP_PRC_VTA: a.COD_TIP_PRC_VTA,
-                COD_TRIB_IGV_ITEM: a.COD_TRIB_IGV_ITEM,
-                POR_IGV_ITEM: a.POR_IGV_ITEM,
-                MNT_IGV_ITEM: a.MNT_IGV_ITEM,
+                // COD_TIP_PRC_VTA: a.COD_TIP_PRC_VTA,
+                // COD_TRIB_IGV_ITEM: a.COD_TRIB_IGV_ITEM,
+                // POR_IGV_ITEM: a.POR_IGV_ITEM,
+                // MNT_IGV_ITEM: a.MNT_IGV_ITEM,
 
-                MNT_DSCTO_ITEM: a.MNT_DSCTO_ITEM,
-                COD_TIP_SIST_ISC: a.COD_TIP_SIST_ISC,
-                MNT_ISC_ITEM: a.MNT_ISC_ITEM,
-                POR_ISC_ITEM: a.POR_ISC_ITEM,
-                IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
+                // MNT_DSCTO_ITEM: a.MNT_DSCTO_ITEM,
+                // COD_TIP_SIST_ISC: a.COD_TIP_SIST_ISC,
+                // MNT_ISC_ITEM: a.MNT_ISC_ITEM,
+                // POR_ISC_ITEM: a.POR_ISC_ITEM,
+                // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
                 createdBy: colaborador
@@ -719,20 +752,22 @@ const canjear = async (req, res) => {
         send.items = items
         await ComprobanteItem.bulkCreate(items, { transaction })
 
-        const mifact = await sendDoc(send)
-        if (mifact.errors && mifact.errors != "") {
-            res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: mifact })
+        // --- CREAR MIFACT --- //
+        const res_mifact = await sendDoc(send)
+        if (res_mifact.errors && res_mifact.errors != "") {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
             return
         }
 
         // --- ACTUALIZAR RESPUESTA SUNAT --- //
         await Comprobante.update(
             {
-                hash: mifact.codigo_hash,
-                estado: mifact.sunat_responsecode == 0 ? 3 : 2,
-                sunat_respuesta_codigo: mifact.sunat_responsecode,
-                sunat_respuesta_nota: mifact.sunat_note,
-                sunat_respuesta_descripcion: mifact.sunat_description,
+                hash: res_mifact.codigo_hash,
+                estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
+                sunat_respuesta_codigo: res_mifact.sunat_responsecode,
+                sunat_respuesta_nota: res_mifact.sunat_note,
+                sunat_respuesta_descripcion: res_mifact.sunat_description,
             },
             {
                 where: { id: nuevo.id },
@@ -740,13 +775,11 @@ const canjear = async (req, res) => {
             }
         )
 
-        const mifact_anular = await anularDoc(comprobante)
-
         // --- ACTUALIZAR CORRELATIVO --- //
         await PagoComprobante.update(
             { correlativo: pago_comprobante.correlativo + 1 },
             {
-                where: { id: doc_tipo },
+                where: { id: doc_tipo1 },
                 transaction
             }
         )
@@ -754,7 +787,7 @@ const canjear = async (req, res) => {
         // --- ESTADO CANJEADO --- //
         await Comprobante.update(
             {
-                estado: 3,
+                estado: 4,
                 canjeado_por: nuevo.id,
                 updatedBy: colaborador
             },
@@ -778,7 +811,7 @@ const canjear = async (req, res) => {
 
         await transaction.commit()
 
-        res.json({ code: 0 })
+        res.json({ code: 0, new: res_mifact, past: res1_mifact })
     }
     catch (error) {
         await transaction.rollback()
