@@ -5,6 +5,7 @@ import { Colaborador } from './Colaborador.js'
 export const ProduccionArea = sequelize.define('produccion_areas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     nombre: { type: DataTypes.STRING },
+    impresora_tipo: { type: DataTypes.STRING },
     impresora: { type: DataTypes.STRING },
     activo: { type: DataTypes.BOOLEAN },
 

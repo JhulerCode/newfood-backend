@@ -95,6 +95,10 @@ const sistemaData = {
         { id: '0', nombre: 'ANULADO' },
         { id: '2', nombre: 'PROCESADO' },
     ],
+    impresora_tipos: [
+        { id: 1, nombre: 'USB' },
+        { id: 2, nombre: 'LAN' },
+    ],
 
     CATALOGO_TRIBUTOS_SUNAT: {
         // IGV

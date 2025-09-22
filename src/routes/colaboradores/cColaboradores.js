@@ -295,7 +295,7 @@ const login = async (req, res) => {
         const u = await Colaborador.findByPk(colaborador)
         if (u == null) return res.json({ code: 1, msg: 'Sesión terminada' })
 
-        await Colaborador.update({ lastSignin: Sequelize.literal('current_timestamp') }, { where: { id: colaborador } })
+        // await Colaborador.update({ lastSignin: Sequelize.literal('current_timestamp') }, { where: { id: colaborador } })
 
         res.json({ code: 0, data: { ...req.user } })
     }

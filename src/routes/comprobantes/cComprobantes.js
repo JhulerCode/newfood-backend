@@ -478,17 +478,17 @@ const getPdf = async (req, res) => {
 
 const sendMail = async (req, res) => {
     try {
-        const { id } = req.body
-
+        const { id, email_to_send } = req.body
+        console.log(email_to_send)
         const data = await getComprobante(id)
         const buffer = await makePdf(data)
         const comprobante_numero = `${data.serie}-${data.numero}`
         const html = comprobanteHtml(comprobante_numero)
 
         const resend = new Resend(config.resendApiKey)
-        resend.emails.send({
+        const result = resend.emails.send({
             from: 'onboarding@resend.dev',
-            to: 'jhuler.code@gmail.com',
+            to: email_to_send,
             subject: `Comprobante de pago ${comprobante_numero}`,
             html,
             attachments: [
@@ -500,7 +500,13 @@ const sendMail = async (req, res) => {
             ],
         })
 
-        res.json({ code: 0 })
+        if (result.error) {
+            console.error("Error al enviar email:", result.error);
+            return res.status(500).json({ code: 1, msg: "No se pudo enviar el correo", error: result.error });
+        }
+        else {
+            res.json({ code: 0 })
+        }
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -1057,14 +1063,14 @@ async function makePdf(doc) {
             alignment: 'right',
         },
     ])
-    console.log(1)
+    // console.log(1)
     // --- TIPO DE ATENCIÓN --- //
     if (doc.transaccion1.venta_canal == 1) {
         doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
     } else {
         doc.atencion = doc.venta_canal1.nombre
     }
-    console.log(2)
+    // console.log(2)
     // --- PAGOS --- //
     const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
     doc.vuelto = totalPagado - Number(doc.monto)
@@ -1082,7 +1088,7 @@ async function makePdf(doc) {
             : null
 
     // --- PARA DELIVERY --- //
-    console.log(3)
+    // console.log(3)
     const deliveryStack =
         doc.transaccion1.venta_tipo == 3
             ? {

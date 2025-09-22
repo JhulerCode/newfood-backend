@@ -6,13 +6,13 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            nombre, impresora, activo,
+            nombre, impresora_tipo, impresora, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const nuevo = await ProduccionArea.create(
             {
-                nombre, impresora, activo,
+                nombre, impresora_tipo, impresora, activo,
                 createdBy: colaborador
             }
         )
@@ -30,13 +30,13 @@ const update = async (req, res) => {
         const { id } = req.params
         const { colaborador } = req.user
         const {
-            nombre, impresora, activo,
+            nombre, impresora_tipo, impresora, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await ProduccionArea.update(
             {
-                nombre, impresora, activo,
+                nombre, impresora_tipo, impresora, activo,
                 updatedBy: colaborador
             },
             {
@@ -45,7 +45,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-           // --- DEVOLVER --- //
+            // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -65,7 +65,10 @@ async function loadOne(id) {
         data = data.toJSON()
 
         const activo_estadosMap = cSistema.arrayMap('activo_estados')
+        const impresora_tiposMap = cSistema.arrayMap('impresora_tipos')
+
         data.activo1 = activo_estadosMap[data.activo]
+        data.impresora_tipo1 = impresora_tiposMap[data.impresora_tipo]
     }
 
     return data
@@ -97,9 +100,11 @@ const find = async (req, res) => {
             data = data.map(a => a.toJSON())
 
             const activo_estadosMap = cSistema.arrayMap('activo_estados')
+            const impresora_tiposMap = cSistema.arrayMap('impresora_tipos')
 
             for (const a of data) {
                 if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry.cols.includes('impresora_tipo')) a.impresora_tipo1 = impresora_tiposMap[a.impresora_tipo]
             }
         }
 
@@ -127,7 +132,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const deletedCount = await ProduccionArea.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
