@@ -32,7 +32,7 @@ const storageSunat = multer.diskStorage({
     }
 })
 
-const upload = multer({ storageUploads })
+const upload = multer({ storage: storageUploads })
 const uploadToSunat = multer({ storage: storageSunat })
 
 function deleteFile(name) {

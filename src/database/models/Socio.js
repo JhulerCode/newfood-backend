@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
+import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
 export const Socio = sequelize.define('socios', {
@@ -17,6 +18,7 @@ export const Socio = sequelize.define('socios', {
 
     activo: { type: DataTypes.BOOLEAN },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 
@@ -27,6 +29,9 @@ export const Socio = sequelize.define('socios', {
         }
     },
 })
+
+Empresa.hasMany(Socio, { foreignKey: 'empresa', as: 'socios', onDelete: 'RESTRICT' })
+Socio.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Socio, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Socio.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

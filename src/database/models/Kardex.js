@@ -2,8 +2,9 @@ import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
 import { Transaccion } from './Transaccion.js'
-import { Colaborador } from './Colaborador.js'
 import { Comprobante } from './Comprobante.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
 
 export const Kardex = sequelize.define('kardexes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -19,6 +20,7 @@ export const Kardex = sequelize.define('kardexes', {
     transaccion: { type: DataTypes.STRING },
     comprobante: { type: DataTypes.STRING },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -31,6 +33,9 @@ Kardex.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
 
 Comprobante.hasMany(Kardex, { foreignKey: 'comprobante', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Comprobante, { foreignKey: 'comprobante', as: 'comprobante1' })
+
+Empresa.hasMany(Kardex, { foreignKey: 'empresa', as: 'kardexes', onDelete: 'RESTRICT' })
+Kardex.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Kardex, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

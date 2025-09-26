@@ -1,7 +1,8 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
-import { Colaborador } from './Colaborador.js'
 import { Salon } from './Salon.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
 
 export const Mesa = sequelize.define('mesas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -12,12 +13,16 @@ export const Mesa = sequelize.define('mesas', {
     unida: { type: DataTypes.BOOLEAN, defaultValue: false },
     unidos: { type: DataTypes.JSON, defaultValue: [] },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
 
 Salon.hasMany(Mesa, { foreignKey: 'salon', as: 'mesas', onDelete: 'RESTRICT' })
 Mesa.belongsTo(Salon, { foreignKey: 'salon', as: 'salon1' })
+
+Empresa.hasMany(Mesa, { foreignKey: 'empresa', as: 'mesas', onDelete: 'RESTRICT' })
+Mesa.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Mesa, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Mesa.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

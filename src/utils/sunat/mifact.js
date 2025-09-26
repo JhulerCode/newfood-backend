@@ -13,7 +13,7 @@ const mifact_urls = {
 
 async function sendDoc(doc) {
     const {
-        empresa, cliente,
+        empresa_datos, cliente_datos,
         doc_tipo, serie, numero, fecha_emision, hora_emision, fecha_vencimiento, tipo_operacion_sunat, moneda,
         gravado, exonerado, inafecto, gratuito, descuentos,
         igv, isc, icbper,
@@ -26,19 +26,19 @@ async function sendDoc(doc) {
     const json_comprobante = {
         TOKEN: config.mifactApiKey,
         COD_TIP_NIF_EMIS: '6', //NO HAY
-        // NUM_NIF_EMIS: empresa.ruc,
-        // NOM_RZN_SOC_EMIS: empresa.razon_social,
-        // COD_UBI_EMIS: empresa.ubigeo,
-        // TXT_DMCL_FISC_EMIS: empresa.direccion_fiscal,
+        // NUM_NIF_EMIS: empresa_datos.ruc,
+        // NOM_RZN_SOC_EMIS: empresa_datos.razon_social,
+        // COD_UBI_EMIS: empresa_datos.ubigeo,
+        // TXT_DMCL_FISC_EMIS: empresa_datos.direccion_fiscal,
         "NUM_NIF_EMIS": "20100100100",
         "NOM_RZN_SOC_EMIS": "empresa demo",
         "NOM_COMER_EMIS": "mi nombre comercial es demo",
         "COD_UBI_EMIS": "103040",
         "TXT_DMCL_FISC_EMIS": "avenida abcd",
 
-        COD_TIP_NIF_RECP: cliente.doc_tipo,
-        NUM_NIF_RECP: cliente.doc_numero,
-        NOM_RZN_SOC_RECP: cliente.razon_social_nombres,
+        COD_TIP_NIF_RECP: cliente_datos.doc_tipo,
+        NUM_NIF_RECP: cliente_datos.doc_numero,
+        NOM_RZN_SOC_RECP: cliente_datos.razon_social_nombres,
 
         FEC_EMIS: fecha_emision,
         COD_TIP_CPE: doc_tipo,
@@ -49,17 +49,17 @@ async function sendDoc(doc) {
         COD_TIP_OPE_SUNAT: tipo_operacion_sunat,
         TXT_VERS_UBL: "2.1",
         TXT_VERS_ESTRUCT_UBL: "2.0",
-        COD_ANEXO_EMIS: empresa.anexo,
+        COD_ANEXO_EMIS: empresa_datos.anexo,
     }
 
     // --- Campos opcionales del emisor --- //
-    if (empresa.nombre_comercial) {
-        json_comprobante.NOM_COMER_EMIS = empresa.nombre_comercial
+    if (empresa_datos.nombre_comercial) {
+        json_comprobante.NOM_COMER_EMIS = empresa_datos.nombre_comercial
     }
 
     // --- Campos opcionales del receptor --- //
-    if (cliente.direccion) {
-        json_comprobante.TXT_DMCL_FISC_RECEP = cliente.direccion
+    if (cliente_datos.direccion) {
+        json_comprobante.TXT_DMCL_FISC_RECEP = cliente_datos.direccion
     }
     // if (txt_correo_envio) {
     //     json_comprobante.TXT_CORREO_ENVIO = txt_correo_envio
@@ -164,12 +164,12 @@ async function sendDoc(doc) {
 }
 
 async function anularDoc(doc) {
-    const { empresa, fecha_emision, doc_tipo, serie, numero } = doc
+    const { empresa_datos, fecha_emision, doc_tipo, serie, numero } = doc
 
     const send = {
         TOKEN: config.mifactApiKey,
         COD_TIP_NIF_EMIS: '6',
-        // NUM_NIF_EMIS: empresa.ruc,
+        // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
         COD_TIP_CPE: doc_tipo,
@@ -185,11 +185,11 @@ async function anularDoc(doc) {
 }
 
 async function estadoDoc(doc) {
-    const { empresa, fecha_emision, doc_tipo, serie, numero } = doc
+    const { empresa_datos, fecha_emision, doc_tipo, serie, numero } = doc
 
     const send = {
         TOKEN: config.mifactApiKey,
-        // NUM_NIF_EMIS: empresa.ruc,
+        // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
         COD_TIP_CPE: doc_tipo,
@@ -204,13 +204,13 @@ async function estadoDoc(doc) {
 
 async function xmlDoc(doc) {
     const {
-        empresa, fecha_emision, doc_tipo, serie, numero,
+        empresa_datos, fecha_emision, doc_tipo, serie, numero,
         xml, cdr, pdf
     } = doc
 
     const send = {
         TOKEN: config.mifactApiKey,
-        // NUM_NIF_EMIS: empresa.ruc,
+        // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
         COD_TIP_CPE: doc_tipo,

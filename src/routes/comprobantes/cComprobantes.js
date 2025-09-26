@@ -89,7 +89,7 @@ const create = async (req, res) => {
             caja_apertura: caja_apertura.id,
             estado,
 
-            empresa: {
+            empresa_datos: {
                 ruc: empresa.ruc,
                 razon_social: empresa.razon_social,
                 nombre_comercial: empresa.nombre_comercial,
@@ -101,7 +101,7 @@ const create = async (req, res) => {
                 departamento: empresa.departamento,
                 anexo: '0000',
             },
-            cliente: {
+            cliente_datos: {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
                 doc_tipo: cliente.doc_tipo,
@@ -471,7 +471,6 @@ const getPdf = async (req, res) => {
     try {
         const { id } = req.params
 
-        // const empresa = await Empresa.findByPk(1)
         const data = await getComprobante(id)
         const buffer = await makePdf(data)
 
@@ -668,8 +667,8 @@ const canjear = async (req, res) => {
             pago_condicion: comprobante.pago_condicion,
             transaccion: comprobante.transaccion,
             caja_apertura: comprobante.caja_apertura,
-            empresa: comprobante.empresa,
-            cliente: {
+            empresa_datos: comprobante.empresa,
+            cliente_datos: {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
                 doc_tipo: cliente.doc_tipo,
@@ -1068,12 +1067,12 @@ async function getComprobante(id) {
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         data.doc_tipo1 = pago_comprobantesMap[data.doc_tipo]
-        data.cliente.doc_tipo1 = documentos_identidadMap[data.cliente.doc_tipo]
+        data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
 
         data.total_letras = numeroATexto(data.monto)
-        data.qr_string = `${data.empresa.ruc}|${data.doc_tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente.doc_tipo}|${data.cliente.doc_numero}|${data.hash}`
+        data.qr_string = `${data.empresa_datos.ruc}|${data.doc_tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
     }
 
     return data
@@ -1154,15 +1153,15 @@ async function makePdf(doc) {
             stack: [
                 {
                     text: `Representacion impresa de la`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
                 {
                     text: `FACTURA ELECTRÓNICA`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
                 {
                     text: `${doc.hash}`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
             ]
         }
@@ -1172,15 +1171,15 @@ async function makePdf(doc) {
             stack: [
                 {
                     text: `Representacion impresa de la`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
                 {
                     text: `BOLETA DE VENTA ELECTRÓNICA`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
                 {
                     text: `${doc.hash}`,
-                    style: 'empresa',
+                    style: 'empresa_style',
                 },
             ]
         }
@@ -1206,12 +1205,12 @@ async function makePdf(doc) {
         // --- EMPRESA --- //
         {
             stack: [
-                doc.empresa.razon_social,
-                `RUC: ${doc.empresa.ruc}`,
-                doc.empresa.domicilio_fiscal,
-                `TEL: ${doc.empresa.telefono}`,
+                doc.empresa_datos.razon_social,
+                `RUC: ${doc.empresa_datos.ruc}`,
+                doc.empresa_datos.domicilio_fiscal,
+                `TEL: ${doc.empresa_datos.telefono}`,
             ],
-            style: 'empresa',
+            style: 'empresa_style',
         },
         // --- TIPO DE DOCUMENTO --- //
         {
@@ -1227,15 +1226,15 @@ async function makePdf(doc) {
                 },
                 { text: `ATENCIÓN: ${doc.atencion}`, style: 'datosExtra' },
                 {
-                    text: `CLIENTE: ${doc.cliente.razon_social_nombres}`,
+                    text: `CLIENTE: ${doc.cliente_datos.razon_social_nombres}`,
                     style: 'datosExtra',
                 },
                 {
-                    text: `${doc.cliente.doc_tipo == 0 ? 'DNI' : doc.cliente.doc_tipo1.nombre}: ${doc.cliente.doc_numero}`,
+                    text: `${doc.cliente_datos.doc_tipo == 0 ? 'DNI' : doc.cliente_datos.doc_tipo1.nombre}: ${doc.cliente_datos.doc_numero}`,
                     style: 'datosExtra',
                 },
                 {
-                    text: `DIRECCIÓN: ${doc.cliente.direccion || ""}`,
+                    text: `DIRECCIÓN: ${doc.cliente_datos.direccion || ""}`,
                     style: 'datosExtra',
                 },
             ],
@@ -1413,11 +1412,11 @@ async function makePdf(doc) {
         ...(qrStack ? [qrStack] : []),
         // --- SUNAT --- //
         ...(sunatStack ? [sunatStack] : []),
-        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa', fontSize: 8, margin: [0, 10, 0, 0] },
+        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa_style', fontSize: 8, margin: [0, 10, 0, 0] },
     ]
 
     docDefinition.styles = {
-        empresa: { fontSize: 10, alignment: 'center' },
+        empresa_style: { fontSize: 10, alignment: 'center' },
         tipo_doc: { fontSize: 11, alignment: 'center', bold: true, margin: [0, 10, 0, 10] },
         datosExtra: { fontSize: 10, margin: [0, 0, 0, 1] },
         cliente_datos: { fontSize: 10, alignment: 'left', margin: [0, 0, 0, 10] },

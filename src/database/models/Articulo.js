@@ -1,8 +1,9 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { ArticuloCategoria } from './ArticuloCategoria.js'
-import { Colaborador } from './Colaborador.js'
 import { ProduccionArea } from './ProduccionArea.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
 
 const precios_semana_default = [
     { id: 0, dia: 'DOMINGO', pu: null },
@@ -35,8 +36,9 @@ export const Articulo = sequelize.define('articulos', {
     precios_semana: { type: DataTypes.JSON, defaultValue: precios_semana_default },
     stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
 })
 
 ArticuloCategoria.hasMany(Articulo, { foreignKey: 'categoria', as: 'articulos', onDelete: 'RESTRICT' })
@@ -44,6 +46,9 @@ Articulo.belongsTo(ArticuloCategoria, { foreignKey: 'categoria', as: 'categoria1
 
 ProduccionArea.hasMany(Articulo, { foreignKey: 'produccion_area', as: 'articulos', onDelete: 'RESTRICT' })
 Articulo.belongsTo(ProduccionArea, { foreignKey: 'produccion_area', as: 'produccion_area1' })
+
+Empresa.hasMany(Articulo, { foreignKey: 'empresa', as: 'articulos', onDelete: 'RESTRICT' })
+Articulo.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Articulo, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Articulo.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

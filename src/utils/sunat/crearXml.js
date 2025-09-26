@@ -30,7 +30,7 @@ export function crearXml(fileName, doc) {
 function desarrolloXml(doc) {
     const {
         pago_condicion, monto,
-        empresa, cliente,
+        empresa_datos, cliente_datos,
         doc_tipo, serie, numero, fecha_emision, hora_emision, fecha_vencimiento,
         moneda,
         orden_compra, guias_adjuntas,
@@ -133,18 +133,18 @@ function desarrolloXml(doc) {
     // --- Empresa emisora --- //
     xml += `
     <cac:Signature>
-        <cbc:ID>${empresa.ruc}</cbc:ID>
+        <cbc:ID>${empresa_datos.ruc}</cbc:ID>
         <cac:SignatoryParty>
             <cac:PartyIdentification>
-                <cbc:ID>${empresa.ruc}</cbc:ID>
+                <cbc:ID>${empresa_datos.ruc}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyName>
-                <cbc:Name>${empresa.razon_social}</cbc:Name>
+                <cbc:Name>${empresa_datos.razon_social}</cbc:Name>
             </cac:PartyName>
         </cac:SignatoryParty>
         <cac:DigitalSignatureAttachment>
             <cac:ExternalReference>
-                <cbc:URI>${empresa.ruc}</cbc:URI>
+                <cbc:URI>${empresa_datos.ruc}</cbc:URI>
             </cac:ExternalReference>
         </cac:DigitalSignatureAttachment>
     </cac:Signature>
@@ -156,21 +156,21 @@ function desarrolloXml(doc) {
         <cac:Party>
             <cac:PartyIdentification>
                 <cbc:ID schemeID="6" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT"
-                    schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${empresa.ruc}</cbc:ID>
+                    schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${empresa_datos.ruc}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyName>
-                <cbc:Name>${empresa.nombre_comercial}</cbc:Name>
+                <cbc:Name>${empresa_datos.nombre_comercial}</cbc:Name>
             </cac:PartyName>
             <cac:PartyLegalEntity>
-                <cbc:RegistrationName>${empresa.razon_social}</cbc:RegistrationName>
+                <cbc:RegistrationName>${empresa_datos.razon_social}</cbc:RegistrationName>
                 <cac:RegistrationAddress>
-                    <cbc:ID schemeName="Ubigeos" schemeAgencyName="PE:INEI">${empresa.ubigeo}</cbc:ID>
+                    <cbc:ID schemeName="Ubigeos" schemeAgencyName="PE:INEI">${empresa_datos.ubigeo}</cbc:ID>
                     <cbc:AddressTypeCode listAgencyName="PE:SUNAT" listName="Establecimientos anexos">${local_anexo}</cbc:AddressTypeCode>
-                    <cbc:CityName>${empresa.provincia}</cbc:CityName>
-                    <cbc:CountrySubentity>${empresa.departamento}</cbc:CountrySubentity>
-                    <cbc:District>${empresa.distrito}</cbc:District>
+                    <cbc:CityName>${empresa_datos.provincia}</cbc:CityName>
+                    <cbc:CountrySubentity>${empresa_datos.departamento}</cbc:CountrySubentity>
+                    <cbc:District>${empresa_datos.distrito}</cbc:District>
                     <cac:AddressLine>
-                        <cbc:Line>${empresa.domicilio_fiscal}</cbc:Line>
+                        <cbc:Line>${empresa_datos.domicilio_fiscal}</cbc:Line>
                     </cac:AddressLine>
                     <cac:Country>
                         <cbc:IdentificationCode listID="ISO 3166-1"
@@ -188,11 +188,11 @@ function desarrolloXml(doc) {
     <cac:AccountingCustomerParty>
         <cac:Party>
             <cac:PartyIdentification>
-                <cbc:ID schemeID="${cliente.doc_tipo}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT"
-                    schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${cliente.doc_numero}</cbc:ID>
+                <cbc:ID schemeID="${cliente_datos.doc_tipo}" schemeName="Documento de Identidad" schemeAgencyName="PE:SUNAT"
+                    schemeURI="urn:pe:gob:sunat:cpe:see:gem:catalogos:catalogo06">${cliente_datos.doc_numero}</cbc:ID>
             </cac:PartyIdentification>
             <cac:PartyLegalEntity>
-                <cbc:RegistrationName>${cliente.razon_social_nombres}</cbc:RegistrationName>
+                <cbc:RegistrationName>${cliente_datos.razon_social_nombres}</cbc:RegistrationName>
             </cac:PartyLegalEntity>
         </cac:Party>
     </cac:AccountingCustomerParty>

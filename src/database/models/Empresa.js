@@ -1,6 +1,6 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
-import { Colaborador } from './Colaborador.js'
+// import { Colaborador } from './Colaborador.js'
 
 export const Empresa = sequelize.define('empresas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -29,5 +29,5 @@ export const Empresa = sequelize.define('empresas', {
     updatedBy: { type: DataTypes.STRING }
 })
 
-Colaborador.hasMany(Empresa, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
-Empresa.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })
+// Colaborador.hasMany(Empresa, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
+// Empresa.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })

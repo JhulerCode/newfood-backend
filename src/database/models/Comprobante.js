@@ -2,8 +2,9 @@ import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
-import { Colaborador } from './Colaborador.js'
 import { Transaccion } from './Transaccion.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -16,8 +17,8 @@ export const Comprobante = sequelize.define('comprobantes', {
     anulado_motivo: { type: DataTypes.STRING },
     canjeado_por: { type: DataTypes.STRING },
 
-    empresa: { type: DataTypes.JSON },
-    cliente: { type: DataTypes.JSON },
+    empresa_datos: { type: DataTypes.JSON },
+    cliente_datos: { type: DataTypes.JSON },
 
     doc_tipo: { type: DataTypes.STRING },
     serie: { type: DataTypes.STRING },
@@ -54,6 +55,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     sunat_respuesta_descripcion: { type: DataTypes.STRING },
     hash: { type: DataTypes.STRING },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 
@@ -73,6 +75,9 @@ Comprobante.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion
 
 Comprobante.hasOne(Comprobante, { foreignKey: 'canjeado_por', as: 'comprobante_inicial', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Comprobante, { foreignKey: 'canjeado_por', as: 'canjeado_por1' })
+
+Empresa.hasMany(Comprobante, { foreignKey: 'empresa', as: 'comprobantes', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Comprobante, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
@@ -105,6 +110,7 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     // descuento_vu: { type: DataTypes.DOUBLE },
     comprobante: { type: DataTypes.STRING },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -114,6 +120,9 @@ ComprobanteItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
 
 Comprobante.hasMany(ComprobanteItem, { foreignKey: 'comprobante', as: 'comprobante_items', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Comprobante, { foreignKey: 'comprobante', as: 'comprobante1' })
+
+Empresa.hasMany(ComprobanteItem, { foreignKey: 'empresa', as: 'comprobante_items', onDelete: 'RESTRICT' })
+ComprobanteItem.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(ComprobanteItem, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

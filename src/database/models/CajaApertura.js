@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
+import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
 export const CajaApertura = sequelize.define('caja_aperturas', {
@@ -10,9 +11,13 @@ export const CajaApertura = sequelize.define('caja_aperturas', {
     monto_cierre: { type: DataTypes.DECIMAL(10, 2) },
     estado: { type: DataTypes.STRING },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
+
+Empresa.hasMany(CajaApertura, { foreignKey: 'empresa', as: 'caja_aperturas', onDelete: 'RESTRICT' })
+CajaApertura.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(CajaApertura, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 CajaApertura.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

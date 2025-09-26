@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
+import { Empresa } from './Empresa.js'
 
 export const Colaborador = sequelize.define('colaboradores', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -34,6 +35,7 @@ export const Colaborador = sequelize.define('colaboradores', {
     format_date: { type: DataTypes.STRING, defaultValue: 'DD-MM-YYYY' },
     menu_visible: { type: DataTypes.BOOLEAN, defaultValue: true },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 
@@ -46,6 +48,9 @@ export const Colaborador = sequelize.define('colaboradores', {
         }
     }
 })
+
+Empresa.hasMany(Colaborador, { foreignKey: 'empresa', as: 'colaboradores', onDelete: 'RESTRICT' })
+Colaborador.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1', onDelete: 'RESTRICT' })
 Colaborador.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1', onDelete: 'RESTRICT' })

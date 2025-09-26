@@ -7,6 +7,7 @@ import { PagoComprobante } from './PagoComprobante.js'
 import { PagoMetodo } from './PagoMetodo.js'
 import { Mesa } from './Mesa.js'
 import { Salon } from './Salon.js'
+import { Empresa } from './Empresa.js'
 import { CajaApertura } from './CajaApertura.js'
 
 export const Transaccion = sequelize.define('transacciones', {
@@ -38,6 +39,7 @@ export const Transaccion = sequelize.define('transacciones', {
 
     caja_apertura: { type: DataTypes.STRING },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -59,6 +61,9 @@ Transaccion.belongsTo(PagoMetodo, { foreignKey: 'venta_pago_metodo', as: 'venta_
 
 CajaApertura.hasMany(Transaccion, { foreignKey: 'caja_apertura', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_apertura1' })
+
+Empresa.hasMany(Transaccion, { foreignKey: 'empresa', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(Transaccion, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
@@ -89,6 +94,7 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
     combo_articulos: { type: DataTypes.JSON },
     venta_entregado: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
@@ -98,6 +104,9 @@ TransaccionItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
 
 Transaccion.hasMany(TransaccionItem, { foreignKey: 'transaccion', as: 'transaccion_items', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
+
+Empresa.hasMany(TransaccionItem, { foreignKey: 'empresa', as: 'transaccion_items', onDelete: 'RESTRICT' })
+TransaccionItem.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(TransaccionItem, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

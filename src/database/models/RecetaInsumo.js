@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
+import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
 export const RecetaInsumo = sequelize.define('receta_insumos', {
@@ -10,6 +11,7 @@ export const RecetaInsumo = sequelize.define('receta_insumos', {
     cantidad: { type: DataTypes.DOUBLE },
     orden: { type: DataTypes.INTEGER },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 })
@@ -19,6 +21,9 @@ RecetaInsumo.belongsTo(Articulo, { foreignKey: 'articulo_principal', as: 'articu
 
 Articulo.hasMany(RecetaInsumo, { foreignKey: 'articulo', as: 'articulos_principales', onDelete: 'RESTRICT' })
 RecetaInsumo.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+Empresa.hasMany(RecetaInsumo, { foreignKey: 'empresa', as: 'receta_insumos', onDelete: 'RESTRICT' })
+RecetaInsumo.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(RecetaInsumo, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 RecetaInsumo.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })

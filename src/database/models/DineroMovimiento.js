@@ -4,6 +4,8 @@ import { PagoMetodo } from './PagoMetodo.js'
 import { Comprobante } from './Comprobante.js'
 import { CajaApertura } from './CajaApertura.js'
 import { Transaccion } from './Transaccion.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
 
 export const DineroMovimiento = sequelize.define('dinero_movimientos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -20,6 +22,7 @@ export const DineroMovimiento = sequelize.define('dinero_movimientos', {
 
     estado: { type: DataTypes.STRING, defaultValue: '2' },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 
@@ -42,3 +45,11 @@ DineroMovimiento.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transa
 
 CajaApertura.hasMany(DineroMovimiento, { foreignKey: 'caja_apertura', as: 'dinero_movimientos', onDelete: 'RESTRICT' })
 DineroMovimiento.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_apertura1' })
+
+Empresa.hasMany(DineroMovimiento, { foreignKey: 'empresa', as: 'dinero_movimientos', onDelete: 'RESTRICT' })
+DineroMovimiento.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
+
+Colaborador.hasMany(DineroMovimiento, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
+DineroMovimiento.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
+Colaborador.hasMany(DineroMovimiento, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
+DineroMovimiento.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })

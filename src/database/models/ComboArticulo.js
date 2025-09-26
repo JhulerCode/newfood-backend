@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
+import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
 export const ComboArticulo = sequelize.define('combo_articulos', {
@@ -10,6 +11,7 @@ export const ComboArticulo = sequelize.define('combo_articulos', {
     cantidad: { type: DataTypes.DOUBLE },
     orden: { type: DataTypes.INTEGER },
 
+    empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 })
@@ -19,6 +21,9 @@ ComboArticulo.belongsTo(Articulo, { foreignKey: 'articulo_principal', as: 'artic
 
 Articulo.hasMany(ComboArticulo, { foreignKey: 'articulo', as: 'combos', onDelete: 'RESTRICT' })
 ComboArticulo.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+Empresa.hasMany(ComboArticulo, { foreignKey: 'empresa', as: 'combo_articulos', onDelete: 'RESTRICT' })
+ComboArticulo.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
 Colaborador.hasMany(ComboArticulo, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
 ComboArticulo.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
