@@ -13,20 +13,26 @@ const router = Router()
 const signin = async (req, res) => {
     try {
         const { usuario, contrasena } = req.body
-        
+
         const data = await Colaborador.findOne({
             where: { usuario },
             // attributes: ['id', 'contrasena', 'nombres', 'apellidos', 'cargo', 'permisos', 'vista_inicial', 'theme', 'color', 'format_date', 'menu_visible'],
         })
 
+        const host = req.hostname
+        const subdominio = host.split('.')[0]
+        console.log(host)
+        console.log(subdominio)
+        throw error
+
         const empresa = await Empresa.findByPk('1')
         const impresora_caja = await ProduccionArea.findByPk('1')
-        
+
         if (data == null) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
-        
+
         const correct = await bcrypt.compare(contrasena, data.contrasena)
         if (!correct) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
-        
+
         const token = jat.encrypt({
             colaborador: data.id,
         }, config.tokenMyApi)
