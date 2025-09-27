@@ -145,12 +145,12 @@ const update = async (req, res) => {
         }
 
         // --- VERIFY SI EXISTE CODIGO DE BARRAS --- //
-        if (codigo_barra) {
-            if (await existe(Articulo, { codigo_barra, empresa: empresa.id }, res) == true) {
-                await transaction.rollback()
-                return
-            }
-        }
+        // if (codigo_barra) {
+        //     if (await existe(Articulo, { codigo_barra, empresa: empresa.id }, res) == true) {
+        //         await transaction.rollback()
+        //         return
+        //     }
+        // }
 
         // --- ACTUALIZAR --- //
         const send = {
