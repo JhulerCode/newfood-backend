@@ -1114,6 +1114,7 @@ async function makePdf(doc, empresa) {
     // --- LOGO --- //
     const logoPath = getFilePath(empresa.logo)
     const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+    const tKey = doc.doc_tipo.replace(`${empresa.subdominio}-`, '')
 
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
@@ -1170,7 +1171,7 @@ async function makePdf(doc, empresa) {
 
     // --- QR --- //
     // "20100100100|01|F009|00000001|180.00|1180.00|2025-09-20|6|20601847834|IZVMmltTcKneNX1RyLO0zjlSqrk="
-    const qrStack = doc.doc_tipo == 'NV' ? null : {
+    const qrStack = tKey == 'NV' ? null : {
         qr: doc.qr_string,
         fit: 115,
         alignment: "center",
@@ -1179,7 +1180,7 @@ async function makePdf(doc, empresa) {
 
     // --- SUNAT --- //
     let sunatStack = null
-    if (doc.doc_tipo == '01') {
+    if (tKey == '01') {
         sunatStack = {
             stack: [
                 {
@@ -1197,7 +1198,7 @@ async function makePdf(doc, empresa) {
             ]
         }
     }
-    else if (doc.doc_tipo == '03') {
+    else if (tKey == '03') {
         sunatStack = {
             stack: [
                 {
@@ -1245,7 +1246,7 @@ async function makePdf(doc, empresa) {
         },
         // --- TIPO DE DOCUMENTO --- //
         {
-            stack: [`${doc.doc_tipo1.nombre}${doc.doc_tipo == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
+            stack: [`${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
             style: 'tipo_doc',
         },
         // --- CLIENTE --- //
