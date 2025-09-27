@@ -10,7 +10,7 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             nombres, apellidos,
             doc_tipo, doc_numero,
@@ -24,13 +24,13 @@ const create = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Colaborador, { nombres, apellidos }, res) == true) {
+        if (await existe(Colaborador, { nombres, apellidos, empresa: empresa.id }, res) == true) {
             await transaction.rollback()
             return
         }
 
         if (usuario) {
-            if (await existe(Colaborador, { usuario }, res) == true) {
+            if (await existe(Colaborador, { usuario, empresa: empresa.id }, res) == true) {
                 await transaction.rollback()
                 return
             }
@@ -50,6 +50,7 @@ const create = async (req, res) => {
             ubigeo, direccion,
             cargo, sueldo, activo,
             has_signin, usuario, permisos, vista_inicial,
+            empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
 
@@ -83,7 +84,7 @@ const update = async (req, res) => {
 
     try {
         const { id } = req.params
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             nombres, apellidos,
             doc_tipo, doc_numero,
@@ -97,13 +98,14 @@ const update = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Colaborador, { nombres, apellidos, id }, res) == true) {
+        if (await existe(Colaborador, { nombres, apellidos, empresa: empresa.id, id }, res) == true) {
             await transaction.rollback()
             return
         }
 
+        // --- VERIFY SI EXISTE USUARIO --- //
         if (usuario) {
-            if (await existe(Colaborador, { usuario, id }, res) == true) {
+            if (await existe(Colaborador, { usuario, empresa: empresa.id, id }, res) == true) {
                 await transaction.rollback()
                 return
             }
@@ -180,34 +182,15 @@ const update = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await Colaborador.findByPk(id)
-
-    if (data) {
-        data = data.toJSON()
-
-        const generosMap = cSistema.arrayMap('generos')
-        const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
-        const activo_estadosMap = cSistema.arrayMap('activo_estados')
-        const estadosMap = cSistema.arrayMap('estados')
-
-        data.sexo1 = generosMap[data.sexo]
-        data.doc_tipo1 = documentos_identidadMap[data.doc_tipo]
-        data.activo1 = activo_estadosMap[data.activo]
-        data.has_signin1 = estadosMap[data.has_signin]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [[Sequelize.literal(`TRIM(CONCAT(COALESCE(nombres, ''), ' ', COALESCE(apellidos, '')))`), 'ASC']],
-            where: {}
+            where: { empresa: empresa.id }
         }
 
         if (qry) {
@@ -300,8 +283,6 @@ const preferencias = async (req, res) => {
     }
 }
 
-
-
 const login = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -318,14 +299,33 @@ const login = async (req, res) => {
     }
 }
 
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await Colaborador.findByPk(id)
+
+    if (data) {
+        data = data.toJSON()
+
+        const generosMap = cSistema.arrayMap('generos')
+        const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
+        const estadosMap = cSistema.arrayMap('estados')
+
+        data.sexo1 = generosMap[data.sexo]
+        data.doc_tipo1 = documentos_identidadMap[data.doc_tipo]
+        data.activo1 = activo_estadosMap[data.activo]
+        data.has_signin1 = estadosMap[data.has_signin]
+    }
+
+    return data
+}
+
 export default {
     find,
     create,
-    findById,
     update,
+    findById,
     delet,
-
     preferencias,
-
     login,
 }

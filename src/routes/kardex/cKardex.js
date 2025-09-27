@@ -11,7 +11,7 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             tipo, fecha,
             articulo, cantidad,
@@ -19,17 +19,18 @@ const create = async (req, res) => {
             transaccion,
         } = req.body
 
-       // --- CREAR --- //
+        // --- CREAR --- //
         const nuevo = await Kardex.create({
             tipo, fecha,
             articulo, cantidad,
             observacion, estado,
             transaccion,
+            empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
 
 
-       // --- ACTUALIZAR STOCK --- //
+        // --- ACTUALIZAR STOCK --- //
         const kardex_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = kardex_tiposMap[tipo]
 
@@ -56,13 +57,14 @@ const create = async (req, res) => {
 
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
-            where: {},
-            order: [['createdAt', 'DESC'], ['fecha', 'DESC']],
+            where: { empresa: empresa.id, },
             include: [],
+            order: [['createdAt', 'DESC'], ['fecha', 'DESC']],
         }
 
         const include1 = {
@@ -170,13 +172,13 @@ const delet = async (req, res) => {
         const { id } = req.params
         const { tipo, articulo, cantidad } = req.body
 
-       // --- ELIMINAR --- //
+        // --- ELIMINAR --- //
         await Kardex.destroy({
             where: { id },
             transaction
         })
 
-       // --- ACTUALIZAR STOCK --- //
+        // --- ACTUALIZAR STOCK --- //
         const kardex_tiposMap = cSistema.arrayMap('kardex_tipos')
         const tipoInfo = kardex_tiposMap[tipo]
 

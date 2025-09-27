@@ -18,13 +18,14 @@ const include1 = {
 
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
+            where: { empresa: empresa.id },
+            include: [],
             order: [['createdAt', 'DESC']],
-            where: {},
-            include: []
         }
 
         if (qry) {
@@ -87,7 +88,8 @@ const find = async (req, res) => {
             const comprobante_estadosMap = cSistema.arrayMap('comprobante_estados')
 
             for (const a of data) {
-                a.comprobante1.venta_tipo_documento_codigo1 = pago_comprobantesMap[a.comprobante1.doc_tipo]
+                const tKey = a.comprobante1.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                a.comprobante1.venta_tipo_documento_codigo1 = pago_comprobantesMap[tKey]
                 a.comprobante_estado1 = comprobante_estadosMap[a.comprobante1.estado]
                 a.comprobante_estado = a.comprobante_estado1.id
 

@@ -43,6 +43,11 @@ const include1 = {
         as: 'createdBy1',
         attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
     },
+    // pago_comprobante1: {
+    //     model: PagoComprobante,
+    //     as: 'pago_comprobante1',
+    //     attributes: ['id', 'nombre']
+    // },
 }
 
 const sqls1 = {
@@ -58,7 +63,7 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             fecha_emision, doc_tipo, socio, pago_condicion, estado,
             // sub_total_ventas, anticipos, descuentos, valor_venta,
@@ -69,16 +74,44 @@ const create = async (req, res) => {
             comprobante_items, transaccion, pago_metodos,
         } = req.body
 
-        const empresa = await Empresa.findByPk('1')
-        const cliente = await Socio.findByPk(socio)
-        const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
-        const caja_apertura = await CajaApertura.findOne({ where: { estado: '1' } })
-
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
+        const caja_apertura = await CajaApertura.findOne({
+            where: {
+                estado: '1',
+                empresa: empresa.id,
+            }
+        })
         if (caja_apertura == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'La caja no está aperturada' })
             return
+        }
+
+        // --- CORRELATIVO COMPROBANTE --- //
+        const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
+        if (pago_comprobante == null) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'No existe el tipo de comprobante' })
+            return
+        }
+        if (pago_comprobante.correlativo == null) {
+            await transaccion.rollback()
+            res.json({ code: 1, msg: 'El tipo de comprobante aún no está configurado' })
+            return
+        }
+
+        // --- CLIENTE DATOS --- //
+        let cliente = {}
+        if (socio == `${empresa.subdominio}1`) {
+            cliente = await Socio.findByPk(socio)
+        }
+        else {
+            cliente = {
+                doc_tipo: '0',
+                doc_numero: '00000000',
+                doc_nombres: '00000000 - CLIENTES VARIOS',
+                nombres: 'CLIENTES VARIOS',
+            }
         }
 
         // --- CREAR --- //
@@ -140,6 +173,7 @@ const create = async (req, res) => {
             nota,
             mifact: {},
 
+            empresa: empresa.id,
             createdBy: colaborador
         }
 
@@ -186,6 +220,7 @@ const create = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
+                empresa: empresa.id,
                 createdBy: colaborador
             })
 
@@ -261,6 +296,7 @@ const create = async (req, res) => {
                                 estado: 1,
                                 transaccion: transaccion.id,
                                 comprobante: nuevo.id,
+                                empresa: empresa.id,
                                 createdBy: colaborador
                             })
                         }
@@ -273,6 +309,7 @@ const create = async (req, res) => {
                             estado: 1,
                             transaccion: transaccion.id,
                             comprobante: nuevo.id,
+                            empresa: empresa.id,
                             createdBy: colaborador
                         })
                     }
@@ -289,6 +326,7 @@ const create = async (req, res) => {
                             estado: 1,
                             transaccion: transaccion.id,
                             comprobante: nuevo.id,
+                            empresa: empresa.id,
                             createdBy: colaborador
                         })
                     }
@@ -301,6 +339,7 @@ const create = async (req, res) => {
                         estado: 1,
                         transaccion: transaccion.id,
                         comprobante: nuevo.id,
+                        empresa: empresa.id,
                         createdBy: colaborador
                     })
                 }
@@ -350,6 +389,7 @@ const create = async (req, res) => {
                 monto: a.monto,
                 comprobante: nuevo.id,
                 caja_apertura: caja_apertura.id,
+                empresa: empresa.id,
                 createdBy: colaborador
             }))
             await DineroMovimiento.bulkCreate(pagoItems, { transaction })
@@ -379,7 +419,7 @@ const create = async (req, res) => {
         }
 
         // --- DEVOLVER --- //
-        const data = await getComprobante(nuevo.id)
+        const data = await getComprobante(nuevo.id, empresa)
         res.json({ code: 0, data, facturacion: res_mifact })
     }
     catch (error) {
@@ -391,12 +431,13 @@ const create = async (req, res) => {
 
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['createdAt', 'DESC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: []
         }
 
@@ -433,12 +474,13 @@ const find = async (req, res) => {
             data = data.map(a => a.toJSON())
 
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-            const pago_comprobantes = cSistema.arrayMap('pago_comprobantes')
+            const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
             const comprobante_estadosMap = cSistema.arrayMap('comprobante_estados')
 
             for (const a of data) {
+                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantesMap[tKey]
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
-                if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantes[a.doc_tipo]
                 if (qry.cols.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
             }
         }
@@ -452,8 +494,9 @@ const find = async (req, res) => {
 
 const findById = async (req, res) => {
     try {
+        const { empresa } = req.user
         const { id } = req.params
-        const data = await getComprobante(id)
+        const data = await getComprobante(id, empresa)
 
         data.moneda1 = {
             plural: 'SOLES',
@@ -469,10 +512,11 @@ const findById = async (req, res) => {
 
 const getPdf = async (req, res) => {
     try {
+        const { empresa } = req.user
         const { id } = req.params
 
-        const data = await getComprobante(id)
-        const buffer = await makePdf(data)
+        const data = await getComprobante(id, empresa)
+        const buffer = await makePdf(data, empresa)
 
         res.setHeader("Content-Type", "application/pdf")
         res.setHeader("Content-Disposition", `inline; filename=${data.serie}-${data.numero}.pdf`)
@@ -485,10 +529,11 @@ const getPdf = async (req, res) => {
 
 const sendMail = async (req, res) => {
     try {
+        const { empresa } = req.user
         const { id, email_to_send } = req.body
-        
-        const data = await getComprobante(id)
-        const buffer = await makePdf(data)
+
+        const data = await getComprobante(id, empresa)
+        const buffer = await makePdf(data, empresa)
         const comprobante_numero = `${data.serie}-${data.numero}`
         const html = comprobanteHtml(comprobante_numero)
 
@@ -524,7 +569,7 @@ const actualizarPago = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const { fecha_emision, caja_apertura, pago_metodos, modal_mode } = req.body
 
@@ -558,6 +603,7 @@ const actualizarPago = async (req, res) => {
             monto: a.monto,
             comprobante: id,
             caja_apertura: modal_mode == 1 ? caja_apertura1.id : caja_apertura,
+            empresa: empresa.id,
             createdBy: colaborador
         }))
         await DineroMovimiento.bulkCreate(pagoItems, { transaction })
@@ -623,7 +669,7 @@ const anular = async (req, res) => {
 
     } catch (error) {
         await transaction.rollback()
-        
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -632,7 +678,7 @@ const canjear = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const {
             fecha_emision, doc_tipo, doc_tipo1, socio
@@ -698,6 +744,7 @@ const canjear = async (req, res) => {
             nota: comprobante.nota,
             mifact: {},
 
+            empresa: empresa.id,
             createdBy: colaborador
         }
 
@@ -745,6 +792,7 @@ const canjear = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
+                empresa: empresa.id,
                 createdBy: colaborador
             })
         }
@@ -783,7 +831,7 @@ const canjear = async (req, res) => {
             }
         )
 
-        // --- ESTADO CANJEADO --- //
+        // --- ACTUALIZAR ESTADO CANJEADO --- //
         await Comprobante.update(
             {
                 estado: 4,
@@ -796,7 +844,7 @@ const canjear = async (req, res) => {
             }
         )
 
-        // --- CAMBIAR PAGOS --- //
+        // --- ACTUALIZAR PAGOS --- //
         await DineroMovimiento.update(
             {
                 comprobante: nuevo.id,
@@ -821,12 +869,13 @@ const canjear = async (req, res) => {
 
 const resumen = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id', 'fecha_emision', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
             order: [['createdAt', 'ASC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: [
                 {
                     model: ComprobanteItem,
@@ -905,7 +954,7 @@ const resumen = async (req, res) => {
                 }
 
                 // --- TIPOS DE COMPROBANTES --- //
-                const tKey = a.doc_tipo
+                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
                 if (!comprobanteTiposMap[tKey]) {
                     const item = {
                         id: tKey,
@@ -1005,25 +1054,7 @@ const resumen = async (req, res) => {
 
 
 // --- Funciones --- //
-// async function loadOne(id) {
-//     let data = await Comprobante.findByPk(id, {
-//         include: [include1.socio1, include1.createdBy1]
-//     })
-
-//     if (data) {
-//         data = data.toJSON()
-
-//         const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-//         const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
-
-//         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-//         data.estado1 = transaccion_estadosMap[data.estado]
-//     }
-
-//     return data
-// }
-
-async function getComprobante(id) {
+async function getComprobante(id, empresa) {
     let data = await Comprobante.findByPk(id, {
         include: [
             {
@@ -1061,12 +1092,13 @@ async function getComprobante(id) {
     if (data) {
         data = data.toJSON()
 
+        const tKey = data.doc_tipo.replace(`${empresa.subdominio}-`, '')
         const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
         const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
         const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
-        data.doc_tipo1 = pago_comprobantesMap[data.doc_tipo]
+        data.doc_tipo1 = pago_comprobantesMap[tKey]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
@@ -1078,9 +1110,8 @@ async function getComprobante(id) {
     return data
 }
 
-async function makePdf(doc) {
+async function makePdf(doc, empresa) {
     // --- LOGO --- //
-    let empresa = await Empresa.findByPk('1')
     const logoPath = getFilePath(empresa.logo)
     const logoBase64 = fs.readFileSync(logoPath).toString("base64");
 

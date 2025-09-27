@@ -1,4 +1,4 @@
-import { Impresora } from '../../database/models/Impresora.js'
+import { Caja } from '../../database/models/Caja.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
@@ -6,14 +6,14 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const {
-            nombre, activo,
+            nombre, impresora, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
-        const nuevo = await Impresora.create(
+        // --- ACTUALIZAR --- //
+        const nuevo = await Caja.create(
             {
-                nombre, activo,
-                createdBy: colaborador
+                nombre, impresora, activo,
+                updatedBy: colaborador
             }
         )
 
@@ -30,13 +30,13 @@ const update = async (req, res) => {
         const { id } = req.params
         const { colaborador } = req.user
         const {
-            nombre, activo,
+            nombre, impresora, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
-        const [affectedRows] = await Impresora.update(
+        // --- ACTUALIZAR --- //
+        const [affectedRows] = await Caja.update(
             {
-                nombre, activo,
+                nombre, impresora, activo,
                 updatedBy: colaborador
             },
             {
@@ -45,7 +45,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-           // --- DEVOLVER --- //
+            // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -59,7 +59,7 @@ const update = async (req, res) => {
 }
 
 async function loadOne(id) {
-    let data = await Impresora.findByPk(id)
+    let data = await Caja.findByPk(id)
 
     if (data) {
         data = data.toJSON()
@@ -73,12 +73,13 @@ async function loadOne(id) {
 
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['nombre', 'ASC']],
-            where: {}
+            where: { empresa: empresa.id },
         }
 
         if (qry) {
@@ -91,7 +92,7 @@ const find = async (req, res) => {
             }
         }
 
-        let data = await Impresora.findAll(findProps)
+        let data = await Caja.findAll(findProps)
 
         if (data.length > 0) {
             data = data.map(a => a.toJSON())
@@ -114,7 +115,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await Impresora.findByPk(id)
+        const data = await Caja.findByPk(id)
 
         res.json({ code: 0, data })
     }
@@ -127,8 +128,8 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-       // --- ACTUALIZAR --- //
-        const deletedCount = await Impresora.destroy({ where: { id } })
+        // --- ACTUALIZAR --- //
+        const deletedCount = await Caja.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
 

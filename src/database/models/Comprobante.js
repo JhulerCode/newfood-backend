@@ -5,6 +5,7 @@ import { Articulo } from './Articulo.js'
 import { Transaccion } from './Transaccion.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
+import { PagoComprobante } from './PagoComprobante.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -66,6 +67,9 @@ export const Comprobante = sequelize.define('comprobantes', {
         },
     },
 })
+
+PagoComprobante.hasMany(Comprobante, { foreignKey: 'doc_tipo', as: 'comprobantes', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(PagoComprobante, { foreignKey: 'doc_tipo', as: 'doc_tipo1' })
 
 Socio.hasMany(Comprobante, { foreignKey: 'socio', as: 'comprobantes', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })

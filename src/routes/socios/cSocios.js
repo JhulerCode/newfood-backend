@@ -1,26 +1,27 @@
 import { Socio } from '../../database/models/Socio.js'
-import { Sequelize, Op } from 'sequelize'
+import { Op } from 'sequelize'
 import { applyFilters, existe } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import sequelize from '../../database/sequelize.js'
 
 const create = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
         } = req.body
 
-       // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Socio, { tipo, doc_numero }, res, `El socio comercial ya existe`) == true) return
+        // --- VERIFY SI EXISTE NOMBRE --- //
+        if (await existe(Socio, { tipo, doc_numero, empresa: empresa.id }, res, `El socio comercial ya existe`) == true) return
 
-       // --- CREAR --- //
+        // --- CREAR --- //
         const nuevo = await Socio.create({
             tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
+            empresa: empresa.id,
             createdBy: colaborador
         })
 
@@ -35,7 +36,7 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const {
             tipo, doc_tipo, doc_numero, nombres,
@@ -43,10 +44,10 @@ const update = async (req, res) => {
             activo,
         } = req.body
 
-       // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Socio, { tipo, doc_numero, id }, res, `El socio comercial ya existe`) == true) return
+        // --- VERIFY SI EXISTE NOMBRE --- //
+        if (await existe(Socio, { tipo, doc_numero, empresa: empresa.id, id }, res, `El socio comercial ya existe`) == true) return
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await Socio.update(
             {
                 tipo, doc_tipo, doc_numero, nombres,
@@ -71,30 +72,15 @@ const update = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await Socio.findByPk(id)
-
-    if (data) {
-        data = data.toJSON()
-
-        const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
-        const activo_estadosMap = cSistema.arrayMap('activo_estados')
-
-        data.doc_tipo1 = documentos_identidadMap[data.doc_tipo]
-        data.activo1 = activo_estadosMap[data.activo]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['nombres', 'ASC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: []
         }
 
@@ -146,7 +132,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-       // --- ELIMINAR --- //
+        // --- ELIMINAR --- //
         const deletedCount = await Socio.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
@@ -164,7 +150,7 @@ const deleteBulk = async (req, res) => {
     try {
         const { ids } = req.body
 
-       // --- ELIMINAR --- //
+        // --- ELIMINAR --- //
         const deletedCount = await Socio.destroy({
             where: {
                 id: {
@@ -194,7 +180,7 @@ const updateBulk = async (req, res) => {
         const { ids, prop, val } = req.body
         const edit = { [prop]: val }
 
-       // --- MODIFICAR --- //
+        // --- MODIFICAR --- //
         await Socio.update(
             edit,
             {
@@ -218,6 +204,23 @@ const updateBulk = async (req, res) => {
     }
 }
 
+
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await Socio.findByPk(id)
+
+    if (data) {
+        data = data.toJSON()
+
+        const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
+
+        data.doc_tipo1 = documentos_identidadMap[data.doc_tipo]
+        data.activo1 = activo_estadosMap[data.activo]
+    }
+
+    return data
+}
 export default {
     create,
     find,

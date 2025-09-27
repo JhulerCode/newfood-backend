@@ -14,40 +14,45 @@ const signin = async (req, res) => {
     try {
         const { usuario, contrasena } = req.body
 
-        const data = await Colaborador.findOne({
-            where: { usuario },
-            // attributes: ['id', 'contrasena', 'nombres', 'apellidos', 'cargo', 'permisos', 'vista_inicial', 'theme', 'color', 'format_date', 'menu_visible'],
+        // --- VERIFICAR EMPRESA --- //
+        const xEmpresa = req.headers["x-empresa"]
+        const empresa = await Empresa.findOne({ where: { subdominio: xEmpresa } })
+        if (!empresa) return res.json({ code: 1, msg: 'Empresa no encontrada' })
+
+        // -- VERIFICAR COLABORADOR --- //
+        const colaborador = await Colaborador.findOne({
+            where: {
+                usuario,
+                empresa: empresa.id,
+            }
         })
+        
+        if (colaborador == null) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
 
-        const host = req.hostname
-        const subdominio = host.split('.')[0]
-        console.log(host)
-        console.log(subdominio)
-        throw error
-
-        const empresa = await Empresa.findByPk('1')
-        const impresora_caja = await ProduccionArea.findByPk('1')
-
-        if (data == null) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
-
-        const correct = await bcrypt.compare(contrasena, data.contrasena)
+        const correct = await bcrypt.compare(contrasena, colaborador.contrasena)
         if (!correct) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
 
-        const token = jat.encrypt({
-            colaborador: data.id,
-        }, config.tokenMyApi)
+        // -- GUARDAR SESSION --- //
+        const token = jat.encrypt({ id: colaborador.id }, config.tokenMyApi)
 
-        guardarSesion(data.id, {
+        const impresora_caja = await ProduccionArea.findOne({
+            where: {
+                nombre: 'CAJA',
+                empresa: empresa.id,
+            }
+        })
+
+        guardarSesion(colaborador.id, {
             token,
-            nombres: data.nombres,
-            apellidos: data.apellidos,
-            cargo: data.cargo,
-            vista_inicial: data.vista_inicial,
-            theme: data.theme,
-            color: data.color,
-            format_date: data.format_date,
-            menu_visible: data.menu_visible,
-            permisos: data.permisos,
+            nombres: colaborador.nombres,
+            apellidos: colaborador.apellidos,
+            cargo: colaborador.cargo,
+            vista_inicial: colaborador.vista_inicial,
+            theme: colaborador.theme,
+            color: colaborador.color,
+            format_date: colaborador.format_date,
+            menu_visible: colaborador.menu_visible,
+            permisos: colaborador.permisos,
             empresa: empresa,
             impresora_caja: impresora_caja,
         })

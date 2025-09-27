@@ -10,7 +10,7 @@ const update = async (req, res) => {
             nombre, serie, numero, correlativo, activo, estandar
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await PagoComprobante.update(
             {
                 nombre, serie, numero, correlativo, activo, estandar,
@@ -22,7 +22,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-           // --- DEVOLVER --- //
+            // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -35,30 +35,15 @@ const update = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await PagoComprobante.findByPk(id)
-
-    if (data) {
-        data = data.toJSON()
-
-        const activo_estadosMap = cSistema.arrayMap('activo_estados')
-        const estadosMap = cSistema.arrayMap('estados')
-
-        data.activo1 = activo_estadosMap[data.activo]
-        data.estandar1 = estadosMap[data.estandar]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['nombre', 'ASC']],
-            where: {}
+            where: { empresa: empresa.id }
         }
 
         if (qry) {
@@ -102,6 +87,24 @@ const findById = async (req, res) => {
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await PagoComprobante.findByPk(id)
+
+    if (data) {
+        data = data.toJSON()
+
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
+        const estadosMap = cSistema.arrayMap('estados')
+
+        data.activo1 = activo_estadosMap[data.activo]
+        data.estandar1 = estadosMap[data.estandar]
+    }
+
+    return data
 }
 
 export default {

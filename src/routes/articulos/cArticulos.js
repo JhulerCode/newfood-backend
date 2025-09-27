@@ -46,7 +46,7 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
 
         if (req.body.datos) {
             const datos = JSON.parse(req.body.datos)
@@ -63,9 +63,17 @@ const create = async (req, res) => {
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Articulo, { nombre }, res) == true) {
+        if (await existe(Articulo, { nombre, empresa: empresa.id }, res) == true) {
             await transaction.rollback()
             return
+        }
+
+        // --- VERIFY SI EXISTE CODIGO DE BARRAS --- //
+        if (codigo_barra) {
+            if (await existe(Articulo, { codigo_barra, empresa: empresa.id }, res) == true) {
+                await transaction.rollback()
+                return
+            }
         }
 
         // --- CREAR --- //
@@ -77,6 +85,7 @@ const create = async (req, res) => {
             is_combo,
             precio_venta,
             foto_path: req.file ? req.file.filename : null,
+            empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
 
@@ -87,6 +96,8 @@ const create = async (req, res) => {
                 articulo: a.articulo,
                 cantidad: a.cantidad,
                 orden: a.orden,
+                empresa: empresa.id,
+                createdBy: colaborador
             }))
 
             await ComboArticulo.bulkCreate(komboItems, { transaction })
@@ -108,7 +119,7 @@ const update = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
 
         if (req.body.datos) {
@@ -128,9 +139,17 @@ const update = async (req, res) => {
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await existe(Articulo, { nombre, codigo_barra, id }, res) == true) {
+        if (await existe(Articulo, { nombre, empresa: empresa.id, id }, res) == true) {
             await transaction.rollback()
             return
+        }
+
+        // --- VERIFY SI EXISTE CODIGO DE BARRAS --- //
+        if (codigo_barra) {
+            if (await existe(Articulo, { codigo_barra, empresa: empresa.id }, res) == true) {
+                await transaction.rollback()
+                return
+            }
         }
 
         // --- ACTUALIZAR --- //
@@ -163,17 +182,19 @@ const update = async (req, res) => {
             }
 
             // --- COMBO ITEMS --- //
-            await ComboArticulo.destroy({
-                where: { articulo_principal: id },
-                transaction
-            })
-
             if (is_combo == true) {
+                await ComboArticulo.destroy({
+                    where: { articulo_principal: id },
+                    transaction
+                })
+
                 const komboItems = combo_articulos.map(a => ({
                     articulo_principal: id,
                     articulo: a.articulo,
                     cantidad: a.cantidad,
                     orden: a.orden,
+                    empresa: empresa.id,
+                    createdBy: colaborador
                 }))
 
                 await ComboArticulo.bulkCreate(komboItems, { transaction })
@@ -192,39 +213,20 @@ const update = async (req, res) => {
     }
     catch (error) {
         await transaction.rollback()
-        
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-async function loadOne(id) {
-    let data = await Articulo.findByPk(id, {
-        include: [include1.categoria1, include1.produccion_area1]
-    })
-
-    if (data) {
-        data = data.toJSON()
-
-        const activo_estadosMap = cSistema.arrayMap('activo_estados')
-        const igv_afectacionesMap = cSistema.arrayMap('igv_afectaciones')
-        const estadosMap = cSistema.arrayMap('estados')
-
-        data.activo1 = activo_estadosMap[data.activo]
-        data.igv_afectacion1 = igv_afectacionesMap[data.igv_afectacion]
-        data.has_receta1 = estadosMap[data.has_receta]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['tipo', 'ASC'], ['nombre', 'ASC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: []
         }
 
@@ -293,20 +295,41 @@ const findById = async (req, res) => {
 }
 
 const delet = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { id } = req.params
-        const { foto_path } = req.body
-
-        if (foto_path != null) deleteFile(foto_path)
+        const { foto_path, is_combo } = req.body
 
         // --- ELIMINAR --- //
-        const deletedCount = await Articulo.destroy({ where: { id } })
+        if (is_combo == true) {
+            await ComboArticulo.destroy({
+                where: { articulo_principal: id },
+                transaction
+            })
+        }
 
-        const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
+        const deletedCount = await Articulo.destroy({
+            where: { id },
+            transaction
+        })
 
-        res.json(send)
+        await transaction.commit()
+
+        if (deletedCount > 0) {
+            if (foto_path != null) deleteFile(foto_path)
+
+            res.json({ code: 0 })
+        }
+        else {
+            await transaction.rollback()
+
+            res.json({ code: 1, msg: 'No se eliminó ningún registro' })
+        }
     }
     catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -315,8 +338,8 @@ const createBulk = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
+        const { colaborador, empresa } = req.user
         const { tipo, articulos } = req.body
-        const { colaborador } = req.user
 
         const send = articulos.map(a => ({
             nombre: a.Nombre,
@@ -331,6 +354,7 @@ const createBulk = async (req, res) => {
             categoria: a.Categoria,
             is_combo: false,
 
+            empresa: empresa.id,
             createdBy: colaborador
         }))
 
@@ -405,6 +429,28 @@ const updateBulk = async (req, res) => {
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await Articulo.findByPk(id, {
+        include: [include1.categoria1, include1.produccion_area1]
+    })
+
+    if (data) {
+        data = data.toJSON()
+
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
+        const igv_afectacionesMap = cSistema.arrayMap('igv_afectaciones')
+        const estadosMap = cSistema.arrayMap('estados')
+
+        data.activo1 = activo_estadosMap[data.activo]
+        data.igv_afectacion1 = igv_afectacionesMap[data.igv_afectacion]
+        data.has_receta1 = estadosMap[data.has_receta]
+    }
+
+    return data
 }
 
 export default {

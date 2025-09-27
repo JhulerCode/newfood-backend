@@ -76,9 +76,9 @@ const sistemaData = {
         { id: '9', tipo: 2, nombre: 'OTROS EGRESOS' },
     ],
     pago_comprobantes: [
-        { id: '01', nombre: 'FACTURA' },
-        { id: '03', nombre: 'BOLETA DE VENTA' },
-        { id: 'NV', nombre: 'NOTA DE VENTA' },
+        { id: '01', nombre: 'FACTURA', codigo: 'FACTURA' },
+        { id: '03', nombre: 'BOLETA DE VENTA', codigo: 'BOLETA' },
+        { id: 'NV', nombre: 'NOTA DE VENTA', codigo: 'NOTA-VENTA' },
     ],
     comprobante_estados: [
         { id: '0', nombre: 'ANULADO' },

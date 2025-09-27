@@ -9,13 +9,14 @@ import cSistema from "../_sistema/cSistema.js"
 
 const create = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
         // --- CREAR --- //
         const nuevo = await CajaApertura.create({
             fecha_apertura, monto_apertura,
             estado: 1,
+            empresa: empresa.id,
             createdBy: colaborador
         })
 
@@ -65,36 +66,15 @@ const cerrar = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await CajaApertura.findByPk(id, {
-        include: [
-            {
-                model: Colaborador,
-                as: 'createdBy1',
-                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-            },
-        ],
-    })
-
-    if (data) {
-        data = data.toJSON()
-
-        const estadosMap = cSistema.arrayMap('transaccion_estados')
-
-        data.estado1 = estadosMap[data.estado]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['createdAt', 'DESC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: [],
         }
 
@@ -143,6 +123,7 @@ const find = async (req, res) => {
 
 const findResumen = async (req, res) => {
     try {
+        const { empresa } = req.user
         const { id } = req.params
 
         const send = {
@@ -172,15 +153,6 @@ const findResumen = async (req, res) => {
             productos_anulados: [],
             ventas_credito_total: 0,
         }
-
-        // const ventas = {
-        //     pago_metodos: [],
-        //     comprobante_tipos: [],
-        //     canales: [],
-        //     productos: [],
-        //     total: 0,
-        //     descuentos: 0,
-        // }
 
         const dinero_movimientos = await DineroMovimiento.findAll({
             order: [['createdAt', 'DESC']],
@@ -276,6 +248,9 @@ const findResumen = async (req, res) => {
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         for (const a of comprobantes) {
+            const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+            const tipo_comprobante_nombre = pago_comprobantesMap[tKey].nombre
+
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
                 // --- TIPOS DE COMPROBANTES --- //
@@ -283,7 +258,7 @@ const findResumen = async (req, res) => {
                 if (i === -1) {
                     send.venta_comprobantes.push({
                         id: a.doc_tipo,
-                        nombre: pago_comprobantesMap[a.doc_tipo].nombre,
+                        nombre: tipo_comprobante_nombre,
                         monto: Number(a.monto),
                         cantidad: 1
                     })
@@ -309,10 +284,10 @@ const findResumen = async (req, res) => {
 
                 // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
-                
+
                 send.comprobantes_aceptados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
+                    tipo: tipo_comprobante_nombre,
                     monto: Number(a.monto),
                 })
 
@@ -364,7 +339,7 @@ const findResumen = async (req, res) => {
 
                 send.comprobantes_anulados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
+                    tipo: tipo_comprobante_nombre,
                     monto: Number(a.monto),
                 })
 
@@ -402,7 +377,7 @@ const findResumen = async (req, res) => {
                 // --- COMPROBANTES --- //
                 send.comprobantes_canjeados.push({
                     id: a.serie_correlativo,
-                    tipo: pago_comprobantesMap[a.doc_tipo].nombre,
+                    tipo: tipo_comprobante_nombre,
                     monto: Number(a.monto),
                     canjeado_por: a.canjeado_por1.serie_correlativo
                 })
@@ -465,6 +440,30 @@ const findResumen = async (req, res) => {
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await CajaApertura.findByPk(id, {
+        include: [
+            {
+                model: Colaborador,
+                as: 'createdBy1',
+                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+            },
+        ],
+    })
+
+    if (data) {
+        data = data.toJSON()
+
+        const estadosMap = cSistema.arrayMap('transaccion_estados')
+
+        data.estado1 = estadosMap[data.estado]
+    }
+
+    return data
 }
 
 function calcularUno(item) {

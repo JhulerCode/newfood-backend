@@ -26,6 +26,7 @@ export const Empresa = sequelize.define('empresas', {
 
     pc_principal_ip: { type: DataTypes.STRING },
 
+    subdominio: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
 

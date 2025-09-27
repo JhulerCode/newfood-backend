@@ -4,7 +4,6 @@ import config from '../../config.js'
 
 const router = Router()
 
-
 const findDni = async (req, res) => {
     try {
         const { id } = req.params

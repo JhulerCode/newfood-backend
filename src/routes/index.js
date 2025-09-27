@@ -13,7 +13,6 @@ import comprobante_items from './comprobante_items/rComprobanteItems.js'
 import comprobantes from './comprobantes/rComprobantes.js'
 import empresa from './empresa/rEmpresa.js'
 import dinero_movimientos from './dinero_movimientos/rDineroMovimientos.js'
-// import impresoras from './impresoras/rImpresoras.js'
 import kardex from './kardex/rKardex.js'
 import mesas from './mesas/rMesas.js'
 import pago_comprobantes from './pago_comprobantes/rPagoComprobantes.js'
@@ -44,7 +43,6 @@ function routes(app) {
     app.use('/api/comprobantes', comprobantes)
     app.use('/api/empresa', empresa)
     app.use('/api/dinero_movimientos', dinero_movimientos)
-    // app.use('/api/impresoras', impresoras)
     app.use('/api/kardex', kardex)
     app.use('/api/mesas', mesas)
     app.use('/api/pago_comprobantes', pago_comprobantes)

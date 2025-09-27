@@ -1,7 +1,7 @@
 import sequelize from './sequelize.js'
 import "./models/_all.js"
 // import initData from './initData.js'
-// import { ArticuloCategoria } from './models/ArticuloCategoria.js'
+// import { Comprobante } from './models/Comprobante.js'
 
 async function connect() {
     try {
@@ -12,7 +12,7 @@ async function connect() {
         console.log('Unable to connect to the database:', error.message)
     }
 
-    // await ArticuloCategoria.sync({ alter: true })
+    // await Comprobante.sync({ alter: true })
     // console.log('Tabla alterada')
 
     // await sequelize.sync({ alter: true })

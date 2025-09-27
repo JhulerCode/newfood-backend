@@ -40,7 +40,7 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             tipo, fecha, socio,
             pago_condicion, monto,
@@ -70,6 +70,7 @@ const create = async (req, res) => {
             compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             caja_apertura: caja_apertura.id,
+            empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
 
@@ -86,6 +87,7 @@ const create = async (req, res) => {
             receta_insumos: a.receta_insumos,
             is_combo: a.is_combo,
             combo_articulos: a.combo_articulos,
+            empresa: empresa.id,
             createdBy: colaborador
         }))
 
@@ -100,6 +102,7 @@ const create = async (req, res) => {
                 cantidad: a.cantidad,
                 estado,
                 transaccion: nuevo.id,
+                empresa: empresa.id,
                 createdBy: colaborador
             }))
 
@@ -149,7 +152,7 @@ const update = async (req, res) => {
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
         } = req.body
-        
+
         const [affectedRows] = await Transaccion.update({
             tipo, fecha, socio,
             pago_condicion, monto,
@@ -163,32 +166,6 @@ const update = async (req, res) => {
         })
 
         if (affectedRows > 0) {
-            // if (tipo == 2) {
-            //    // --- ELIMINAR ITEMS --- //
-            //     await TransaccionItem.destroy({
-            //         where: { transaccion: id },
-            //         transaction
-            //     })
-
-            //    // --- GUARDAR ITEMS --- //
-            //     const items = transaccion_items.map(a => ({
-            //         articulo: a.articulo,
-            //         cantidad: a.cantidad,
-            //         pu: a.pu,
-            //         igv_afectacion: a.igv_afectacion,
-            //         igv_porcentaje: a.igv_porcentaje,
-            //         observacion: a.observacion,
-            //         transaccion: id,
-            //         has_receta: a.has_receta,
-            //         receta_insumos: a.receta_insumos,
-            //         is_combo: a.is_combo,
-            //         combo_articulos: a.combo_articulos,
-            //         createdBy: colaborador
-            //     }))
-
-            //     await TransaccionItem.bulkCreate(items, { transaction })
-            // }
-
             await transaction.commit()
 
             const data = await loadOne(id)
@@ -207,35 +184,15 @@ const update = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await Transaccion.findByPk(id, {
-        include: [include1.socio1, include1.createdBy1]
-    })
-
-    if (data) {
-        data = data.toJSON()
-
-        const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
-        const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
-        const estados = cSistema.arrayMap('estados')
-
-        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-        data.estado1 = transaccion_estadosMap[data.estado]
-        data.venta_facturado1 = estados[data.venta_facturado]
-        data.venta_entregado1 = estados[data.venta_entregado]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['createdAt', 'DESC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: []
         }
 
@@ -423,12 +380,35 @@ const delet = async (req, res) => {
 
 
 
-// --- PARA VENTAS --- //
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await Transaccion.findByPk(id, {
+        include: [include1.socio1, include1.createdBy1]
+    })
+
+    if (data) {
+        data = data.toJSON()
+
+        const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+        const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+        const estados = cSistema.arrayMap('estados')
+
+        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+        data.estado1 = transaccion_estadosMap[data.estado]
+        data.venta_facturado1 = estados[data.venta_facturado]
+        data.venta_entregado1 = estados[data.venta_entregado]
+    }
+
+    return data
+}
+
+
+// --- Para ventas --- //
 const addProductos = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const { transaccion_items } = req.body
 
@@ -444,6 +424,7 @@ const addProductos = async (req, res) => {
             receta_insumos: a.receta_insumos,
             is_combo: a.is_combo,
             combo_articulos: a.combo_articulos,
+            empresa: empresa.id,
             createdBy: colaborador
         }))
 
@@ -451,8 +432,7 @@ const addProductos = async (req, res) => {
 
         await transaction.commit()
 
-        const data = await loadOne(id)
-        res.json({ code: 0, data })
+        res.json({ code: 0 })
     }
     catch (error) {
         await transaction.rollback()
@@ -467,13 +447,16 @@ const anular = async (req, res) => {
         const { id } = req.params
         const { anulado_motivo, item } = req.body
 
-        await Transaccion.update({
-            estado: 0,
-            anulado_motivo,
-            updatedBy: colaborador
-        }, {
-            where: { id }
-        })
+        await Transaccion.update(
+            {
+                estado: 0,
+                anulado_motivo,
+                updatedBy: colaborador
+            },
+            {
+                where: { id }
+            }
+        )
 
         res.json({ code: 0 })
     }
@@ -484,6 +467,8 @@ const anular = async (req, res) => {
 
 const ventasPendientes = async (req, res) => {
     try {
+        const { empresa } = req.user
+
         const findProps = {
             attributes: [
                 'venta_canal',
@@ -492,6 +477,7 @@ const ventasPendientes = async (req, res) => {
             where: {
                 tipo: '2',
                 estado: '1',
+                empresa: empresa.id
             },
             group: ['venta_canal'],
         }

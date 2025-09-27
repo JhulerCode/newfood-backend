@@ -1,19 +1,23 @@
 import { Salon } from '../../database/models/Salon.js'
 import { Mesa } from '../../database/models/Mesa.js'
-import { applyFilters } from '../../utils/mine.js'
+import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 
 const create = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const {
             nombre, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
+        if (await existe(Salon, { nombre, empresa: empresa.id }, res) == true) return
+
+        // --- CREAR --- //
         const nuevo = await Salon.create(
             {
                 nombre, activo,
+                empresa: empresa.id,
                 createdBy: colaborador
             }
         )
@@ -28,13 +32,16 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
     try {
+        const { colaborador, empresa } = req.user
         const { id } = req.params
-        const { colaborador } = req.user
         const {
             nombre, activo,
         } = req.body
 
-       // --- ACTUALIZAR --- //
+        // --- VERIFY SI EXISTE NOMBRE --- //
+        if (await existe(Salon, { nombre, empresa: empresa.id, id }, res) == true) return
+
+        // --- ACTUALIZAR --- //
         const [affectedRows] = await Salon.update(
             {
                 nombre, activo,
@@ -46,7 +53,7 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-           // --- DEVOLVER --- //
+            // --- DEVOLVER --- //
             const data = await loadOne(id)
             res.json({ code: 0, data })
         }
@@ -59,27 +66,15 @@ const update = async (req, res) => {
     }
 }
 
-async function loadOne(id) {
-    let data = await Salon.findByPk(id)
-
-    if (data) {
-        data = data.toJSON()
-
-        const activo_estadosMap = cSistema.arrayMap('activo_estados')
-        data.activo1 = activo_estadosMap[data.activo]
-    }
-
-    return data
-}
-
 const find = async (req, res) => {
     try {
+        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
         const findProps = {
             attributes: ['id'],
             order: [['nombre', 'ASC']],
-            where: {},
+            where: { empresa: empresa.id },
             include: [],
         }
 
@@ -142,7 +137,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-       // --- ACTUALIZAR --- //
+        // --- ACTUALIZAR --- //
         const deletedCount = await Salon.destroy({ where: { id } })
 
         const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
@@ -152,6 +147,21 @@ const delet = async (req, res) => {
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+
+// --- Funciones --- //
+async function loadOne(id) {
+    let data = await Salon.findByPk(id)
+
+    if (data) {
+        data = data.toJSON()
+
+        const activo_estadosMap = cSistema.arrayMap('activo_estados')
+        data.activo1 = activo_estadosMap[data.activo]
+    }
+
+    return data
 }
 
 export default {

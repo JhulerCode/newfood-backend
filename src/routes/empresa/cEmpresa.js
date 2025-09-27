@@ -7,7 +7,9 @@ import { actualizarSesion } from '../_signin/sessions.js'
 
 const findById = async (req, res) => {
     try {
-        let data = await Empresa.findByPk('1', {
+        const { empresa } = req.user
+
+        let data = await Empresa.findByPk(empresa.id, {
             attributes: { exclude: ['cdt', 'cdt_clave'] }
         })
 
@@ -67,7 +69,9 @@ const update = async (req, res) => {
 
             actualizarSesion(id, { empresa: send })
 
-            let data = await Empresa.findByPk('1')
+            let data = await Empresa.findByPk(id, {
+                attributes: { exclude: ['cdt', 'cdt_clave'] }
+            })
 
             if (data) {
                 data = data.toJSON()
