@@ -230,7 +230,7 @@ const create = async (req, res) => {
         await ComprobanteItem.bulkCreate(items, { transaction })
 
         let res_mifact
-        if (['01', '03'].includes(doc_tipo)) {
+        if ([`${empresa.subdominio}-01`, `${empresa.subdominio}-03`].includes(doc_tipo)) {
             // const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
             // crearXml(fileName, send)
             // const hash = firmarXml(fileName)

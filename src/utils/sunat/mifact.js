@@ -104,7 +104,7 @@ async function sendDoc(doc) {
 
     // --- Opciones de envío y retorno con valores por defecto --- //
     json_comprobante.COD_PRCD_CARGA = mifact.cod_prcd_carga != null ? mifact.cod_prcd_carga : "001"
-    json_comprobante.ENVIAR_A_SUNAT = mifact.enviar_a_sunat != null ? mifact.enviar_a_sunat : true
+    json_comprobante.ENVIAR_A_SUNAT = mifact.enviar_a_sunat != null ? mifact.enviar_a_sunat : false
     json_comprobante.RETORNA_XML_ENVIO = mifact.retorna_xml_envio != null ? mifact.retorna_xml_envio : false
     json_comprobante.RETORNA_XML_CDR = mifact.retorna_xml_cdr != null ? mifact.retorna_xml_cdr : false
     json_comprobante.RETORNA_PDF = mifact.retorna_pdf != null ? mifact.retorna_pdf : false

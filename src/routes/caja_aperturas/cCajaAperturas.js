@@ -185,7 +185,7 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.operacion == 1) {
-                        if (a.pago_metodo == 1) send.efectivo_ingresos_total += Number(a.monto)
+                        if (a.pago_metodo == `${empresa.subdominio}-EFECTIVO`) send.efectivo_ingresos_total += Number(a.monto)
 
                         // --- MÉTODOS DE PAGO --- //
                         const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
