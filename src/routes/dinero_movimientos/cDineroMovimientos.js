@@ -100,7 +100,8 @@ const create = async (req, res) => {
         // --- CREAR --- //
         const nuevo = await DineroMovimiento.create({
             fecha, tipo, operacion, detalle,
-            pago_metodo, monto,
+            pago_metodo: `${empresa.subdominio}-EFECTIVO`,
+            monto,
             comrpobante, Transaccion, caja_apertura,
             empresa: empresa.id,
             createdBy: colaborador
