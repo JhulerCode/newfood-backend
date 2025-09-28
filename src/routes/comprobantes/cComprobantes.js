@@ -230,36 +230,36 @@ const create = async (req, res) => {
         await ComprobanteItem.bulkCreate(items, { transaction })
 
         let res_mifact
-        if ([`${empresa.subdominio}-01`, `${empresa.subdominio}-03`].includes(doc_tipo)) {
-            // const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
-            // crearXml(fileName, send)
-            // const hash = firmarXml(fileName)
-            // const sunat_respuesta = await enviarSunat(fileName)
+        // if ([`${empresa.subdominio}-01`, `${empresa.subdominio}-03`].includes(doc_tipo)) {
+        //     // const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
+        //     // crearXml(fileName, send)
+        //     // const hash = firmarXml(fileName)
+        //     // const sunat_respuesta = await enviarSunat(fileName)
 
-            // --- CREAR MIFACT --- //
-            res_mifact = await sendDoc(send)
-            if (res_mifact.errors && res_mifact.errors != "") {
-                await transaction.rollback()
-                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
-                return
-            }
+        //     // --- CREAR MIFACT --- //
+        //     res_mifact = await sendDoc(send)
+        //     if (res_mifact.errors && res_mifact.errors != "") {
+        //         await transaction.rollback()
+        //         res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
+        //         return
+        //     }
 
-            // --- ACTUALIZAR RESPUESTA SUNAT --- //
-            await Comprobante.update(
-                {
-                    hash: res_mifact.codigo_hash,
-                    estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
-                    sunat_respuesta_codigo: res_mifact.sunat_responsecode,
-                    sunat_respuesta_nota: res_mifact.sunat_note,
-                    sunat_respuesta_descripcion: res_mifact.sunat_description,
-                },
-                {
-                    where: { id: nuevo.id },
-                    transaction
-                }
-            )
-        }
-        else {
+        //     // --- ACTUALIZAR RESPUESTA SUNAT --- //
+        //     await Comprobante.update(
+        //         {
+        //             hash: res_mifact.codigo_hash,
+        //             estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
+        //             sunat_respuesta_codigo: res_mifact.sunat_responsecode,
+        //             sunat_respuesta_nota: res_mifact.sunat_note,
+        //             sunat_respuesta_descripcion: res_mifact.sunat_description,
+        //         },
+        //         {
+        //             where: { id: nuevo.id },
+        //             transaction
+        //         }
+        //     )
+        // }
+        // else {
             await Comprobante.update(
                 {
                     estado: 3,
@@ -269,7 +269,7 @@ const create = async (req, res) => {
                     transaction
                 }
             )
-        }
+        // }
         // throw error
 
         // --- ACTUALIZAR CORRELATIVO --- //
