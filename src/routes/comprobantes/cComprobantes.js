@@ -711,7 +711,7 @@ const canjear = async (req, res) => {
             pago_condicion: comprobante.pago_condicion,
             transaccion: comprobante.transaccion,
             caja_apertura: comprobante.caja_apertura,
-            empresa_datos: comprobante.empresa,
+            empresa_datos: comprobante.empresa_datos,
             cliente_datos: {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
