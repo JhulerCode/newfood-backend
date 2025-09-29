@@ -1116,8 +1116,8 @@ async function getComprobante(id, empresa) {
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
 
         data.total_letras = numeroATexto(data.monto)
-        // data.qr_string = `${data.empresa_datos.ruc}|${data.doc_tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
-        data.qr_string = `${data.empresa_datos.ruc}|${data.doc_tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`
+        // data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
+        data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`
     }
 
     return data
