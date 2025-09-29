@@ -410,7 +410,7 @@ const addProductos = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const { transaccion_items } = req.body
+        const { monto, transaccion_items } = req.body
 
         const items = transaccion_items.map(a => ({
             articulo: a.articulo,
@@ -429,6 +429,17 @@ const addProductos = async (req, res) => {
         }))
 
         await TransaccionItem.bulkCreate(items, { transaction })
+
+        await Transaccion.update(
+            {
+                monto: sequelize.literal(`COALESCE(monto, 0) + ${monto}`),
+                updatedBy: colaborador
+            },
+            {
+                where: { id },
+                transaction
+            }
+        )
 
         await transaction.commit()
 
