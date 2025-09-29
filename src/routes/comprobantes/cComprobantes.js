@@ -16,6 +16,8 @@ import { PagoMetodo } from '../../database/models/PagoMetodo.js'
 import { applyFilters, numeroATexto } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import dayjs from "dayjs"
+import utc from 'dayjs/plugin/utc.js'
+import timezone from 'dayjs/plugin/timezone.js'
 
 import PdfPrinter from 'pdfmake'
 import { pathXml, getFilePath } from '../../utils/uploadFiles.js'
@@ -57,6 +59,9 @@ const sqls1 = {
     ]
 }
 
+dayjs.extend(utc)
+dayjs.extend(timezone)
+dayjs.tz.setDefault('America/Lima')
 
 // --- Rutas --- //
 const create = async (req, res) => {
