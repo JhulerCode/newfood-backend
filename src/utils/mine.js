@@ -13,76 +13,54 @@ async function existe(model, where, res, ms) {
     }
 }
 
-function applyFilters(filters) {
-    const whereClause = {}
+function applyFilters(filters = {}) {
+    const whereClause = {};
 
+    // procesar todo lo que no sea "or"
     Object.keys(filters).forEach((key) => {
-        const { op, val, val1 } = filters[key]
-
-        switch (op) {
-            case 'Es':
-                whereClause[key] = val;
-                break;
-            case 'No es':
-                whereClause[key] = { [Op.ne]: val };
-                break;
-            case 'Contiene':
-                whereClause[key] = { [Op.iLike]: `%${val}%` };
-                break;
-            case 'No contiene':
-                whereClause[key] = { [Op.notLike]: `%${val}%` };
-                break;
-            case 'Empieza con':
-                whereClause[key] = { [Op.iLike]: `${val}%` };
-                break;
-            case 'Termina con':
-                whereClause[key] = { [Op.iLike]: `%${val}` };
-                break;
-            case 'Está vacío':
-                whereClause[key] = { [Op.is]: null };
-                break;
-            case 'No está vacío':
-                whereClause[key] = { [Op.not]: null };
-                break;
-            case 'Es anterior a':
-                whereClause[key] = { [Op.lt]: val };
-                break;
-            case 'Es posterior a':
-                whereClause[key] = { [Op.gt]: val };
-                break;
-            case 'Es igual o anterior a':
-                whereClause[key] = { [Op.lte]: val };
-                break;
-            case 'Es igual o posterior a':
-                whereClause[key] = { [Op.gte]: val };
-                break;
-            case 'Está dentro de':
-                whereClause[key] = { [Op.between]: [val, val1] };
-                break;
-            case '=':
-                whereClause[key] = val;
-                break;
-            case '!=':
-                whereClause[key] = { [Op.ne]: val };
-                break;
-            case '<':
-                whereClause[key] = { [Op.lt]: val };
-                break;
-            case '>':
-                whereClause[key] = { [Op.gt]: val };
-                break;
-            case '<=':
-                whereClause[key] = { [Op.lte]: val };
-                break;
-            case '>=':
-                whereClause[key] = { [Op.gte]: val };
-                break;
-            default:
-                break;
+        if (key !== "or") {
+            const { op, val, val1 } = filters[key];
+            whereClause[key] = buildCondition({ op, val, val1 });
         }
     });
 
-    return whereClause
+    // procesar OR si existe
+    if (filters.or && typeof filters.or === "object") {
+        const orConditions = Object.entries(filters.or).map(([field, cond]) => {
+            return { [field]: buildCondition(cond) };
+        });
+
+        if (orConditions.length > 0) {
+            whereClause[Op.or] = orConditions;
+        }
+    }
+
+    return whereClause;
+}
+
+function buildCondition({ op, val, val1 }) {
+    switch (op) {
+        case "Es": return val;
+        case "No es": return { [Op.ne]: val };
+        case "Contiene": return { [Op.iLike]: `%${val}%` };
+        case "No contiene": return { [Op.notILike]: `%${val}%` };
+        case "Empieza con": return { [Op.iLike]: `${val}%` };
+        case "Termina con": return { [Op.iLike]: `%${val}` };
+        case "Está vacío": return { [Op.is]: null };
+        case "No está vacío": return { [Op.not]: null };
+        case "Es anterior a": return { [Op.lt]: val };
+        case "Es posterior a": return { [Op.gt]: val };
+        case "Es igual o anterior a": return { [Op.lte]: val };
+        case "Es igual o posterior a": return { [Op.gte]: val };
+        case "Está dentro de": return { [Op.between]: [val, val1] };
+        case "=": return val;
+        case "!=": return { [Op.ne]: val };
+        case "<": return { [Op.lt]: val };
+        case ">": return { [Op.gt]: val };
+        case "<=": return { [Op.lte]: val };
+        case ">=": return { [Op.gte]: val };
+        default: return val;
+    }
 }
 
 function cleanFloat(num) {
