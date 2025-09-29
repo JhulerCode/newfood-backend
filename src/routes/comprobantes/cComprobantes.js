@@ -110,15 +110,15 @@ const create = async (req, res) => {
         // --- CLIENTE DATOS --- //
         let cliente = {}
         if (socio == `${empresa.subdominio}-CLIENTES-VARIOS`) {
-            cliente = await Socio.findByPk(socio)
-        }
-        else {
             cliente = {
                 doc_tipo: '0',
                 doc_numero: '00000000',
                 doc_nombres: '00000000 - CLIENTES VARIOS',
                 nombres: 'CLIENTES VARIOS',
             }
+        }
+        else {
+            cliente = await Socio.findByPk(socio)
         }
 
         // --- CREAR --- //
