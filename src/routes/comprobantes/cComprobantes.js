@@ -1271,7 +1271,7 @@ async function makePdf(doc, empresa) {
         {
             stack: [
                 {
-                    text: `FECHA DE EMISIÓN: ${dayjs(doc.createdAt).format('DD-MM-YYYY HH:mm')}`,
+                    text: `FECHA DE EMISIÓN: ${dayjs(doc.createdAt).tz().format('DD-MM-YYYY HH:mm')}`,
                     style: 'datosExtra',
                 },
                 { text: `ATENCIÓN: ${doc.atencion}`, style: 'datosExtra' },
