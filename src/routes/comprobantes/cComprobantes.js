@@ -632,7 +632,7 @@ const anular = async (req, res) => {
 
         // --- ANULAR MIFACT --- //
         let res_mifact
-        if (item.doc_tipo != 'NV') {
+        if (['01', '03'].includes(item.doc_tipo)) {
             res_mifact = await anularDoc(item)
             if (res_mifact.errors && res_mifact.errors != "") {
                 await transaction.rollback()
