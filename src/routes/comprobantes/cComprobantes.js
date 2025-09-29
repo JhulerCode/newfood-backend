@@ -89,11 +89,13 @@ const create = async (req, res) => {
 
         // --- CORRELATIVO COMPROBANTE --- //
         const pago_comprobante = await PagoComprobante.findByPk(doc_tipo)
+
         if (pago_comprobante == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'No existe el tipo de comprobante' })
             return
         }
+
         if (pago_comprobante.correlativo == null) {
             await transaccion.rollback()
             res.json({ code: 1, msg: 'El tipo de comprobante aún no está configurado' })
@@ -229,37 +231,33 @@ const create = async (req, res) => {
         send.items = items
         await ComprobanteItem.bulkCreate(items, { transaction })
 
+        // --- CREAR MIFACT --- //
         let res_mifact
         // if ([`${empresa.subdominio}-01`, `${empresa.subdominio}-03`].includes(doc_tipo)) {
-        //     // const fileName = `${send.empresa.ruc}-${send.doc_tipo}-${send.serie}-${send.numero}.xml`
-        //     // crearXml(fileName, send)
-        //     // const hash = firmarXml(fileName)
-        //     // const sunat_respuesta = await enviarSunat(fileName)
+        if (['01', '03'].includes(doc_tipo)) {
+            res_mifact = await sendDoc(send)
+            if (res_mifact.errors && res_mifact.errors != "") {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
+                return
+            }
 
-        //     // --- CREAR MIFACT --- //
-        //     res_mifact = await sendDoc(send)
-        //     if (res_mifact.errors && res_mifact.errors != "") {
-        //         await transaction.rollback()
-        //         res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
-        //         return
-        //     }
-
-        //     // --- ACTUALIZAR RESPUESTA SUNAT --- //
-        //     await Comprobante.update(
-        //         {
-        //             hash: res_mifact.codigo_hash,
-        //             estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
-        //             sunat_respuesta_codigo: res_mifact.sunat_responsecode,
-        //             sunat_respuesta_nota: res_mifact.sunat_note,
-        //             sunat_respuesta_descripcion: res_mifact.sunat_description,
-        //         },
-        //         {
-        //             where: { id: nuevo.id },
-        //             transaction
-        //         }
-        //     )
-        // }
-        // else {
+            // --- ACTUALIZAR RESPUESTA SUNAT --- //
+            await Comprobante.update(
+                {
+                    hash: res_mifact.codigo_hash,
+                    estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
+                    sunat_respuesta_codigo: res_mifact.sunat_responsecode,
+                    sunat_respuesta_nota: res_mifact.sunat_note,
+                    sunat_respuesta_descripcion: res_mifact.sunat_description,
+                },
+                {
+                    where: { id: nuevo.id },
+                    transaction
+                }
+            )
+        }
+        else {
             await Comprobante.update(
                 {
                     estado: 3,
@@ -269,7 +267,7 @@ const create = async (req, res) => {
                     transaction
                 }
             )
-        // }
+        }
         // throw error
 
         // --- ACTUALIZAR CORRELATIVO --- //
@@ -695,7 +693,7 @@ const canjear = async (req, res) => {
 
         // --- ANULAR MIFACT --- //
         let res1_mifact
-        if (comprobante.doc_tipo != 'NV') {
+        if (comprobante.doc_tipo != `${empresa.subdominio}-NV`) {
             res1_mifact = await anularDoc(comprobante)
             if (res1_mifact.errors && res1_mifact.errors != "") {
                 await transaction.rollback()
@@ -800,27 +798,41 @@ const canjear = async (req, res) => {
         await ComprobanteItem.bulkCreate(items, { transaction })
 
         // --- CREAR MIFACT --- //
-        const res_mifact = await sendDoc(send)
-        if (res_mifact.errors && res_mifact.errors != "") {
-            await transaction.rollback()
-            res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
-            return
-        }
-
-        // --- ACTUALIZAR RESPUESTA SUNAT --- //
-        await Comprobante.update(
-            {
-                hash: res_mifact.codigo_hash,
-                estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
-                sunat_respuesta_codigo: res_mifact.sunat_responsecode,
-                sunat_respuesta_nota: res_mifact.sunat_note,
-                sunat_respuesta_descripcion: res_mifact.sunat_description,
-            },
-            {
-                where: { id: nuevo.id },
-                transaction
+        let res_mifact
+        if (['01', '03'].includes(doc_tipo1)) {
+            res_mifact = await sendDoc(send)
+            if (res_mifact.errors && res_mifact.errors != "") {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
+                return
             }
-        )
+
+            // --- ACTUALIZAR RESPUESTA SUNAT --- //
+            await Comprobante.update(
+                {
+                    hash: res_mifact.codigo_hash,
+                    estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
+                    sunat_respuesta_codigo: res_mifact.sunat_responsecode,
+                    sunat_respuesta_nota: res_mifact.sunat_note,
+                    sunat_respuesta_descripcion: res_mifact.sunat_description,
+                },
+                {
+                    where: { id: nuevo.id },
+                    transaction
+                }
+            )
+        }
+        else {
+            await Comprobante.update(
+                {
+                    estado: 3,
+                },
+                {
+                    where: { id: nuevo.id },
+                    transaction
+                }
+            )
+        }
 
         // --- ACTUALIZAR CORRELATIVO --- //
         await PagoComprobante.update(

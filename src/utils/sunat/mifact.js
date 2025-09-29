@@ -22,6 +22,15 @@ async function sendDoc(doc) {
         items,
         mifact,
     } = doc
+
+    let doc_tipo1
+    if (doc_tipo.includes('NV')) {
+        doc_tipo1 = 'NV'
+    } else if (doc_tipo.includes('01')) {
+        doc_tipo1 = '01'
+    } else if (doc_tipo.includes('03')) {
+        doc_tipo1 = '03'
+    }
     
     const json_comprobante = {
         TOKEN: config.mifactApiKey,
@@ -41,7 +50,7 @@ async function sendDoc(doc) {
         NOM_RZN_SOC_RECP: cliente_datos.razon_social_nombres,
 
         FEC_EMIS: fecha_emision,
-        COD_TIP_CPE: doc_tipo,
+        COD_TIP_CPE: doc_tipo1,
         NUM_SERIE_CPE: serie,
         NUM_CORRE_CPE: numero,
         COD_MND: moneda,
@@ -166,13 +175,22 @@ async function sendDoc(doc) {
 async function anularDoc(doc) {
     const { empresa_datos, fecha_emision, doc_tipo, serie, numero } = doc
 
+    let doc_tipo1
+    if (doc_tipo.includes('NV')) {
+        doc_tipo1 = 'NV'
+    } else if (doc_tipo.includes('01')) {
+        doc_tipo1 = '01'
+    } else if (doc_tipo.includes('03')) {
+        doc_tipo1 = '03'
+    }
+
     const send = {
         TOKEN: config.mifactApiKey,
         COD_TIP_NIF_EMIS: '6',
         // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
-        COD_TIP_CPE: doc_tipo,
+        COD_TIP_CPE: doc_tipo1,
         NUM_SERIE_CPE: serie,
         NUM_CORRE_CPE: numero,
         TXT_DESC_MTVO: 'ANULACION POR ERROR',
@@ -187,12 +205,21 @@ async function anularDoc(doc) {
 async function estadoDoc(doc) {
     const { empresa_datos, fecha_emision, doc_tipo, serie, numero } = doc
 
+    let doc_tipo1
+    if (doc_tipo.includes('NV')) {
+        doc_tipo1 = 'NV'
+    } else if (doc_tipo.includes('01')) {
+        doc_tipo1 = '01'
+    } else if (doc_tipo.includes('03')) {
+        doc_tipo1 = '03'
+    }
+
     const send = {
         TOKEN: config.mifactApiKey,
         // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
-        COD_TIP_CPE: doc_tipo,
+        COD_TIP_CPE: doc_tipo1,
         NUM_SERIE_CPE: serie,
         NUM_CORRE_CPE: numero,
     }
@@ -208,12 +235,21 @@ async function xmlDoc(doc) {
         xml, cdr, pdf
     } = doc
 
+    let doc_tipo1
+    if (doc_tipo.includes('NV')) {
+        doc_tipo1 = 'NV'
+    } else if (doc_tipo.includes('01')) {
+        doc_tipo1 = '01'
+    } else if (doc_tipo.includes('03')) {
+        doc_tipo1 = '03'
+    }
+
     const send = {
         TOKEN: config.mifactApiKey,
         // NUM_NIF_EMIS: empresa_datos.ruc,
         "NUM_NIF_EMIS": "20100100100",
         FEC_EMIS: fecha_emision,
-        COD_TIP_CPE: doc_tipo,
+        COD_TIP_CPE: doc_tipo1,
         NUM_SERIE_CPE: serie,
         NUM_CORRE_CPE: numero,
         RETORNA_XML_ENVIO: xml != null ? xml : false,
