@@ -538,11 +538,12 @@ const sendMail = async (req, res) => {
         const data = await getComprobante(id, empresa)
         const buffer = await makePdf(data, empresa)
         const comprobante_numero = `${data.serie}-${data.numero}`
-        const html = comprobanteHtml(comprobante_numero)
+        const empresa_nombre = data.empresa_datos.razon_social
+        const html = comprobanteHtml(comprobante_numero, empresa_nombre)
 
         const resend = new Resend(config.resendApiKey)
         const result = resend.emails.send({
-            from: 'onboarding@resend.dev',
+            from: 'DivergeRest Invoices <invoices@divergerest.com>',
             to: email_to_send,
             subject: `Comprobante de pago ${comprobante_numero}`,
             html,

@@ -1,13 +1,13 @@
 import dayjs from 'dayjs'
 
 const primary_color = '#2492c2'
-const app_name = 'New food'
+const app_name = 'DivergeRest'
 const atentamente = 'Jhuler Aguirre'
 const correo = 'jhuler.aguirre@gmail.com'
 const whatsapp = '+51 987 076 972'
 const derechos = `© ${dayjs().format('YYYY')} ${app_name}, todos los derechos reservados.`
 
-function comprobanteHtml(numero) {
+function comprobanteHtml(numero, empresa_nombre) {
     return `
     <html>
         <head>
@@ -81,7 +81,10 @@ function comprobanteHtml(numero) {
                     <div class="container-mensaje">
                         <p>Estimado cliente,</p>
                         <p>
-                            Te enviamos la factura <strong class="resaltado">${numero}</strong> correspondiente a tus consumos recientes. La encontrarás adjunta en formato PDF en este correo.
+                            Te enviamos la factura <strong class="resaltado">${numero}</strong> correspondiente a tus consumos recientes en ${empresa_nombre}.
+                        </p>
+                        <p>
+                            La encontrarás adjunta en formato PDF en este correo.
                         </p>
                     </div>
                 </article>
