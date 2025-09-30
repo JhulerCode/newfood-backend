@@ -53,7 +53,7 @@ const create = async (req, res) => {
         let caja_apertura = null
         if (tipo == 2) {
             caja_apertura = await CajaApertura.findOne({
-                where: { estado: '1' }
+                where: { estado: '1', empresa: empresa.id }
             })
 
             if (caja_apertura == null) {
