@@ -325,8 +325,7 @@ const findResumen = async (req, res) => {
                 if (a.pago_condicion == 2) {
                     send.ventas_credito_total += Number(a.monto)
 
-                    const k = send.venta_canales.findIndex(b => b.id == 'CRÉDITO')
-
+                    const k = send.venta_pago_metodos.findIndex(b => b.id == 'CRÉDITO')
                     if (k === -1) {
                         send.venta_pago_metodos.push({
                             id: 'CRÉDITO',
