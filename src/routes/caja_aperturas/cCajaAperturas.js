@@ -139,6 +139,9 @@ const findResumen = async (req, res) => {
 
             venta_canales: [],
             venta_canales_total: 0,
+
+            pedidos_aceptados: [],
+            pedidos_aceptados_total: 0,
             pedidos_anulados: [],
             pedidos_anulados_total: 0,
 
@@ -186,7 +189,9 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.operacion == 1) {
-                        if (a.pago_metodo == `${empresa.subdominio}-EFECTIVO`) send.efectivo_ingresos_total += Number(a.monto)
+                        if (a.pago_metodo == `${empresa.subdominio}-EFECTIVO`) {
+                            send.efectivo_ingresos_total += Number(a.monto)
+                        }
 
                         // --- MÉTODOS DE PAGO --- //
                         const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
@@ -404,25 +409,22 @@ const findResumen = async (req, res) => {
         })
 
         for (let a of pedidos) {
-            if (a.estado != 0) {
+            if (['1', '2'].includes(a.estado)) {
                 send.venta_canales_total += Number(a.monto)
 
                 const i = send.venta_canales.findIndex(b => b.id == a.venta_canal)
                 if (i !== -1) {
                     send.venta_canales[i].cantidad++
                 }
-                // if (i === -1) {
-                //     send.venta_canales.push({
-                //         id: a.venta_canal,
-                //         nombre: venta_canalesMap[a.venta_canal].nombre,
-                //         monto: Number(a.monto),
-                //         cantidad: 1,
-                //     })
-                // }
-                // else {
-                //     send.venta_canales[i].monto += Number(a.monto)
-                //     send.venta_canales[i].cantidad++
-                // }
+
+                send.pedidos_aceptados_total += Number(a.monto)
+
+                send.pedidos_aceptados.push({
+                    id: a.venta_canal,
+                    venta_codigo: a.venta_codigo,
+                    venta_canal: venta_canalesMap[a.venta_canal].nombre,
+                    monto: Number(a.monto),
+                })
             }
 
             if (a.estado == 0) {
@@ -445,7 +447,7 @@ const findResumen = async (req, res) => {
         send.venta_comprobantes = send.venta_comprobantes.sort((a, b) => a.nombre.localeCompare(b.nombre))
         send.productos = send.productos.sort((a, b) => a.nombre.localeCompare(b.nombre))
 
-        res.json({ code: 0, data: send, comprobantes })
+        res.json({ code: 0, data: send })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
