@@ -138,7 +138,6 @@ const findResumen = async (req, res) => {
             descuentos_anulados_total: 0,
 
             venta_canales: [],
-            venta_canales_total: 0,
 
             pedidos_aceptados: [],
             pedidos_aceptados_total: 0,
@@ -410,8 +409,6 @@ const findResumen = async (req, res) => {
 
         for (let a of pedidos) {
             if (['1', '2'].includes(a.estado)) {
-                send.venta_canales_total += Number(a.monto)
-
                 const i = send.venta_canales.findIndex(b => b.id == a.venta_canal)
                 if (i !== -1) {
                     send.venta_canales[i].cantidad++
