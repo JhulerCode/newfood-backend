@@ -86,6 +86,7 @@ const create = async (req, res) => {
                 empresa: empresa.id,
             }
         })
+        
         if (caja_apertura == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'La caja no está aperturada' })

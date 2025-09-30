@@ -31,12 +31,12 @@ const create = async (req, res) => {
 
 const cerrar = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
         const pedidos = await Transaccion.findAll({
-            where: { tipo: 2, estado: '1' }
+            where: { tipo: 2, estado: '1', empresa: empresa.id }
         })
 
         if (pedidos.length > 0) {
