@@ -154,6 +154,7 @@ const findResumen = async (req, res) => {
             ventas_credito_total: 0,
         }
 
+        // --- Dinero movimientos --- //
         const dinero_movimientos = await DineroMovimiento.findAll({
             order: [['createdAt', 'DESC']],
             where: {
@@ -219,6 +220,7 @@ const findResumen = async (req, res) => {
 
         send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
 
+        // --- Comprobantes --- //
         const comprobantes = await Comprobante.findAll({
             attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
             order: [['createdAt', 'DESC']],
@@ -323,12 +325,20 @@ const findResumen = async (req, res) => {
                 if (a.pago_condicion == 2) {
                     send.ventas_credito_total += Number(a.monto)
 
-                    send.venta_pago_metodos.push({
-                        id: 'CRÉDITO',
-                        nombre: 'CRÉDITO',
-                        monto: Number(a.monto),
-                        cantidad: 1
-                    })
+                    const k = send.venta_canales.findIndex(b => b.id == 'CRÉDITO')
+
+                    if (k === -1) {
+                        send.venta_pago_metodos.push({
+                            id: 'CRÉDITO',
+                            nombre: 'CRÉDITO',
+                            monto: Number(a.monto),
+                            cantidad: 1
+                        })
+                    }
+                    else {
+                        send.venta_pago_metodos[k].monto += Number(a.monto)
+                        send.venta_pago_metodos[k].cantidad++
+                    }
                 }
             }
 
@@ -384,6 +394,7 @@ const findResumen = async (req, res) => {
             }
         }
 
+        // --- Transacciones --- //
         let pedidos = await Transaccion.findAll({
             attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
             order: [['createdAt', 'DESC']],
