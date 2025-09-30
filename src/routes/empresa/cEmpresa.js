@@ -4,6 +4,7 @@ import path from "path"
 import fs from "fs"
 import forge from "node-forge"
 import { actualizarSesion } from '../_signin/sessions.js'
+import { minioClient, minioDomain, minioBucket } from "../../lib/minioClient.js"
 
 const findById = async (req, res) => {
     try {
@@ -47,26 +48,44 @@ const update = async (req, res) => {
         const send = {
             ruc, razon_social, nombre_comercial,
             domicilio_fiscal, ubigeo, distrito, provincia, departamento,
-            telefono, correo, logo, previous_logo,
+            telefono, correo, logo,
             igv_porcentaje, sol_usuario, sol_clave,
             pc_principal_ip,
             updatedBy: colaborador
         }
-        // console.log(previous_logo)
-        if (req.file) send.logo = req.file.filename
 
-        const [affectedRows] = await Empresa.update(
-            send,
-            {
-                where: { id },
+        if (req.file) {
+            const timestamp = Date.now();
+            const uniqueName = `${timestamp}-${req.file.originalname}`;
+
+            // Subir a MinIO
+            await minioClient.putObject(
+                minioBucket,
+                uniqueName,
+                req.file.buffer,
+                req.file.size,
+                { "Content-Type": req.file.mimetype }
+            );
+
+            send.logo = uniqueName;
+
+            // Borrar logo anterior del bucket si existe
+            if (previous_logo && previous_logo !== uniqueName) {
+                try {
+                    await minioClient.removeObject(minioBucket, previous_logo);
+                } catch (err) {
+                    console.error("Error al borrar logo anterior:", err.message);
+                }
             }
-        )
+
+            // Generar URL pública HTTPS permanente
+            const publicUrl = `https://${minioDomain}/${minioBucket}/${uniqueName}`;
+            send.logo_url = publicUrl;
+        }
+
+        const [affectedRows] = await Empresa.update(send, { where: { id }, })
 
         if (affectedRows > 0) {
-            if (send.logo != previous_logo && previous_logo != null) {
-                deleteFile(previous_logo)
-            }
-
             actualizarSesion(id, { empresa: send })
 
             let data = await Empresa.findByPk(id, {
@@ -76,6 +95,13 @@ const update = async (req, res) => {
             if (data) {
                 data = data.toJSON()
                 data.previous_logo = data.logo
+                // data.logo_url = send.logo_url || null
+                // data.logo_url = await minioClient.presignedUrl(
+                //     "GET",
+                //     minioBucket,
+                //     data.logo,
+                //     60 * 60 // 1 hora
+                // );
             }
 
             res.json({ code: 0, data })
@@ -88,6 +114,70 @@ const update = async (req, res) => {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
+
+// const update = async (req, res) => {
+//     try {
+//         const { colaborador } = req.user
+//         const { id } = req.params
+
+//         if (req.body.datos) {
+//             const datos = JSON.parse(req.body.datos)
+//             req.body = { ...datos }
+//         }
+
+//         const {
+//             ruc, razon_social, nombre_comercial,
+//             domicilio_fiscal, ubigeo, distrito, provincia, departamento,
+//             telefono, correo, logo, previous_logo,
+//             igv_porcentaje, sol_usuario, sol_clave,
+//             pc_principal_ip,
+//         } = req.body
+
+//         // --- ACTUALIZAR --- //
+//         const send = {
+//             ruc, razon_social, nombre_comercial,
+//             domicilio_fiscal, ubigeo, distrito, provincia, departamento,
+//             telefono, correo, logo, previous_logo,
+//             igv_porcentaje, sol_usuario, sol_clave,
+//             pc_principal_ip,
+//             updatedBy: colaborador
+//         }
+
+//         if (req.file) send.logo = req.file.filename
+
+//         const [affectedRows] = await Empresa.update(
+//             send,
+//             {
+//                 where: { id },
+//             }
+//         )
+
+//         if (affectedRows > 0) {
+//             if (send.logo != previous_logo && previous_logo != null) {
+//                 deleteFile(previous_logo)
+//             }
+
+//             actualizarSesion(id, { empresa: send })
+
+//             let data = await Empresa.findByPk(id, {
+//                 attributes: { exclude: ['cdt', 'cdt_clave'] }
+//             })
+
+//             if (data) {
+//                 data = data.toJSON()
+//                 data.previous_logo = data.logo
+//             }
+
+//             res.json({ code: 0, data })
+//         }
+//         else {
+//             res.json({ code: 1, msg: 'No se actualizó ningún registro' })
+//         }
+//     }
+//     catch (error) {
+//         res.status(500).json({ code: -1, msg: error.message, error })
+//     }
+// }
 
 const updateCdt = async (req, res) => {
     try {

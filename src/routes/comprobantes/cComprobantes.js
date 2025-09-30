@@ -1129,10 +1129,22 @@ async function getComprobante(id, empresa) {
     return data
 }
 
+async function getImageBase64(url) {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`No se pudo obtener la imagen: ${response.status}`)
+
+    const contentType = response.headers.get('content-type') || 'image/png' // usa el tipo real
+    const arrayBuffer = await response.arrayBuffer()
+    const base64 = Buffer.from(arrayBuffer).toString('base64')
+
+    return `data:${contentType};base64,${base64}`
+}
+
 async function makePdf(doc, empresa) {
     // --- LOGO --- //
-    const logoPath = getFilePath(empresa.logo)
-    const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+    // const logoPath = getFilePath(empresa.logo)
+    // const logoBase64 = fs.readFileSync(logoPath).toString("base64");
+    const logoBase64 = await getImageBase64(empresa.logo_url)
     const tKey = doc.doc_tipo.replace(`${empresa.subdominio}-`, '')
 
     // --- TABLE ITEMS --- //
@@ -1248,10 +1260,10 @@ async function makePdf(doc, empresa) {
     docDefinition.content = [
         // --- LOGO --- //
         {
-            image: 'data:image/png;base64,' + logoBase64, // el logo en base64
+            image: logoBase64, // el logo en base64
             fit: [65 * 2.83465, 45 * 2.83465], // ajusta tamaño
             alignment: "center", // opcional (left, center, right)
-            margin: [0, 0, 0, 10], // opcional: espacio abajo
+            margin: [0, 0, 0, 10],
         },
         // --- EMPRESA --- //
         {

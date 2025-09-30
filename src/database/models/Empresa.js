@@ -7,7 +7,7 @@ export const Empresa = sequelize.define('empresas', {
     ruc: { type: DataTypes.STRING },
     razon_social: { type: DataTypes.STRING },
     nombre_comercial: { type: DataTypes.STRING },
-    
+
     domicilio_fiscal: { type: DataTypes.STRING },
     ubigeo: { type: DataTypes.STRING },
     distrito: { type: DataTypes.STRING },
@@ -17,6 +17,7 @@ export const Empresa = sequelize.define('empresas', {
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
     logo: { type: DataTypes.STRING },
+    logo_url: { type: DataTypes.STRING },
 
     igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
     sol_usuario: { type: DataTypes.STRING },

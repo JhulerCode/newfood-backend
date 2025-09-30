@@ -1,7 +1,7 @@
 import { Router } from "express"
 import controller from "./cArticulos.js"
 import verifyPermiso from '../../middlewares/verifyPermiso.js'
-import { upload } from '../../utils/uploadFiles.js'
+import { uploadMem, upload } from '../../utils/uploadFiles.js'
 
 const router = Router()
 
@@ -23,7 +23,7 @@ router.post(
         'vProductos:crear', 'vProductos:clonar',
         'vCombos:crear',
     ]),
-    upload.single('archivo'),
+    uploadMem.single('archivo'),
     controller.create
 )
 
@@ -34,7 +34,7 @@ router.patch(
         'vProductos:editar',
         'vCombos:editar',
     ]),
-    upload.single('archivo'),
+    uploadMem.single('archivo'),
     controller.update
 )
 

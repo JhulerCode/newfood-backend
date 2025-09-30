@@ -8,6 +8,7 @@ import { ComboArticulo } from '../../database/models/ComboArticulo.js'
 import { existe, applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
 import { deleteFile } from '../../utils/uploadFiles.js'
+import { minioClient, minioDomain, minioBucket } from "../../lib/minioClient.js"
 
 const include1 = {
     categoria1: {
@@ -164,7 +165,31 @@ const update = async (req, res) => {
             updatedBy: colaborador
         }
 
-        if (req.file) send.foto_path = req.file.filename
+        if (req.file) {
+            const timestamp = Date.now()
+            const uniqueName = `${timestamp}-${req.file.originalname}`
+
+            await minioClient.putObject(
+                minioBucket,
+                uniqueName,
+                req.file.buffer,
+                req.file.size,
+                { "Content-Type": req.file.mimetype }
+            );
+
+            send.foto_path = uniqueName
+
+            if (previous_foto_path && previous_foto_path !== uniqueName) {
+                try {
+                    await minioClient.removeObject(minioBucket, previous_foto_path)
+                } catch (err) {
+                    console.error("Error al borrar logo anterior:", err.message)
+                }
+            }
+
+            const publicUrl = `https://${minioDomain}/${minioBucket}/${uniqueName}`;
+            send.foto_url = publicUrl;
+        }
 
         const [affectedRows] = await Articulo.update(
             send,
@@ -175,12 +200,6 @@ const update = async (req, res) => {
         )
 
         if (affectedRows > 0) {
-            if (patch_mode != 1) { // PORQUE EDITO PRECIOS DE LA SEMANA EN OTRO MODAL
-                if (send.foto_path != previous_foto_path && previous_foto_path != null) {
-                    deleteFile(previous_foto_path)
-                }
-            }
-
             // --- COMBO ITEMS --- //
             if (is_combo == true) {
                 await ComboArticulo.destroy({
@@ -448,6 +467,8 @@ async function loadOne(id) {
         data.activo1 = activo_estadosMap[data.activo]
         data.igv_afectacion1 = igv_afectacionesMap[data.igv_afectacion]
         data.has_receta1 = estadosMap[data.has_receta]
+        
+        data.previous_foto_path = data.foto_path
     }
 
     return data

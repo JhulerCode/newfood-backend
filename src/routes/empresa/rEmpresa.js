@@ -1,7 +1,7 @@
 import { Router } from "express"
 import controller from "./cEmpresa.js"
 import verifyPermiso from '../../middlewares/verifyPermiso.js'
-import { upload, uploadToSunat } from '../../utils/uploadFiles.js'
+import { uploadMem, upload, uploadToSunat } from '../../utils/uploadFiles.js'
 
 const router = Router()
 
@@ -14,7 +14,7 @@ router.get(
 router.patch(
     '/:id',
     verifyPermiso(['vEmpresa:editar']),
-    upload.single('archivo'),
+    uploadMem.single('archivo'),
     controller.update
 )
 

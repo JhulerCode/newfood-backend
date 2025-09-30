@@ -54,6 +54,8 @@ function getFilePath(name) {
     return path.join(pathUploads, name)
 }
 
+const uploadMem = multer({ storage: multer.memoryStorage() });
+
 export {
     __dirname,
     pathUploads,
@@ -66,4 +68,6 @@ export {
     deleteFile,
     getFilePath,
     existFile,
+
+    uploadMem,
 }

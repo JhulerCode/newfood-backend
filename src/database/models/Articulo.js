@@ -23,6 +23,7 @@ export const Articulo = sequelize.define('articulos', {
     marca: { type: DataTypes.STRING },
     activo: { type: DataTypes.BOOLEAN },
     foto_path: { type: DataTypes.STRING },
+    foto_url: { type: DataTypes.STRING },
 
     tipo: { type: DataTypes.STRING },
     categoria: { type: DataTypes.STRING },
