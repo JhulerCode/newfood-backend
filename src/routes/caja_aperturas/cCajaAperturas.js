@@ -6,6 +6,8 @@ import { Colaborador } from '../../database/models/Colaborador.js'
 import { Transaccion } from '../../database/models/Transaccion.js'
 import { applyFilters } from '../../utils/mine.js'
 import cSistema from "../_sistema/cSistema.js"
+import dayjs from 'dayjs'
+import { Op, fn, col } from 'sequelize'
 
 const create = async (req, res) => {
     try {
@@ -124,7 +126,7 @@ const find = async (req, res) => {
 const findResumen = async (req, res) => {
     try {
         const { empresa } = req.user
-        const { id } = req.params
+        const { id, fecha_apertura, is_past } = req.params
 
         const send = {
             efectivo_ingresos: [],
@@ -154,6 +156,9 @@ const findResumen = async (req, res) => {
             productos: [],
             productos_anulados: [],
             ventas_credito_total: 0,
+
+            ventas_ayer: 0,
+            ventas_mes: 0,
         }
 
         // --- Dinero movimientos --- //
@@ -295,6 +300,7 @@ const findResumen = async (req, res) => {
                     id: a.serie_correlativo,
                     tipo: tipo_comprobante_nombre,
                     monto: Number(a.monto),
+                    pago_condicion: a.pago_condicion,
                 })
 
                 // --- PRODUCTOS --- //
@@ -436,6 +442,7 @@ const findResumen = async (req, res) => {
             }
         }
 
+        // --- Ordenar crédito al final --- //
         send.venta_pago_metodos = send.venta_pago_metodos.sort((a, b) => {
             if (a.nombre === 'CRÉDITO' && b.nombre !== 'CRÉDITO') return 1
             if (b.nombre === 'CRÉDITO' && a.nombre !== 'CRÉDITO') return -1
@@ -444,7 +451,61 @@ const findResumen = async (req, res) => {
         send.venta_comprobantes = send.venta_comprobantes.sort((a, b) => a.nombre.localeCompare(b.nombre))
         send.productos = send.productos.sort((a, b) => a.nombre.localeCompare(b.nombre))
 
-        res.json({ code: 0, data: send })
+        if (is_past != 'true') {
+            // --- Ventas del mes --- //
+            const hoy = dayjs(fecha_apertura)
+            const mesInicio = hoy.startOf("month").format('YYYY-MM-DD')
+            const mesFin = hoy.endOf("month").format('YYYY-MM-DD')
+
+            const caja_aperturas = await CajaApertura.findAll({
+                attributes: ['id', 'fecha_apertura'],
+                order: [['createdAt', 'DESC']],
+                where: {
+                    empresa: empresa.id,
+                    fecha_apertura: {
+                        [Op.between]: [mesInicio, mesFin],
+                    }
+                }
+            })
+
+            send.ventas_mes = await DineroMovimiento.findOne({
+                attributes: [[fn("SUM", col("monto")), "total"]],
+                where: {
+                    caja_apertura: caja_aperturas.map(a => a.id),
+                    estado: '2',
+                    operacion: '1',
+                },
+                // raw: true,
+            })
+
+            // --- Ventas ayer --- //
+            const caja_aperturas_ayer = await CajaApertura.findAll({
+                attributes: ['id', 'fecha_apertura'],
+                order: [['createdAt', 'DESC']],
+                where: {
+                    empresa: empresa.id,
+                },
+                limit: 2
+            })
+
+            if (caja_aperturas_ayer.length > 1) {
+                send.ventas_ayer = await DineroMovimiento.findOne({
+                    attributes: [[fn("SUM", col("monto")), "total"]],
+                    where: {
+                        caja_apertura: caja_aperturas_ayer[1].id,
+                        estado: '2',
+                        operacion: '1',
+                    },
+                    // raw: true,
+                })
+            }
+        }
+
+        res.json({
+            code: 0,
+            data: send,
+            // caja_aperturas,
+        })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })

@@ -26,7 +26,7 @@ router.patch(
 )
 
 router.get(
-    '/resumen/:id',
+    '/resumen/:id&:fecha_apertura&:is_past',
     verifyPermiso([
         'vCajaResumen:ver',
         'vCajaAperturas:verResumen',
