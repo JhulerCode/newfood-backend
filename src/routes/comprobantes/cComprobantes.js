@@ -370,11 +370,12 @@ const create = async (req, res) => {
         for (const a of comprobante_items) {
             await TransaccionItem.update(
                 {
-                    venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
+                    // venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
+                    venta_entregado: sequelize.literal(`COALESCE(venta_entregado, 0) + ${Number(a.cantidad)}`)
                 },
                 {
                     where: {
-                        articulo: a.articulo,
+                        id: a.id1,
                         transaccion
                     },
                     transaction
