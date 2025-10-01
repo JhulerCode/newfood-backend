@@ -76,7 +76,7 @@ const create = async (req, res) => {
             gravado, exonerado, inafecto, gratuito, descuentos,
             igv, isc, icbper,
             monto, nota,
-            comprobante_items, transaccion, pago_metodos,
+            comprobante_items, transaccion, transaccion1, pago_metodos,
         } = req.body
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
@@ -86,7 +86,7 @@ const create = async (req, res) => {
                 empresa: empresa.id,
             }
         })
-        
+
         if (caja_apertura == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'La caja no está aperturada' })
@@ -103,7 +103,7 @@ const create = async (req, res) => {
         }
 
         if (pago_comprobante.correlativo == null) {
-            await transaccion.rollback()
+            await transaction.rollback()
             res.json({ code: 1, msg: 'El tipo de comprobante aún no está configurado' })
             return
         }
@@ -126,7 +126,7 @@ const create = async (req, res) => {
         const send = {
             socio,
             pago_condicion,
-            transaccion: transaccion.id,
+            transaccion,
             caja_apertura: caja_apertura.id,
             estado,
 
@@ -298,7 +298,7 @@ const create = async (req, res) => {
                                 articulo: c.articulo,
                                 cantidad: c.cantidad * b.cantidad * a.cantidad,
                                 estado: 1,
-                                transaccion: transaccion.id,
+                                transaccion,
                                 comprobante: nuevo.id,
                                 empresa: empresa.id,
                                 createdBy: colaborador
@@ -311,7 +311,7 @@ const create = async (req, res) => {
                             articulo: b.articulo,
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
-                            transaccion: transaccion.id,
+                            transaccion,
                             comprobante: nuevo.id,
                             empresa: empresa.id,
                             createdBy: colaborador
@@ -328,7 +328,7 @@ const create = async (req, res) => {
                             articulo: b.articulo,
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
-                            transaccion: transaccion.id,
+                            transaccion,
                             comprobante: nuevo.id,
                             empresa: empresa.id,
                             createdBy: colaborador
@@ -341,7 +341,7 @@ const create = async (req, res) => {
                         articulo: a.articulo,
                         cantidad: a.cantidad,
                         estado: 1,
-                        transaccion: transaccion.id,
+                        transaccion,
                         comprobante: nuevo.id,
                         empresa: empresa.id,
                         createdBy: colaborador
@@ -375,7 +375,7 @@ const create = async (req, res) => {
                 {
                     where: {
                         articulo: a.articulo,
-                        transaccion: transaccion.id
+                        transaccion
                     },
                     transaction
                 }
@@ -403,13 +403,13 @@ const create = async (req, res) => {
 
         // --- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO --- //
         const pedido_items = await TransaccionItem.findAll({
-            where: { transaccion: transaccion.id }
+            where: { transaccion }
         })
 
         const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
         if (is_pendiente == false) {
             const send = { venta_facturado: true }
-            if (transaccion.venta_canal == 1) {
+            if (transaccion1.venta_canal == 1) {
                 send.venta_entregado = true
                 send.estado = 2
             }
@@ -417,7 +417,7 @@ const create = async (req, res) => {
             await Transaccion.update(
                 send,
                 {
-                    where: { id: transaccion.id },
+                    where: { id: transaccion },
                 }
             )
         }
