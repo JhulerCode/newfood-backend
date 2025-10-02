@@ -46,8 +46,8 @@ const sistemaData = {
         { id: '2', nombre: 'CERRADO' }
     ],
     pago_condiciones: [
-        { id: 1, nombre: 'CONTADO' },
-        { id: 2, nombre: 'CRÉDITO' },
+        { id: '1', nombre: 'CONTADO' },
+        { id: '2', nombre: 'CRÉDITO' },
     ],
     kardex_tipos: [
         { id: '1', nombre: 'COMPRA', operacion: 1 },
