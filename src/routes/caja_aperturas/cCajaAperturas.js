@@ -126,7 +126,7 @@ const find = async (req, res) => {
 const findResumen = async (req, res) => {
     try {
         const { empresa } = req.user
-        const { id, fecha_apertura, is_past } = req.params
+        const { id, is_past, fecha_apertura } = req.params
 
         const send = {
             efectivo_ingresos: [],
@@ -153,9 +153,9 @@ const findResumen = async (req, res) => {
             comprobantes_anulados: [],
             comprobantes_anulados_total: 0,
             comprobantes_canjeados: [],
+            comprobantes_pasados_cobrados: [],
             productos: [],
             productos_anulados: [],
-            ventas_credito_total: 0,
 
             ventas_ayer: 0,
             ventas_mes: 0,
@@ -173,6 +173,11 @@ const findResumen = async (req, res) => {
                     as: 'pago_metodo1',
                     attributes: ['id', 'nombre'],
                 },
+                {
+                    model: Comprobante,
+                    as: 'comprobante1',
+                    attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'caja_apertura']
+                }
             ]
         })
 
@@ -211,6 +216,15 @@ const findResumen = async (req, res) => {
                             send.venta_pago_metodos[i].monto += Number(a.monto)
                             send.venta_pago_metodos[i].cantidad++
                         }
+
+                        // --- COMPROBANTES PASADOS COBRADOS --- //
+                        if (a.comprobante1.caja_apertura != id) {
+                            send.comprobantes_pasados_cobrados.push({
+                                serie_correlativo: a.comprobante1.serie_correlativo,
+                                doc_tipo: a.comprobante1.doc_tipo,
+                                monto: Number(a.monto),
+                            })
+                        }
                     }
                 }
 
@@ -238,19 +252,29 @@ const findResumen = async (req, res) => {
             },
             include: [
                 {
-                    model: ComprobanteItem,
-                    as: 'comprobante_items',
-                    attributes: ['id', 'articulo', 'descripcion', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
-                },
-                {
                     model: Comprobante,
                     as: 'canjeado_por1',
                     attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
                 },
                 {
+                    model: ComprobanteItem,
+                    as: 'comprobante_items',
+                    attributes: ['id', 'articulo', 'descripcion', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+                },
+                {
                     model: Transaccion,
                     as: 'transaccion1',
                     attributes: ['venta_canal'],
+                },
+                {
+                    model: DineroMovimiento,
+                    as: 'dinero_movimientos',
+                    attributes: ['id', 'pago_metodo', 'monto', 'caja_apertura'],
+                    include: {
+                        model: PagoMetodo,
+                        as: 'pago_metodo1',
+                        attributes: ['id', 'nombre', 'color']
+                    }
                 }
             ]
         })
@@ -264,6 +288,45 @@ const findResumen = async (req, res) => {
 
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
+                // --- MÉTODOS DE PAGO --- //
+                let comprobante_pagos_total = 0
+                for (const b of a.dinero_movimientos) {
+                    if (b.caja_apertura == id) {
+                        comprobante_pagos_total += Number(b.monto)
+
+                        // const i = send.venta_pago_metodos.findIndex(c => c.id == b.pago_metodo1.id)
+                        // if (i === -1) {
+                        //     send.venta_pago_metodos.push({
+                        //         id: b.pago_metodo1.id,
+                        //         nombre: b.pago_metodo1.nombre,
+                        //         monto: Number(b.monto),
+                        //         cantidad: 1
+                        //     })
+                        // }
+                        // else {
+                        //     send.venta_pago_metodos[i].monto += Number(b.monto)
+                        //     send.venta_pago_metodos[i].cantidad++
+                        // }
+                    }
+                }
+
+                // --- CRÉDITO --- //
+                if (a.monto > comprobante_pagos_total) {
+                    const k = send.venta_pago_metodos.findIndex(b => b.id == 'CRÉDITO')
+                    if (k === -1) {
+                        send.venta_pago_metodos.push({
+                            id: 'CRÉDITO',
+                            nombre: 'CRÉDITO',
+                            monto: Number(a.monto) - comprobante_pagos_total,
+                            cantidad: 1
+                        })
+                    }
+                    else {
+                        send.venta_pago_metodos[k].monto += Number(a.monto) - comprobante_pagos_total
+                        send.venta_pago_metodos[k].cantidad++
+                    }
+                }
+
                 // --- TIPOS DE COMPROBANTES --- //
                 const i = send.venta_comprobantes.findIndex(b => b.id == a.doc_tipo)
                 if (i === -1) {
@@ -328,25 +391,6 @@ const findResumen = async (req, res) => {
                         send.productos[k].cantidad += Number(b.cantidad)
                         send.productos[k].monto += Number(prd.total)
                         send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
-                    }
-                }
-
-                // --- CRÉDITO --- //
-                if (a.pago_condicion == 2) {
-                    send.ventas_credito_total += Number(a.monto)
-
-                    const k = send.venta_pago_metodos.findIndex(b => b.id == 'CRÉDITO')
-                    if (k === -1) {
-                        send.venta_pago_metodos.push({
-                            id: 'CRÉDITO',
-                            nombre: 'CRÉDITO',
-                            monto: Number(a.monto),
-                            cantidad: 1
-                        })
-                    }
-                    else {
-                        send.venta_pago_metodos[k].monto += Number(a.monto)
-                        send.venta_pago_metodos[k].cantidad++
                     }
                 }
             }
