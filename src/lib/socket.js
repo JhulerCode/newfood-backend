@@ -68,8 +68,13 @@ export function initSocket(server) {
 
         socket.on("vComanda:imprimir", ({ empresa, data }) => {
             consoleLogSocket(empresa, socket.id, "vComanda:imprimir")
-            const targetSocketId = userSockets['pc_principal']
-            io.to(targetSocketId.socketId).emit("vComanda:imprimir", data)
+            const targetSocketId = userSockets[`${data.subdominio}_pc_principal`]
+
+            const encoded = encodeURIComponent(JSON.stringify(data))
+            const localPath = 'comanda'
+            const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+
+            io.to(targetSocketId.socketId).emit("vComanda:imprimir", url)
         })
 
         socket.on("disconnect", () => {
