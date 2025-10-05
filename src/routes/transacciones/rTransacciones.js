@@ -71,13 +71,13 @@ router.patch(
     controller.anular
 )
 
-router.get(
-    '/ventas-pendientes',
-    verifyPermiso([
-        'vPedidos:listar',
-    ]),
-    controller.ventasPendientes
-)
+// router.get(
+//     '/ventas-pendientes',
+//     verifyPermiso([
+//         'vPedidos:listar',
+//     ]),
+//     controller.ventasPendientes
+// )
 
 router.patch(
     '/cambiar-mesa/:id',

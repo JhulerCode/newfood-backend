@@ -379,11 +379,10 @@ const delet = async (req, res) => {
 }
 
 
-
 // --- Funciones --- //
 async function loadOne(id) {
     let data = await Transaccion.findByPk(id, {
-        include: [include1.socio1, include1.createdBy1]
+        include: [include1.socio1, include1.createdBy1, include1.venta_mesa1]
     })
 
     if (data) {
@@ -443,7 +442,9 @@ const addProductos = async (req, res) => {
 
         await transaction.commit()
 
-        res.json({ code: 0 })
+        // --- DEVOLVER --- //
+        const data = await loadOne(id)
+        res.json({ code: 0, data })
     }
     catch (error) {
         await transaction.rollback()
@@ -469,38 +470,40 @@ const anular = async (req, res) => {
             }
         )
 
-        res.json({ code: 0 })
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const ventasPendientes = async (req, res) => {
-    try {
-        const { empresa } = req.user
-
-        const findProps = {
-            attributes: [
-                'venta_canal',
-                [fn('COUNT', col('id')), 'cantidad']
-            ],
-            where: {
-                tipo: '2',
-                estado: '1',
-                empresa: empresa.id
-            },
-            group: ['venta_canal'],
-        }
-
-        const data = await Transaccion.findAll(findProps)
-
+        // --- DEVOLVER --- //
+        const data = await loadOne(id)
         res.json({ code: 0, data })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
+
+// const ventasPendientes = async (req, res) => {
+//     try {
+//         const { empresa } = req.user
+
+//         const findProps = {
+//             attributes: [
+//                 'venta_canal',
+//                 [fn('COUNT', col('id')), 'cantidad']
+//             ],
+//             where: {
+//                 tipo: '2',
+//                 estado: '1',
+//                 empresa: empresa.id
+//             },
+//             group: ['venta_canal'],
+//         }
+
+//         const data = await Transaccion.findAll(findProps)
+
+//         res.json({ code: 0, data })
+//     }
+//     catch (error) {
+//         res.status(500).json({ code: -1, msg: error.message, error })
+//     }
+// }
 
 const cambiarMesa = async (req, res) => {
     try {
@@ -517,7 +520,8 @@ const cambiarMesa = async (req, res) => {
             { where: { id } }
         )
 
-        res.json({ code: 0 })
+        const data = await loadOne(id)
+        res.json({ code: 0, data })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -556,7 +560,7 @@ export default {
 
     addProductos,
     anular,
-    ventasPendientes,
+    // ventasPendientes,
     cambiarMesa,
     entregar,
 }

@@ -425,7 +425,9 @@ const create = async (req, res) => {
 
         // --- DEVOLVER --- //
         const data = await getComprobante(nuevo.id, empresa)
-        res.json({ code: 0, data, facturacion: res_mifact })
+        const data_transaccion = await loadOneTransaccion(transaccion)
+
+        res.json({ code: 0, data, facturacion: res_mifact, data_transaccion })
     }
     catch (error) {
         await transaction.rollback()
@@ -1532,6 +1534,53 @@ function calcularUno(item) {
     item.total = (item.cantidad * item.pu) - item.descuento
 
     return item
+}
+
+async function loadOneTransaccion(id) {
+    try {
+        let data = await Transaccion.findByPk(id, {
+            include: [
+                {
+                    model: Socio,
+                    as: 'socio1',
+                    attributes: ['id', 'nombres']
+                },
+                {
+                    model: Colaborador,
+                    as: 'createdBy1',
+                    attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
+                },
+                {
+                    model: Mesa,
+                    as: 'venta_mesa1',
+                    attributes: ['id', 'nombre'],
+                    include: {
+                        model: Salon,
+                        as: 'salon1',
+                        attributes: ['id', 'nombre']
+                    }
+                }
+            ]
+        })
+
+        if (data) {
+            data = data.toJSON()
+            console.log(data)
+
+            const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+            const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+            const estados = cSistema.arrayMap('estados')
+
+            data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+            data.estado1 = transaccion_estadosMap[data.estado]
+            data.venta_facturado1 = estados[data.venta_facturado]
+            data.venta_entregado1 = estados[data.venta_entregado]
+        }
+
+        return data
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 
