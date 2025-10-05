@@ -1,5 +1,7 @@
 import { Server } from 'socket.io'
 
+const userSockets = {}
+
 export function initSocket(server) {
     const io = new Server(server, {
         cors: {
@@ -11,9 +13,10 @@ export function initSocket(server) {
         console.log("🟢 Nuevo usuario conectado", socket.id)
 
         // El usuario debe unirse a una empresa (room)
-        socket.on("joinEmpresa", (empresa) => {
-            console.log(`🔗 Empresa ${empresa} User: ${socket.id}`)
+        socket.on("joinEmpresa", ({ empresa, colaborador }) => {
+            console.log(`🔗 Empresa ${empresa} User: ${colaborador} SoketId: ${socket.id}`)
             socket.join(empresa)
+            userSockets[colaborador] = { empresa, colaborador, socketId: socket.id }
         })
 
         socket.on("vComanda:crear", ({ empresa, data }) => {
@@ -62,8 +65,21 @@ export function initSocket(server) {
             consoleLogSocket(empresa, socket.id, "vEmitirComprobante:grabar")
             io.to(empresa).emit("vEmitirComprobante:grabar", data)
         })
-        
+
+        socket.on("vComanda:imprimir", ({ empresa, data }) => {
+            consoleLogSocket(empresa, socket.id, "vComanda:imprimir")
+            const targetSocketId = userSockets['pc_principal']
+            io.to(targetSocketId.socketId).emit("vComanda:imprimir", data)
+        })
+
         socket.on("disconnect", () => {
+            for (const [id, info] of Object.entries(userSockets)) {
+                if (info.socketId === socket.id) {
+                    delete userSockets[id]
+                    break
+                }
+            }
+
             console.log("🔴 Cliente desconectado:", socket.id)
         })
     })
