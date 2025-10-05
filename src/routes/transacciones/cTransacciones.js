@@ -280,7 +280,7 @@ const findById = async (req, res) => {
                             include: {
                                 model: ProduccionArea,
                                 as: 'produccion_area1',
-                                attributes: ['impresora']
+                                attributes: ['impresora_tipo', 'impresora']
                             }
                         },
                     ]

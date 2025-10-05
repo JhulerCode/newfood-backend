@@ -1565,7 +1565,7 @@ async function loadOneTransaccion(id) {
 
         if (data) {
             data = data.toJSON()
-            console.log(data)
+            // console.log(data)
 
             const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
             const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')

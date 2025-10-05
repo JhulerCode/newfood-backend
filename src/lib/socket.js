@@ -70,11 +70,65 @@ export function initSocket(server) {
             consoleLogSocket(empresa, socket.id, "vComanda:imprimir")
             const targetSocketId = userSockets[`${data.subdominio}_pc_principal`]
 
-            const encoded = encodeURIComponent(JSON.stringify(data))
-            const localPath = 'comanda'
-            const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+            if (targetSocketId) {
+                const encoded = encodeURIComponent(JSON.stringify(data))
+                const localPath = 'comanda'
+                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+                io.to(targetSocketId.socketId).emit("vComanda:imprimir", url)
+            }
+            else {
+                socket.emit('pc_principal_socket_not_found')
+                console.log(`${data.subdominio}_pc_principal Socket user not fount.`)
+            }
+        })
 
-            io.to(targetSocketId.socketId).emit("vComanda:imprimir", url)
+        socket.on("vComanda:imprimirPrecuenta", ({ empresa, data }) => {
+            consoleLogSocket(empresa, socket.id, "vComanda:imprimirPrecuenta")
+            const targetSocketId = userSockets[`${data.subdominio}_pc_principal`]
+
+            if (targetSocketId) {
+                const encoded = encodeURIComponent(JSON.stringify(data))
+                const localPath = 'precuenta'
+                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+                io.to(targetSocketId.socketId).emit("vComanda:imprimirPrecuenta", url)
+            }
+            else {
+                socket.emit('pc_principal_socket_not_found')
+                console.log(`${data.subdominio}_pc_principal Socket user not fount.`)
+            }
+        })
+
+        socket.on("vEmitirComprobante:imprimir", ({ empresa, data }) => {
+            consoleLogSocket(empresa, socket.id, "vEmitirComprobante:imprimir")
+            const targetSocketId = userSockets[`${data.subdominio}_pc_principal`]
+
+            if (targetSocketId) {
+                const encoded = encodeURIComponent(JSON.stringify(data))
+                const localPath = 'comprobante'
+                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+                io.to(targetSocketId.socketId).emit("vEmitirComprobante:imprimir", url)
+                console.log('ASD')
+            }
+            else {
+                socket.emit('pc_principal_socket_not_found')
+                console.log(`${data.subdominio}_pc_principal Socket user not fount.`)
+            }
+        })
+
+        socket.on("vCajaAperturas:imprimirResumen", ({ empresa, data }) => {
+            consoleLogSocket(empresa, socket.id, "vCajaAperturas:imprimirResumen")
+            const targetSocketId = userSockets[`${data.subdominio}_pc_principal`]
+
+            if (targetSocketId) {
+                const encoded = encodeURIComponent(JSON.stringify(data))
+                const localPath = 'caja_resumen'
+                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+                io.to(targetSocketId.socketId).emit("vCajaAperturas:imprimirResumen", url)
+            }
+            else {
+                socket.emit('pc_principal_socket_not_found')
+                console.log(`${data.subdominio}_pc_principal Socket user not fount.`)
+            }
         })
 
         socket.on("disconnect", () => {
