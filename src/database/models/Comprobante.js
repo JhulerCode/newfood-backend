@@ -3,6 +3,7 @@ import sequelize from '../sequelize.js'
 import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
 import { Transaccion } from './Transaccion.js'
+import { CajaApertura } from "./CajaApertura.js";
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 import { PagoComprobante } from './PagoComprobante.js'
@@ -76,6 +77,9 @@ Comprobante.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })
 
 Transaccion.hasMany(Comprobante, { foreignKey: 'transaccion', as: 'comprobantes', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
+
+CajaApertura.hasMany(Comprobante, { foreignKey: 'caja_apertura', as: 'comprobantes', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_apertura1' })
 
 Comprobante.hasOne(Comprobante, { foreignKey: 'canjeado_por', as: 'comprobante_inicial', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Comprobante, { foreignKey: 'canjeado_por', as: 'canjeado_por1' })

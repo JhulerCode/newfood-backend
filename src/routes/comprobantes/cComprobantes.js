@@ -50,6 +50,20 @@ const include1 = {
     //     as: 'pago_comprobante1',
     //     attributes: ['id', 'nombre']
     // },
+    comprobante_items: {
+        model: ComprobanteItem,
+        as: 'comprobante_items',
+    },
+    transaccion1: {
+        model: Transaccion,
+        as: 'transaccion1',
+        attributes: ['id', 'venta_codigo', 'venta_canal', 'venta_mesa'],
+    },
+    caja_apertura1: {
+        model: CajaApertura,
+        as: 'caja_apertura1',
+        attributes: ['id', 'createdAt']
+    },
 }
 
 const sqls1 = {
