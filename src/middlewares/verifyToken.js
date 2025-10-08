@@ -9,11 +9,11 @@ async function verifyToken(req, res, next) {
     // --- VERIFY VERSION --- //
     const app_version = req.headers['x-app-version']
     if (!app_version) {
-        return res.status(303).json({ msg: 'Verión antigua, recargue el sistema' })
+        return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
     }
 
     if (cSistema.sistemaData.app_version != app_version) {
-        return res.status(303).json({ msg: 'Verión antigua, recargue el sistema' })
+        return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
     }
 
     // --- OBTENER TOKEN --- //
