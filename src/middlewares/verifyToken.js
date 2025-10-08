@@ -8,8 +8,8 @@ async function verifyToken(req, res, next) {
 
     // --- VERIFY VERSION --- //
     const app_version = req.headers['x-app-version']
-    console.log(cSistema.app_version)
-    console.log(app_version)
+    console.log('backend', cSistema.sistemaData.app_version)
+    console.log('frontend', app_version)
     console.log(cSistema.app_version != app_version)
 
     if (!app_version) {
