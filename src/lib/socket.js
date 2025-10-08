@@ -6,7 +6,10 @@ export function initSocket(server) {
     const io = new Server(server, {
         cors: {
             origin: '*'
-        }
+        },
+        pingInterval: 25000,
+        pingTimeout: 120000,
+        allowEIO3: true
     })
 
     io.on("connection", (socket) => {
