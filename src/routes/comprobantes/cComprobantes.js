@@ -457,7 +457,7 @@ const find = async (req, res) => {
 
         const findProps = {
             attributes: ['id'],
-            order: [['createdAt', 'DESC']],
+            order: [['createdAt', 'ASC']],
             where: { empresa: empresa.id },
             include: []
         }

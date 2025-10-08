@@ -14,7 +14,7 @@ function verifyPermiso(requiredPermissions = []) {
             ip: req.ip,
         }
 
-        console.log(req.user.nombres, log.method, log.baseUrl, log.detail.params)
+        console.log(req.user.nombres, log.method, log.baseUrl)
 
         if (requiredPermissions.length == 0) return next()
 
