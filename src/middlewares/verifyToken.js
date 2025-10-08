@@ -8,15 +8,11 @@ async function verifyToken(req, res, next) {
 
     // --- VERIFY VERSION --- //
     const app_version = req.headers['x-app-version']
-    console.log('backend', cSistema.sistemaData.app_version)
-    console.log('frontend', app_version)
-    console.log(cSistema.sistemaData.app_version != app_version)
-
     if (!app_version) {
         return res.status(303).json({ msg: 'Verión antigua, recargue el sistema' })
     }
 
-    if (cSistema.app_version != app_version) {
+    if (cSistema.sistemaData.app_version != app_version) {
         return res.status(303).json({ msg: 'Verión antigua, recargue el sistema' })
     }
 
