@@ -1,3 +1,4 @@
+import verifyVersion from '../middlewares/verifyVersion.js'
 import verifyToken from '../middlewares/verifyToken.js'
 
 import signin from './_signin/signin.js'
@@ -29,6 +30,7 @@ function routes(app) {
         res.status(200).send(`Newfood's server is running`)
     })
 
+    app.use('/', verifyVersion)
     app.use('/signin', signin)
     app.use('/api', verifyToken)
     app.use('/api/sistema', sistema)

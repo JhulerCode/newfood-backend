@@ -14,16 +14,6 @@ const signin = async (req, res) => {
     try {
         const { usuario, contrasena } = req.body
 
-        // --- VERIFY VERSION --- //
-        const app_version = req.headers['x-app-version']
-        if (!app_version) {
-            return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
-        }
-
-        if (cSistema.sistemaData.app_version != app_version) {
-            return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
-        }
-
         // --- VERIFICAR EMPRESA --- //
         const xEmpresa = req.headers["x-empresa"]
         const empresa = await Empresa.findOne({ where: { subdominio: xEmpresa } })

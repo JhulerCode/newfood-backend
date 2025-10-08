@@ -6,16 +6,6 @@ import cSistema from "../routes/_sistema/cSistema.js"
 async function verifyToken(req, res, next) {
     const authorization = req.headers['authorization']
 
-    // --- VERIFY VERSION --- //
-    const app_version = req.headers['x-app-version']
-    if (!app_version) {
-        return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
-    }
-
-    if (cSistema.sistemaData.app_version != app_version) {
-        return res.status(303).json({ msg: 'Versión antigua, recargue el sistema' })
-    }
-
     // --- OBTENER TOKEN --- //
     if (!authorization) return res.status(401).json({ msg: 'Token faltante' })
     if (!authorization.toLowerCase().startsWith('bearer')) return res.status(401).json({ msg: 'Token no válido' })
