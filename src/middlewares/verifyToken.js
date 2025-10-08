@@ -1,9 +1,16 @@
 import jat from "../utils/jat.js"
 import config from "../config.js"
 import { obtenerSesion, sessionStore } from "../routes/_signin/sessions.js"
+import cSistema from "../routes/_sistema/cSistema.js"
 
 async function verifyToken(req, res, next) {
     const authorization = req.headers['authorization']
+
+    // --- VERIFY VERSION --- //
+    const app_version = req.headers['x-app-version']
+    if (cSistema.app_version != app_version) {
+        return res.status(303).json({ msg: 'Verión antigua, recargue el sistema' })
+    }
 
     // --- OBTENER TOKEN --- //
     if (!authorization) return res.status(401).json({ msg: 'Token faltante' })

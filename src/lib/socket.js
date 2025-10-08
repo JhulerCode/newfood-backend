@@ -161,12 +161,12 @@ export function initSocket(server) {
             }
         })
 
-        socket.on("vColaboradores:actualizarTodos", () => {
-            consoleLogSocket(socket.id, "vColaboradores:actualizarTodos")
-            const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit("vColaboradores:actualizarTodos")
-        })
+        // socket.on("vColaboradores:actualizarTodos", () => {
+        //     consoleLogSocket(socket.id, "vColaboradores:actualizarTodos")
+        //     const socket_user = socketUsers[socket.id]
+        //     const { empresa } = socket_user
+        //     io.to(empresa.id).emit("vColaboradores:actualizarTodos")
+        // })
 
         socket.on("disconnect", () => {
             const socket_user = socketUsers[socket.id]
