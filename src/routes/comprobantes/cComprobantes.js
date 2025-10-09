@@ -1553,6 +1553,13 @@ function calcularUno(item) {
 async function loadOneTransaccion(id) {
     try {
         let data = await Transaccion.findByPk(id, {
+            attributes: {
+                include: [
+                    [
+                        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`), "comprobantes_monto"
+                    ]
+                ]
+            },
             include: [
                 {
                     model: Socio,

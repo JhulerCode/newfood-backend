@@ -311,6 +311,12 @@ const findById = async (req, res) => {
         if (data) {
             data = data.toJSON()
 
+            const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
+            const transaccion_estadosMap = cSistema.arrayMap('transaccion_estados')
+
+            data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+            data.estado1 = transaccion_estadosMap[data.estado]
+
             for (const a of data.transaccion_items) {
                 a.cantidad_anterior = a.cantidad || 0
             }
@@ -382,6 +388,13 @@ const delet = async (req, res) => {
 // --- Funciones --- //
 async function loadOne(id) {
     let data = await Transaccion.findByPk(id, {
+        attributes: {
+            include: [
+                [
+                    literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`), "comprobantes_monto"
+                ]
+            ]
+        },
         include: [include1.socio1, include1.createdBy1, include1.venta_mesa1]
     })
 
