@@ -19,7 +19,7 @@ const include1 = {
     produccion_area1: {
         model: ProduccionArea,
         as: 'produccion_area1',
-        attributes: ['id', 'nombre', 'impresora']
+        attributes: ['id', 'impresora_tipo', 'impresora']
     },
     receta_insumos: {
         model: RecetaInsumo,

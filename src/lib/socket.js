@@ -13,6 +13,7 @@ export function initSocket(server) {
     })
 
     io.on("connection", (socket) => {
+        // --- Pedidos --- //
         socket.on("joinEmpresa", ({ empresa, colaborador }) => {
             console.log(`🟢 Cliente conectado | Empresa: ${empresa.razon_social} | User: ${colaborador.nombres} ${colaborador.apellidos} | SoketId: ${socket.id}`)
             socket.join(empresa.id)
@@ -84,7 +85,6 @@ export function initSocket(server) {
 
         socket.on("vComanda:imprimir", (data) => {
             consoleLogSocket(socket.id, "vComanda:imprimir")
-            // const targetSocketId = socketUsers[`${data.subdominio}_pc_principal`]
 
             const socket_user = socketUsers[socket.id]
             const { colaborador } = socket_user
@@ -104,7 +104,6 @@ export function initSocket(server) {
 
         socket.on("vComanda:imprimirPrecuenta", (data) => {
             consoleLogSocket(socket.id, "vComanda:imprimirPrecuenta")
-            // const targetSocketId = socketUsers[`${data.subdominio}_pc_principal`]
 
             const socket_user = socketUsers[socket.id]
             const { colaborador } = socket_user
@@ -124,7 +123,6 @@ export function initSocket(server) {
 
         socket.on("vEmitirComprobante:imprimir", (data) => {
             consoleLogSocket(socket.id, "vEmitirComprobante:imprimir")
-            // const targetSocketId = socketUsers[`${data.subdominio}_pc_principal`]
 
             const socket_user = socketUsers[socket.id]
             const { colaborador } = socket_user
@@ -161,12 +159,35 @@ export function initSocket(server) {
             }
         })
 
-        // socket.on("vColaboradores:actualizarTodos", () => {
-        //     consoleLogSocket(socket.id, "vColaboradores:actualizarTodos")
-        //     const socket_user = socketUsers[socket.id]
-        //     const { empresa } = socket_user
-        //     io.to(empresa.id).emit("vColaboradores:actualizarTodos")
-        // })
+        // --- Articulos --- //
+        socket.on("mArticulo:crear", () => {
+            consoleLogSocket(socket.id, "mArticulo:crear")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("mArticulo:crear")
+        })
+
+        socket.on("mArticulo:modificar", () => {
+            consoleLogSocket(socket.id, "mArticulo:modificar")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("mArticulo:modificar")
+        })
+
+        // --- Categorias --- //
+        socket.on("mArticuloCategoria:crear", () => {
+            consoleLogSocket(socket.id, "mArticuloCategoria:crear")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("mArticuloCategoria:crear")
+        })
+
+        socket.on("mArticuloCategoria:modificar", () => {
+            consoleLogSocket(socket.id, "mArticuloCategoria:modificar")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("mArticuloCategoria:modificar")
+        })
 
         socket.on("disconnect", () => {
             const socket_user = socketUsers[socket.id]
