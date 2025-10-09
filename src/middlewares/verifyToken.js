@@ -1,7 +1,6 @@
 import jat from "../utils/jat.js"
 import config from "../config.js"
 import { obtenerSesion, sessionStore } from "../routes/_signin/sessions.js"
-import cSistema from "../routes/_sistema/cSistema.js"
 
 async function verifyToken(req, res, next) {
     const authorization = req.headers['authorization']

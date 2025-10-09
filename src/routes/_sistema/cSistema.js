@@ -1,5 +1,4 @@
 const sistemaData = {
-    app_version: '1.5.8',
     documentos_identidad: [
         { id: '6', nombre: 'RUC' },
         { id: '1', nombre: 'DNI' },

@@ -4,6 +4,7 @@ config()
 
 export default {
     hostFrontend: process.env.HOST_FRONTEND || '',
+    APP_VERSION: process.env.APP_VERSION || '',
     tokenMyApi: process.env.TOKEN_MY_API || '',
 
     dbUri: process.env.DB_URI || '',
