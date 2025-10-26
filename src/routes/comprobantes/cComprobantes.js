@@ -90,8 +90,10 @@ const create = async (req, res) => {
             gravado, exonerado, inafecto, gratuito, descuentos,
             igv, isc, icbper,
             monto, nota,
-            comprobante_items, transaccion, transaccion1, pago_metodos,
+            comprobante_items, transaccion1, pago_metodos,
+            comes_from,
         } = req.body
+        let { transaccion } = req.body
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
         const caja_apertura = await CajaApertura.findOne({
@@ -105,6 +107,62 @@ const create = async (req, res) => {
             await transaction.rollback()
             res.json({ code: 1, msg: 'La caja no está aperturada' })
             return
+        }
+
+        // --- VENTA POS --- //
+        // console.log(transaccion1)
+        if (transaccion1.venta_canal == '4') {
+            const sendT = {
+                tipo: transaccion1.tipo,
+                fecha: fecha_emision,
+                socio,
+
+                pago_condicion,
+                monto,
+
+                // observacion,
+                estado: 2,
+                // anulado_motivo,
+
+                // compra_comprobante,
+                // compra_comprobante_serie,
+                // compra_comprobante_correlativo,
+
+                venta_codigo: transaccion1.venta_codigo,
+                venta_canal: transaccion1.venta_canal,
+                // venta_mesa,
+                // venta_pago_metodo,
+                // venta_pago_con,
+                // venta_socio_datos,
+                venta_entregado: true,
+                venta_facturado: pago_condicion == 1 ? true : false,
+
+                empresa: empresa.id,
+                createdBy: colaborador,
+            }
+
+            const newTransaccion = await Transaccion.create(sendT, { transaction })
+            transaccion = newTransaccion.id
+
+            const itemsT = comprobante_items.map(a => ({
+                articulo: a.articulo,
+                cantidad: a.cantidad,
+                pu: a.pu,
+                igv_afectacion: a.igv_afectacion,
+                igv_porcentaje: a.igv_porcentaje,
+                observacion: a.observacion,
+                transaccion: newTransaccion.id,
+                has_receta: a.has_receta,
+                receta_insumos: a.receta_insumos,
+                is_combo: a.is_combo,
+                combo_articulos: a.combo_articulos,
+                venta_entregado: a.cantidad,
+
+                empresa: empresa.id,
+                createdBy: colaborador
+            }))
+
+            await TransaccionItem.bulkCreate(itemsT, { transaction })
         }
 
         // --- CORRELATIVO COMPROBANTE --- //
@@ -381,20 +439,22 @@ const create = async (req, res) => {
         }
 
         // --- ACTUALIZAR PEDIDO ITEMS --- //
-        for (const a of comprobante_items) {
-            await TransaccionItem.update(
-                {
-                    // venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
-                    venta_entregado: sequelize.literal(`COALESCE(venta_entregado, 0) + ${Number(a.cantidad)}`)
-                },
-                {
-                    where: {
-                        id: a.id1,
-                        transaccion
+        if (transaccion1.venta_canal != '4') {
+            for (const a of comprobante_items) {
+                await TransaccionItem.update(
+                    {
+                        // venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
+                        venta_entregado: sequelize.literal(`COALESCE(venta_entregado, 0) + ${Number(a.cantidad)}`)
                     },
-                    transaction
-                }
-            )
+                    {
+                        where: {
+                            id: a.id1,
+                            transaccion
+                        },
+                        transaction
+                    }
+                )
+            }
         }
 
         // --- GUARDAR PAGOS --- //
@@ -417,24 +477,26 @@ const create = async (req, res) => {
         await transaction.commit()
 
         // --- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO --- //
-        const pedido_items = await TransaccionItem.findAll({
-            where: { transaccion }
-        })
+        if (transaccion1.venta_canal != '4') {
+            const pedido_items = await TransaccionItem.findAll({
+                where: { transaccion }
+            })
 
-        const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
-        if (is_pendiente == false) {
-            const send = { venta_facturado: true }
-            if (transaccion1.venta_canal == 1) {
-                send.venta_entregado = true
-                send.estado = 2
-            }
-
-            await Transaccion.update(
-                send,
-                {
-                    where: { id: transaccion },
+            const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
+            if (is_pendiente == false) {
+                const send = { venta_facturado: true }
+                if (transaccion?.venta_canal == 1) {
+                    send.venta_entregado = true
+                    send.estado = 2
                 }
-            )
+
+                await Transaccion.update(
+                    send,
+                    {
+                        where: { id: transaccion },
+                    }
+                )
+            }
         }
 
         // --- DEVOLVER --- //

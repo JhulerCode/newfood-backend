@@ -4,6 +4,7 @@ import sequelize from '../sequelize.js'
 
 export const Empresa = sequelize.define('empresas', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    tipo: { type: DataTypes.SMALLINT },
     ruc: { type: DataTypes.STRING },
     razon_social: { type: DataTypes.STRING },
     nombre_comercial: { type: DataTypes.STRING },
