@@ -485,7 +485,7 @@ const create = async (req, res) => {
             const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
             if (is_pendiente == false) {
                 const send = { venta_facturado: true }
-                if (transaccion?.venta_canal == 1) {
+                if (transaccion1.venta_canal == 1) {
                     send.venta_entregado = true
                     send.estado = 2
                 }
