@@ -151,7 +151,7 @@ const create = async (req, res) => {
                 igv_afectacion: a.igv_afectacion,
                 igv_porcentaje: a.igv_porcentaje,
                 observacion: a.observacion,
-                transaccion: newTransaccion.id,
+                transaccion,
                 has_receta: a.has_receta,
                 receta_insumos: a.receta_insumos,
                 is_combo: a.is_combo,
@@ -443,7 +443,6 @@ const create = async (req, res) => {
             for (const a of comprobante_items) {
                 await TransaccionItem.update(
                     {
-                        // venta_entregado: Number(a.cantidad) + Number(a.venta_entregado)
                         venta_entregado: sequelize.literal(`COALESCE(venta_entregado, 0) + ${Number(a.cantidad)}`)
                     },
                     {
@@ -484,6 +483,7 @@ const create = async (req, res) => {
 
             const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
             if (is_pendiente == false) {
+                // --- Si es mesa --- //
                 const send = { venta_facturado: true }
                 if (transaccion1.venta_canal == 1) {
                     send.venta_entregado = true
