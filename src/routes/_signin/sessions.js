@@ -14,22 +14,34 @@ function borrarSesion(userId) {
     // console.log(sessionStore)
 }
 
+// function actualizarSesion(id, values) {
+//     const sesion = obtenerSesion(id)
+
+//     if (sesion) {
+//         if (values.nombres) sesion.nombres = values.nombres
+//         if (values.apellidos) sesion.apellidos = values.apellidos
+//         if (values.cargo) sesion.cargo = values.cargo
+//         if (values.vista_inicial) sesion.vista_inicial = values.vista_inicial
+//         if (values.theme) sesion.theme = values.theme
+//         if (values.color) sesion.color = values.color
+//         if (values.format_date) sesion.format_date = values.format_date
+//         if (values.menu_visible != null) sesion.menu_visible = values.menu_visible
+//         if (values.permisos) sesion.permisos = values.permisos
+//         if (values.empresa) sesion.empresa = values.empresa
+//         if (values.impresora_caja) sesion.impresora_caja = values.impresora_caja
+//     }
+// }
+
 function actualizarSesion(id, values) {
     const sesion = obtenerSesion(id)
+    if (!sesion || !values) return
 
-    if (sesion) {
-        if (values.nombres) sesion.nombres = values.nombres
-        if (values.apellidos) sesion.apellidos = values.apellidos
-        if (values.cargo) sesion.cargo = values.cargo
-        if (values.vista_inicial) sesion.vista_inicial = values.vista_inicial
-        if (values.theme) sesion.theme = values.theme
-        if (values.color) sesion.color = values.color
-        if (values.format_date) sesion.format_date = values.format_date
-        if (values.menu_visible != null) sesion.menu_visible = values.menu_visible
-        if (values.permisos) sesion.permisos = values.permisos
-        if (values.empresa) sesion.empresa = values.empresa
-        if (values.impresora_caja) sesion.impresora_caja = values.impresora_caja
-    }
+    Object.entries(values).forEach(([key, value]) => {
+        // Evita asignar undefined (por ejemplo, si no se pasó la propiedad)
+        if (value !== undefined) {
+            sesion[key] = value
+        }
+    })
 }
 
 export {
