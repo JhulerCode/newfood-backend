@@ -27,6 +27,13 @@ export function initSocket(server) {
             io.to(empresa.id).emit("vComanda:crear", data)
         })
 
+        socket.on("vComanda:editar", (data) => {
+            consoleLogSocket(socket.id, "vComanda:editar")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("vComanda:editar", data)
+        })
+
         socket.on("vComanda:addProductos", (data) => {
             consoleLogSocket(socket.id, "vComanda:addProductos")
             const socket_user = socketUsers[socket.id]

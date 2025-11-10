@@ -50,18 +50,18 @@ const create = async (req, res) => {
             transaccion_items,
         } = req.body
 
-        let caja_apertura = null
+        let caja_apertura = {}
         if (tipo == 2) {
             caja_apertura = await CajaApertura.findOne({
                 where: { estado: '1', empresa: empresa.id }
             })
-
+            
             if (caja_apertura == null) {
                 await transaction.rollback()
                 return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
             }
         }
-
+        
         // --- CREAR --- //
         const nuevo = await Transaccion.create({
             tipo, fecha, socio,
@@ -73,7 +73,7 @@ const create = async (req, res) => {
             empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
-
+        
         // --- GUARDAR ITEMS --- //
         const items = transaccion_items.map(a => ({
             articulo: a.articulo,
@@ -90,9 +90,9 @@ const create = async (req, res) => {
             empresa: empresa.id,
             createdBy: colaborador
         }))
-
+        
         await TransaccionItem.bulkCreate(items, { transaction })
-
+        
         if (tipo == 1) {
             // --- GUARAR KARDEX --- //
             const kardexItems = transaccion_items.map(a => ({
@@ -142,7 +142,7 @@ const update = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const {
             tipo, fecha, socio,
@@ -151,6 +151,7 @@ const update = async (req, res) => {
             compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
             venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
             transaccion_items,
+            edit_type,
         } = req.body
 
         const [affectedRows] = await Transaccion.update({
@@ -166,6 +167,32 @@ const update = async (req, res) => {
         })
 
         if (affectedRows > 0) {
+            if (edit_type != 'detalles') {
+                await TransaccionItem.destroy({
+                    where: { transaccion: id },
+                    transaction
+                })
+
+                // --- GUARDAR ITEMS --- //
+                const items = transaccion_items.map(a => ({
+                    articulo: a.articulo,
+                    cantidad: a.cantidad,
+                    pu: a.pu,
+                    igv_afectacion: a.igv_afectacion,
+                    igv_porcentaje: a.igv_porcentaje,
+                    observacion: a.observacion,
+                    transaccion: id,
+                    has_receta: a.has_receta,
+                    receta_insumos: a.receta_insumos,
+                    is_combo: a.is_combo,
+                    combo_articulos: a.combo_articulos,
+                    empresa: empresa.id,
+                    createdBy: colaborador
+                }))
+
+                await TransaccionItem.bulkCreate(items, { transaction })
+            }
+
             await transaction.commit()
 
             const data = await loadOne(id)
