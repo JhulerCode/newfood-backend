@@ -98,10 +98,11 @@ export function initSocket(server) {
             const targetSocketId = Object.entries(socketUsers).find(([key, value]) => value.colaborador.id == `${data.subdominio}_pc_principal`)?.[0]
 
             if (targetSocketId) {
-                const encoded = encodeURIComponent(JSON.stringify(data))
+                // const encoded = encodeURIComponent(JSON.stringify(data))
                 const localPath = 'comanda'
-                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
-                io.to(targetSocketId).emit("vComanda:imprimir", { colaborador, url })
+                // const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
+                const url = `http://localhost/imprimir/${localPath}.php`;
+                io.to(targetSocketId).emit("vComanda:imprimir", { colaborador, url, data })
             }
             else {
                 socket.emit('pc_principal_socket_not_found')
@@ -117,10 +118,9 @@ export function initSocket(server) {
             const targetSocketId = Object.entries(socketUsers).find(([key, value]) => value.colaborador.id == `${data.subdominio}_pc_principal`)?.[0]
 
             if (targetSocketId) {
-                const encoded = encodeURIComponent(JSON.stringify(data))
                 const localPath = 'precuenta'
-                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
-                io.to(targetSocketId).emit("vComanda:imprimirPrecuenta", { colaborador, url })
+                const url = `http://localhost/imprimir/${localPath}.php`;
+                io.to(targetSocketId).emit("vComanda:imprimirPrecuenta", { colaborador, url, data })
             }
             else {
                 socket.emit('pc_principal_socket_not_found')
@@ -136,10 +136,9 @@ export function initSocket(server) {
             const targetSocketId = Object.entries(socketUsers).find(([key, value]) => value.colaborador.id == `${data.subdominio}_pc_principal`)?.[0]
 
             if (targetSocketId) {
-                const encoded = encodeURIComponent(JSON.stringify(data))
                 const localPath = 'comprobante'
-                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
-                io.to(targetSocketId).emit("vEmitirComprobante:imprimir", { colaborador, url })
+                const url = `http://localhost/imprimir/${localPath}.php`;
+                io.to(targetSocketId).emit("vEmitirComprobante:imprimir", { colaborador, url, data })
             }
             else {
                 socket.emit('pc_principal_socket_not_found')
@@ -155,10 +154,9 @@ export function initSocket(server) {
             const targetSocketId = Object.entries(socketUsers).find(([key, value]) => value.colaborador.id == `${data.subdominio}_pc_principal`)?.[0]
 
             if (targetSocketId) {
-                const encoded = encodeURIComponent(JSON.stringify(data))
                 const localPath = 'caja_resumen'
-                const url = `http://localhost/imprimir/${localPath}.php?data=${encoded}`;
-                io.to(targetSocketId).emit("vCajaAperturas:imprimirResumen", { colaborador, url })
+                const url = `http://localhost/imprimir/${localPath}.php`;
+                io.to(targetSocketId).emit("vCajaAperturas:imprimirResumen", { colaborador, url, data })
             }
             else {
                 socket.emit('pc_principal_socket_not_found')

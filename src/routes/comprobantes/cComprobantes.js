@@ -581,11 +581,6 @@ const findById = async (req, res) => {
         const { id } = req.params
         const data = await getComprobante(id, empresa)
 
-        data.moneda1 = {
-            plural: 'SOLES',
-            singular: 'SOL'
-        }
-
         res.json({ code: 0, data })
     }
     catch (error) {
@@ -1204,6 +1199,11 @@ async function getComprobante(id, empresa) {
         data.total_letras = numeroATexto(data.monto)
         // data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
         data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`
+
+        data.moneda1 = {
+            plural: 'SOLES',
+            singular: 'SOL'
+        }
     }
 
     return data
