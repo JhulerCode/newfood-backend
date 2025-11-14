@@ -12,6 +12,7 @@ import { CajaApertura } from '../../database/models/CajaApertura.js'
 import { Salon } from '../../database/models/Salon.js'
 import { ProduccionArea } from '../../database/models/ProduccionArea.js'
 import { PagoMetodo } from '../../database/models/PagoMetodo.js'
+import { Comprobante } from '../../database/models/Comprobante.js'
 
 const include1 = {
     socio1: {
@@ -55,13 +56,13 @@ const create = async (req, res) => {
             caja_apertura = await CajaApertura.findOne({
                 where: { estado: '1', empresa: empresa.id }
             })
-            
+
             if (caja_apertura == null) {
                 await transaction.rollback()
                 return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
             }
         }
-        
+
         // --- CREAR --- //
         const nuevo = await Transaccion.create({
             tipo, fecha, socio,
@@ -73,7 +74,7 @@ const create = async (req, res) => {
             empresa: empresa.id,
             createdBy: colaborador
         }, { transaction })
-        
+
         // --- GUARDAR ITEMS --- //
         const items = transaccion_items.map(a => ({
             articulo: a.articulo,
@@ -90,9 +91,9 @@ const create = async (req, res) => {
             empresa: empresa.id,
             createdBy: colaborador
         }))
-        
+
         await TransaccionItem.bulkCreate(items, { transaction })
-        
+
         if (tipo == 1) {
             // --- GUARAR KARDEX --- //
             const kardexItems = transaccion_items.map(a => ({
@@ -498,6 +499,15 @@ const anular = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
         const { anulado_motivo, item } = req.body
+
+        const comprobantes = await Comprobante.findAll({
+            where: { transaccion: id }
+        })
+
+        if (comprobantes.length > 0) {
+            res.json({ code: 1, msg: 'No se puedee anular, el pedido ya tiene comprobantes' })
+            return
+        }
 
         await Transaccion.update(
             {
