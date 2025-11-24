@@ -519,7 +519,7 @@ const find = async (req, res) => {
 
         const findProps = {
             attributes: ['id'],
-            order: [['createdAt', 'ASC']],
+            order: [['numero', 'DESC']],
             where: { empresa: empresa.id },
             include: []
         }
@@ -774,14 +774,14 @@ const canjear = async (req, res) => {
 
         // --- ANULAR MIFACT --- //
         let res1_mifact
-        if (comprobante.doc_tipo != `${empresa.subdominio}-NV`) {
-            res1_mifact = await anularDoc(comprobante)
-            if (res1_mifact.errors && res1_mifact.errors != "") {
-                await transaction.rollback()
-                res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res1_mifact })
-                return
-            }
-        }
+        // if (comprobante.doc_tipo != `${empresa.subdominio}-NV`) {
+        //     res1_mifact = await anularDoc(comprobante)
+        //     if (res1_mifact.errors && res1_mifact.errors != "") {
+        //         await transaction.rollback()
+        //         res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res1_mifact })
+        //         return
+        //     }
+        // }
 
         // --- CREAR NUEVO COMPROBANTE --- //
         const cliente = await Socio.findByPk(socio)
