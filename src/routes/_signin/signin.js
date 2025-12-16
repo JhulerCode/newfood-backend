@@ -55,6 +55,7 @@ const signin = async (req, res) => {
             permisos: colaborador.permisos,
             empresa: empresa,
             impresora_caja: impresora_caja,
+            sucursal: colaborador.sucursal,
         })
 
         res.json({ code: 0, token })

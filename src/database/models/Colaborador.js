@@ -35,6 +35,7 @@ export const Colaborador = sequelize.define('colaboradores', {
     format_date: { type: DataTypes.STRING, defaultValue: 'DD-MM-YYYY' },
     menu_visible: { type: DataTypes.BOOLEAN, defaultValue: true },
 
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },

@@ -7,7 +7,7 @@ const router = Router()
 
 router.get(
     '/',
-    verifyPermiso(['vEmpresa:ver']),
+    // verifyPermiso(['vEmpresa:ver']),
     controller.findById
 )
 

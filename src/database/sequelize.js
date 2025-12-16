@@ -5,7 +5,7 @@ const conn = pg // Es necesario esta variable
 
 const options = {
     dialect: 'postgres',
-    logging: false,
+    // logging: false,
 }
 
 const sequelize = new Sequelize(config.dbUri, options)

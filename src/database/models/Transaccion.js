@@ -38,7 +38,8 @@ export const Transaccion = sequelize.define('transacciones', {
     venta_entregado: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     caja_apertura: { type: DataTypes.STRING },
-
+    
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }

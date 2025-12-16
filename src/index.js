@@ -2,7 +2,6 @@ import express from 'express'
 import cors from 'cors'
 import config from './config.js'
 import routes from './routes/index.js'
-import connDb from './database/connect.js'
 import { pathUploads } from './utils/uploadFiles.js'
 import { initSocket } from './lib/socket.js'
 
@@ -24,9 +23,6 @@ routes(app)
 const server = app.listen(app.get('port'), async () => {
     console.log('Server on port', app.get('port'))
 })
-
-// --- TEST CONN DB --- //
-// await connDb()
 
 // --- SOCKET --- //
 initSocket(server)
