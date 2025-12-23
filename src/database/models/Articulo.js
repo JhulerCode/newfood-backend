@@ -21,7 +21,7 @@ export const Articulo = sequelize.define('articulos', {
     nombre: { type: DataTypes.STRING },
     unidad: { type: DataTypes.STRING },
     marca: { type: DataTypes.STRING },
-    activo: { type: DataTypes.BOOLEAN },
+    activo: { type: DataTypes.BOOLEAN, defaultValue: true },
     foto_path: { type: DataTypes.STRING },
     foto_url: { type: DataTypes.STRING },
 
@@ -29,8 +29,8 @@ export const Articulo = sequelize.define('articulos', {
     categoria: { type: DataTypes.STRING },
 
     produccion_area: { type: DataTypes.STRING },
-    has_receta: { type: DataTypes.BOOLEAN },
-    is_combo: { type: DataTypes.BOOLEAN },
+    has_receta: { type: DataTypes.BOOLEAN, defaultValue: false },
+    is_combo: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     igv_afectacion: { type: DataTypes.STRING },
     precio_venta: { type: DataTypes.DOUBLE },

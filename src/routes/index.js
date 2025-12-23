@@ -12,6 +12,7 @@ import caja_aperturas from './caja_aperturas/rCajaAperturas.js'
 import colaboradores from './colaboradores/rColaboradores.js'
 import comprobante_items from './comprobante_items/rComprobanteItems.js'
 import comprobantes from './comprobantes/rComprobantes.js'
+import combo_articulos from './combo_articulos/rComboArticulo.js'
 import empresa from './empresa/rEmpresa.js'
 import dinero_movimientos from './dinero_movimientos/rDineroMovimientos.js'
 import kardex from './kardex/rKardex.js'
@@ -43,6 +44,7 @@ function routes(app) {
     app.use('/api/colaboradores', colaboradores)
     app.use('/api/comprobante_items', comprobante_items)
     app.use('/api/comprobantes', comprobantes)
+    app.use('/api/combo_articulos', combo_articulos)
     app.use('/api/empresa', empresa)
     app.use('/api/dinero_movimientos', dinero_movimientos)
     app.use('/api/kardex', kardex)

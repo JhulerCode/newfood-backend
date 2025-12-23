@@ -19,7 +19,7 @@ const include1 = {
     produccion_area1: {
         model: ProduccionArea,
         as: 'produccion_area1',
-        attributes: ['id', 'impresora_tipo', 'impresora']
+        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre']
     },
     receta_insumos: {
         model: RecetaInsumo,
@@ -361,18 +361,18 @@ const createBulk = async (req, res) => {
         const { tipo, articulos } = req.body
 
         const send = articulos.map(a => ({
-            nombre: a.Nombre,
-            unidad: a.Unidad,
-            marca: a.Marca,
-
-            activo: true,
-
-            igv_afectacion: a.Tributo,
+            nombre: a.nombre,
+            unidad: tipo == 2 ? 'NIU' : a.unidad,
 
             tipo,
-            categoria: a.Categoria,
-            is_combo: false,
+            categoria: a.categoria,
 
+            produccion_area: a.produccion_area,
+            has_receta: a.has_receta,
+            is_combo: a.is_combo,
+
+            igv_afectacion: a.Tributo,
+            precio_venta: a.precio_venta,
             empresa: empresa.id,
             createdBy: colaborador
         }))
@@ -467,7 +467,7 @@ async function loadOne(id) {
         data.activo1 = activo_estadosMap[data.activo]
         data.igv_afectacion1 = igv_afectacionesMap[data.igv_afectacion]
         data.has_receta1 = estadosMap[data.has_receta]
-        
+
         data.previous_foto_path = data.foto_path
     }
 
