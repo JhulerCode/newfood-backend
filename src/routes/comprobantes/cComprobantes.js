@@ -978,7 +978,7 @@ const resumen = async (req, res) => {
                 {
                     model: Transaccion,
                     as: 'transaccion1',
-                    attributes: ['venta_canal'],
+                    attributes: ['id', 'venta_canal'],
                 },
                 {
                     model: DineroMovimiento,
@@ -1023,6 +1023,7 @@ const resumen = async (req, res) => {
         const canalesMap = {}
         const productosMap = {}
         const mesesMap = {}
+        const pedidosMap = {}
 
         for (const a of comprobantes) {
             // --- ACEPTADOS --- //
@@ -1067,11 +1068,17 @@ const resumen = async (req, res) => {
                         id: cKey,
                         name: venta_canalesMap[cKey].nombre,
                         value: Number(a.monto),
+                        cantidad: 0,
                     }
                     ventas.canales.push(item)
                     canalesMap[cKey] = item
                 } else {
                     canalesMap[cKey].value += Number(a.monto)
+                }
+
+                if (!pedidosMap[a.transaccion1.id]) {
+                    pedidosMap[a.transaccion1.id] = a.transaccion1
+                    canalesMap[cKey].cantidad += 1
                 }
 
                 // --- PRODUCTOS --- //
@@ -1138,7 +1145,7 @@ const resumen = async (req, res) => {
             general: ventas.total + anulados.total + ventas.descuentos + anulados.descuentos
         }
 
-        res.json({ code: 0, data, comprobantes })
+        res.json({ code: 0, data })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
