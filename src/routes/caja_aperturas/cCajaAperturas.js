@@ -283,9 +283,20 @@ const findResumen = async (req, res) => {
         const venta_canalesMap = cSistema.arrayMap('venta_canales')
 
         for (const a of comprobantes) {
-            const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
-            const tipo_comprobante_nombre = pago_comprobantesMap[tKey].nombre
+            // let tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
 
+            // ---- ALERTA VERIFICAR BIEN EL TIPO DE COMPROBANTE ---- //
+            let tKey = ''
+            if (a.doc_tipo.includes('01')) {
+                tKey = '01'
+            } else if (a.doc_tipo.includes('03')) {
+                tKey = '03'
+            } else if (a.doc_tipo.includes('NV')) {
+                tKey = 'NV'
+            }
+
+            const tipo_comprobante_nombre = pago_comprobantesMap[tKey].nombre
+            
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
                 // --- MÉTODOS DE PAGO --- //
