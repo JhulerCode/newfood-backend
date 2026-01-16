@@ -561,7 +561,8 @@ const find = async (req, res) => {
             const comprobante_estadosMap = cSistema.arrayMap('comprobante_estados')
 
             for (const a of data) {
-                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                // const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                const tKey = setTKey(a.doc_tipo)
                 if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantesMap[tKey]
                 if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry.cols.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
@@ -1048,7 +1049,8 @@ const resumen = async (req, res) => {
                 }
 
                 // --- TIPOS DE COMPROBANTES --- //
-                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                // const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                const tKey = setTKey(a.doc_tipo)
                 if (!comprobanteTiposMap[tKey]) {
                     const item = {
                         id: tKey,
@@ -1192,7 +1194,8 @@ async function getComprobante(id, empresa) {
     if (data) {
         data = data.toJSON()
 
-        const tKey = data.doc_tipo.replace(`${empresa.subdominio}-`, '')
+        // const tKey = data.doc_tipo.replace(`${empresa.subdominio}-`, '')
+        const tKey = setTKey(data.doc_tipo)
         const pago_comprobantesMap = cSistema.arrayMap('pago_comprobantes')
         const documentos_identidadMap = cSistema.arrayMap('documentos_identidad')
         const pago_condicionesMap = cSistema.arrayMap('pago_condiciones')
@@ -1227,12 +1230,25 @@ async function getImageBase64(url) {
     return `data:${contentType};base64,${base64}`
 }
 
+function setTKey(doc_tipo) {
+    let tKey = 'NV'
+    
+    if (doc_tipo.includes('01')) {
+        tKey = '01'
+    } else if (doc_tipo.includes('03')) {
+        tKey = '03'
+    }
+
+    return tKey
+}
+
 async function makePdf(doc, empresa) {
     // --- LOGO --- //
     // const logoPath = getFilePath(empresa.logo)
     // const logoBase64 = fs.readFileSync(logoPath).toString("base64");
     const logoBase64 = await getImageBase64(empresa.logo_url)
-    const tKey = doc.doc_tipo.replace(`${empresa.subdominio}-`, '')
+    // const tKey = doc.doc_tipo.replace(`${empresa.subdominio}-`, '')
+    const tKey = setTKey(doc.doc_tipo)
 
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
@@ -1344,6 +1360,8 @@ async function makePdf(doc, empresa) {
         pageMargins: [5, 5, 5, 5],
     }
 
+    const comprobanteTipos = cSistema.arrayMap('pago_comprobantes')
+
     docDefinition.content = [
         // --- LOGO --- //
         {
@@ -1364,7 +1382,8 @@ async function makePdf(doc, empresa) {
         },
         // --- TIPO DE DOCUMENTO --- //
         {
-            stack: [`${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
+            // stack: [`${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
+            stack: [`${comprobanteTipos[tKey].nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
             style: 'tipo_doc',
         },
         // --- CLIENTE --- //
