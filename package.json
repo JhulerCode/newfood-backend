@@ -8,7 +8,15 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "conndb": "node src/database/seeders/connect.js"
+    "conndb": "node src/infrastructure/db/seeders/connect.js"
+  },
+  "imports": {
+    "#core/*": "./src/core/*",
+    "#store/*": "./src/store/*",
+    "#infrastructure/*": "./src/infrastructure/*",
+    "#db/*": "./src/infrastructure/db/*",
+    "#http/*": "./src/infrastructure/http/*",
+    "#shared/*": "./src/shared/*"
   },
   "keywords": [],
   "author": "",
