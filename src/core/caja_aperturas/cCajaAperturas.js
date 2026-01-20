@@ -9,6 +9,61 @@ import { arrayMap } from '#store/system.js'
 import dayjs from 'dayjs'
 import { Op, fn, col } from 'sequelize'
 
+const find = async (req, res) => {
+    try {
+        const { empresa } = req.user
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        const findProps = {
+            attributes: ['id'],
+            order: [['createdAt', 'DESC']],
+            where: { empresa: empresa.id },
+            include: [],
+        }
+
+        const include1 = {
+            createdBy1: {
+                model: Colaborador,
+                as: 'createdBy1',
+                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+            },
+        }
+
+        if (qry) {
+            if (qry.incl) {
+                for (const a of qry.incl) {
+                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
+                }
+            }
+
+            if (qry.fltr) {
+                Object.assign(findProps.where, applyFilters(qry.fltr))
+            }
+
+            if (qry.cols) {
+                findProps.attributes = findProps.attributes.concat(qry.cols)
+            }
+        }
+
+        let data = await CajaApertura.findAll(findProps)
+
+        if (data.length > 0 && qry.cols) {
+            data = data.map(a => a.toJSON())
+
+            const caja_apertura_estadosMap = arrayMap('caja_apertura_estados')
+
+            for (const a of data) {
+                if (qry.cols.includes('estado')) a.estado1 = caja_apertura_estadosMap[a.estado]
+            }
+        }
+
+        res.json({ code: 0, data })
+    }
+    catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
@@ -62,61 +117,6 @@ const cerrar = async (req, res) => {
         else {
             res.json({ code: 1, msg: 'No se actualizó ningún registro' })
         }
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const find = async (req, res) => {
-    try {
-        const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
-        const findProps = {
-            attributes: ['id'],
-            order: [['createdAt', 'DESC']],
-            where: { empresa: empresa.id },
-            include: [],
-        }
-
-        const include1 = {
-            createdBy1: {
-                model: Colaborador,
-                as: 'createdBy1',
-                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-            },
-        }
-
-        if (qry) {
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
-
-            if (qry.fltr) {
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-            }
-
-            if (qry.cols) {
-                findProps.attributes = findProps.attributes.concat(qry.cols)
-            }
-        }
-
-        let data = await CajaApertura.findAll(findProps)
-
-        if (data.length > 0 && qry.cols) {
-            data = data.map(a => a.toJSON())
-
-            const caja_apertura_estadosMap = arrayMap('caja_apertura_estados')
-
-            for (const a of data) {
-                if (qry.cols.includes('estado')) a.estado1 = caja_apertura_estadosMap[a.estado]
-            }
-        }
-
-        res.json({ code: 0, data })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })

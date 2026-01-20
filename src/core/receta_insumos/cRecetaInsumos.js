@@ -1,6 +1,22 @@
-import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
-import { Articulo } from '#db/models/Articulo.js'
-import { applyFilters } from '#shared/mine.js'
+import { Repository } from '#db/Repository.js'
+import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
+
+const repository = new Repository('RecetaInsumo')
+
+const find = async (req, res) => {
+    try {
+        const { empresa } = req.user
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        qry.fltr.empresa = { op: 'Es', val: empresa }
+
+        const data = await repository.find(qry, true)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
 
 const create = async (req, res) => {
     try {
@@ -8,17 +24,19 @@ const create = async (req, res) => {
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
         // --- CREAR --- //
-        const nuevo = await RecetaInsumo.create({
-            articulo_principal, articulo, cantidad, orden,
-            empresa: empresa.id,
+        const nuevo = await repository.create({
+            articulo_principal,
+            articulo,
+            cantidad,
+            orden,
+            empresa,
             createdBy: colaborador,
         })
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -30,67 +48,21 @@ const update = async (req, res) => {
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
         // --- ACTUALIZAR --- //
-        const [affectedRows] = await RecetaInsumo.update(
+        const updated = await repository.update(
+            { id },
             {
-                cantidad, orden,
-                updatedBy: colaborador
+                cantidad,
+                orden,
+                updatedBy: colaborador,
             },
-            { where: { id } }
         )
 
-        if (affectedRows > 0) {
-            res.json({ code: 0 })
-        }
-        else {
-            res.json({ code: 1, msg: 'No se actualizó ningún registro' })
-        }
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
+        if (updated == false) return resUpdateFalse(res)
 
-const find = async (req, res) => {
-    try {
-        const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
-        const findProps = {
-            attributes: ['id'],
-            order: [['orden', 'ASC']],
-            where: { empresa: empresa.id },
-            include: []
-        }
-
-        const include1 = {
-            articulo1: {
-                model: Articulo,
-                as: 'articulo1',
-                attributes: ['nombre', 'unidad'],
-            }
-        }
-
-        if (qry) {
-            if (qry.fltr) {
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-            }
-
-            if (qry.cols) {
-                findProps.attributes = findProps.attributes.concat(qry.cols)
-            }
-
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
-        }
-
-        const data = await RecetaInsumo.findAll(findProps)
+        const data = await loadOne(id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -100,27 +72,17 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ELIMINAR --- //
-        const deletedCount = await RecetaInsumo.destroy({ where: { id } })
+        if ((await repository.delete({ id })) == false) return resDeleteFalse(res)
 
-        const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
-
-        res.json(send)
-    }
-    catch (error) {
+        res.json({ code: 0 })
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Funciones --- //
 async function loadOne(id) {
-    let data = await RecetaInsumo.findByPk(id, {
-        include: {
-            model: Articulo,
-            as: 'articulo1',
-            attributes: ['nombre', 'unidad']
-        }
-    })
+    const data = await repository.find({ id, incl: ['articulo1'] })
 
     return data
 }
