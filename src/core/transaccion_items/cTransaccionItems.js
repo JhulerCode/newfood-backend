@@ -1,6 +1,5 @@
 import sequelize from '#db/sequelize.js'
 import { arrayMap } from '#store/system.js'
-
 import { Repository } from '#db/Repository.js'
 
 const repository = new Repository('TransaccionItem')
@@ -23,8 +22,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -35,35 +33,48 @@ const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const {
-            tipo, fecha,
-            articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje,
+            tipo,
+            fecha,
+            articulo,
+            cantidad,
+            pu,
+            igv_afectacion,
+            igv_porcentaje,
             observacion,
             transaccion,
         } = req.body
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
-            articulo, cantidad,
-            pu, igv_afectacion, igv_porcentaje,
-            observacion,
-            transaccion,
-            empresa,
-            createdBy: colaborador
-        }, transaction)
+        const nuevo = await repository.create(
+            {
+                articulo,
+                cantidad,
+                pu,
+                igv_afectacion,
+                igv_porcentaje,
+                observacion,
+                transaccion,
+                empresa,
+                createdBy: colaborador,
+            },
+            transaction,
+        )
 
         // --- GUARAR KARDEX --- //
-        await KardexRepository.create({
-            tipo,
-            fecha,
-            articulo,
-            cantidad,
-            observacion,
-            transaccion,
-            transaccion_item: nuevo.id,
-            empresa,
-            createdBy: colaborador
-        }, transaction)
+        await KardexRepository.create(
+            {
+                tipo,
+                fecha,
+                articulo,
+                cantidad,
+                observacion,
+                transaccion,
+                transaccion_item: nuevo.id,
+                empresa,
+                createdBy: colaborador,
+            },
+            transaction,
+        )
 
         // --- ACTUALIZAR STOCK --- //
         // await actualizarStock(tipo, articulo, cantidad, transaction)s
@@ -73,8 +84,7 @@ const create = async (req, res) => {
         // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -88,9 +98,14 @@ const update = async (req, res) => {
         const { colaborador } = req.user
         const { id } = req.params
         const {
-            tipo, fecha,
-            articulo, cantidad, cantidad_anterior,
-            pu, igv_afectacion, igv_porcentaje,
+            tipo,
+            fecha,
+            articulo,
+            cantidad,
+            cantidad_anterior,
+            pu,
+            igv_afectacion,
+            igv_porcentaje,
             observacion,
             transaccion,
         } = req.body
@@ -98,13 +113,16 @@ const update = async (req, res) => {
         const updated = await repository.update(
             { id },
             {
-                articulo, cantidad,
-                pu, igv_afectacion, igv_porcentaje,
+                articulo,
+                cantidad,
+                pu,
+                igv_afectacion,
+                igv_porcentaje,
                 observacion,
                 transaccion,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            transaction
+            transaction,
         )
 
         if (updated == false) return resUpdateFalse(res)
@@ -119,9 +137,9 @@ const update = async (req, res) => {
                 cantidad,
                 observacion,
                 transaccion,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            transaction
+            transaction,
         )
 
         // --- ACTUALIZAR STOCK --- //
@@ -135,9 +153,7 @@ const update = async (req, res) => {
 
         const data = await loadOne(id)
         res.json({ code: 0, data })
-
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -151,44 +167,33 @@ const delet = async (req, res) => {
         const { id } = req.params
         const { tipo, articulo, cantidad } = req.body
 
-        await KardexRepository.destroy(
-            { transaccion_item: id },
-            transaction
-        )
+        await KardexRepository.destroy({ transaccion_item: id }, transaction)
 
-        await repository.destroy(
-            { id },
-            transaction
-        )
+        await repository.destroy({ id }, transaction)
 
-        // --- ACTUALIZAR STOCK --- //
-        const tipo1 = tipo == 1 ? 2 : 1
-        await actualizarStock(tipo1, articulo, cantidad, transaction)
+        await actualizarStock(tipo1, articulo, cantidad, transaction, -1)
 
         await transaction.commit()
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Helpers --- //
-async function actualizarStock(tipo, articulo, cantidad, transaction) {
-    const transaccion_tiposMap = arrayMap('kardex_tipos')
-    const tipoInfo = transaccion_tiposMap[tipo]
-    const signo = tipoInfo.operacion == 1 ? '+' : '-'
+async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1) {
+    const kardex_tiposMap = arrayMap('kardex_tipos')
+    const operacion = kardex_tiposMap[tipo].operacion
 
     await ArticuloRepository.update(
         { id: articulo },
         {
-            stock: sequelize.literal(`COALESCE(stock, 0) ${signo} ${cantidad}`)
+            stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
         },
-        transaction
+        transaction,
     )
 }
 
