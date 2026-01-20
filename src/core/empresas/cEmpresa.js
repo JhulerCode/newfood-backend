@@ -1,18 +1,16 @@
-import { Empresa } from '#db/models/Empresa.js'
-import { pathSunat, deleteFile } from '#shared/uploadFiles.js'
-import path from "path"
-import fs from "fs"
-import forge from "node-forge"
-import { actualizarSesion } from '../../store/sessions.js'
-import { minioClient, minioDomain, minioBucket } from "../../infrastructure/minioClient.js"
+import { Repository } from '#db/Repository.js'
+import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
+import { resUpdateFalse } from '#http/helpers.js'
+import { actualizarEmpresa } from '#store/empresas.js'
+
+const repository = new Repository('Empresa')
 
 const findById = async (req, res) => {
     try {
         const data = req.empresa
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -28,80 +26,57 @@ const update = async (req, res) => {
         }
 
         const {
-            ruc, razon_social, nombre_comercial,
-            domicilio_fiscal, ubigeo, distrito, provincia, departamento,
-            telefono, correo, logo, previous_logo,
-            igv_porcentaje, sol_usuario, sol_clave,
-            pc_principal_ip,
+            razon_social,
+            nombre_comercial,
+
+            domicilio_fiscal,
+            ubigeo,
+            igv_porcentaje,
+
+            telefono,
+            correo,
+            foto,
+
+            subdominio,
         } = req.body
 
-        // --- ACTUALIZAR --- //
-        const send = {
-            ruc, razon_social, nombre_comercial,
-            domicilio_fiscal, ubigeo, distrito, provincia, departamento,
-            telefono, correo, logo,
-            igv_porcentaje, sol_usuario, sol_clave,
-            pc_principal_ip,
-            updatedBy: colaborador
-        }
-
+        //--- Subir archivo ---//
+        let newFile
         if (req.file) {
-            const timestamp = Date.now();
-            const uniqueName = `${timestamp}-${req.file.originalname}`;
+            newFile = await minioPutObject(req.file)
 
-            // Subir a MinIO
-            await minioClient.putObject(
-                minioBucket,
-                uniqueName,
-                req.file.buffer,
-                req.file.size,
-                { "Content-Type": req.file.mimetype }
-            );
-
-            send.logo = uniqueName;
-
-            // Borrar logo anterior del bucket si existe
-            if (previous_logo && previous_logo !== uniqueName) {
-                try {
-                    await minioClient.removeObject(minioBucket, previous_logo);
-                } catch (err) {
-                    console.error("Error al borrar logo anterior:", err.message);
-                }
+            if (newFile == false) {
+                res.status(500).json({ code: 1, msg: 'Error al subir el archivo' })
+                return
             }
-
-            // Generar URL pública HTTPS permanente
-            const publicUrl = `https://${minioDomain}/${minioBucket}/${uniqueName}`;
-            send.logo_url = publicUrl;
         }
 
-        const [affectedRows] = await Empresa.update(send, { where: { id }, })
+        const send = {
+            nombre_comercial,
 
-        if (affectedRows > 0) {
-            actualizarSesion(id, { empresa: send })
+            domicilio_fiscal,
+            ubigeo,
+            igv_porcentaje,
 
-            let data = await Empresa.findByPk(id, {
-                attributes: { exclude: ['cdt', 'cdt_clave'] }
-            })
+            telefono,
+            correo,
+            foto: newFile || foto,
 
-            if (data) {
-                data = data.toJSON()
-                data.previous_logo = data.logo
-                // data.logo_url = send.logo_url || null
-                // data.logo_url = await minioClient.presignedUrl(
-                //     "GET",
-                //     minioBucket,
-                //     data.logo,
-                //     60 * 60 // 1 hora
-                // );
-            }
-
-            res.json({ code: 0, data })
+            createdBy: colaborador,
         }
-        else {
-            res.json({ code: 1, msg: 'No se actualizó ningún registro' })
-        }
-    }
-    catch (error) {
+
+        // ----- ACTUALIZAR ----- //
+        const updated = await repository.update({ id }, send)
+
+        if (updated == false) return resUpdateFalse(res)
+
+        //--- Eliminar archivo de minio ---//
+        if (req.file) await minioRemoveObject(foto.id)
+
+        actualizarEmpresa(subdominio, {id, razon_social, ...send})
+
+        res.json({ code: 0 })
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -119,7 +94,6 @@ const update = async (req, res) => {
 //         const {
 //             cdt, cdt_clave,
 //         } = req.body
-
 
 //         // --- ACTUALIZAR --- //
 //         const send = {

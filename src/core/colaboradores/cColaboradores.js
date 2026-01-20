@@ -147,6 +147,7 @@ const update = async (req, res) => {
 
         const data = await loadOne(id)
         actualizarSesion(id, data)
+
         res.json({ code: 0, data })
     }
     catch (error) {

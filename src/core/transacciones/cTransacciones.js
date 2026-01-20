@@ -129,7 +129,7 @@ const create = async (req, res) => {
 
         if (tipo == 2) {
             const qry = {
-                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa.id } }
+                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } }
             }
 
             caja_apertura = await CajaAperturaRepository.find(qry, true)

@@ -1,17 +1,17 @@
-const sessionStore = new Map();
+import { getIO } from '#infrastructure/socket.js'
+
+const sessionStore = new Map()
 
 function guardarSesion(userId, sessionData) {
     sessionStore.set(userId, sessionData)
-    // console.log(sessionStore)
 }
 
 function obtenerSesion(userId) {
-    return sessionStore.get(userId);
+    return sessionStore.get(userId)
 }
 
 function borrarSesion(userId) {
     sessionStore.delete(userId)
-    // console.log(sessionStore)
 }
 
 function actualizarSesion(id, values) {
@@ -19,17 +19,13 @@ function actualizarSesion(id, values) {
     if (!sesion || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
-        // Evita asignar undefined (por ejemplo, si no se pasó la propiedad)
         if (value !== undefined) {
             sesion[key] = value
         }
     })
+
+    console.log(`📡 Empresa: ${values.empresa} | Action: colaborador updated`)
+    getIO().to(values.empresa).emit('colaborador-updated', obtenerSesion(id))
 }
 
-export {
-    sessionStore,
-    guardarSesion,
-    obtenerSesion,
-    borrarSesion,
-    actualizarSesion,
-}
+export { sessionStore, guardarSesion, obtenerSesion, borrarSesion, actualizarSesion }

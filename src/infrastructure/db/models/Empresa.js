@@ -11,28 +11,25 @@ export const Empresa = sequelize.define('empresas', {
 
     domicilio_fiscal: { type: DataTypes.STRING },
     ubigeo: { type: DataTypes.STRING },
-    distrito: { type: DataTypes.STRING },
-    provincia: { type: DataTypes.STRING },
-    departamento: { type: DataTypes.STRING },
+    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
 
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
-    logo: { type: DataTypes.STRING },
-    logo_url: { type: DataTypes.STRING },
+    foto: { type: DataTypes.JSON, defaultValue: {} },
 
-    igv_porcentaje: { type: DataTypes.FLOAT, defaultValue: 18 },
-    sol_usuario: { type: DataTypes.STRING },
-    sol_clave: { type: DataTypes.STRING },
-    cdt_clave: { type: DataTypes.STRING },
-    cdt: { type: DataTypes.STRING },
-
-    pc_principal_ip: { type: DataTypes.STRING },
-    pc_principal_colaborador: { type: DataTypes.STRING },
     comprobante_tipos: { type: DataTypes.JSON },
-
     subdominio: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
-})
+    updatedBy: { type: DataTypes.STRING },
 
-// Colaborador.hasMany(Empresa, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
-// Empresa.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })
+    logo: { type: DataTypes.STRING }, //QUITAR
+    logo_url: { type: DataTypes.STRING }, //QUITAR
+    distrito: { type: DataTypes.STRING }, //QUITAR
+    provincia: { type: DataTypes.STRING }, //QUITAR
+    departamento: { type: DataTypes.STRING }, //QUITAR
+    sol_usuario: { type: DataTypes.STRING }, //quitar
+    sol_clave: { type: DataTypes.STRING }, //quitar
+    cdt_clave: { type: DataTypes.STRING }, //quitar
+    cdt: { type: DataTypes.STRING }, //quitar
+    pc_principal_ip: { type: DataTypes.STRING }, //quitar
+    pc_principal_colaborador: { type: DataTypes.STRING }, //quitar
+})

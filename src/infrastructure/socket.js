@@ -1,9 +1,10 @@
 import { Server } from 'socket.io'
 
+let io = null
 const socketUsers = {}
 
 export function initSocket(server) {
-    const io = new Server(server, {
+    io = new Server(server, {
         cors: {
             origin: '*'
         },
@@ -201,6 +202,13 @@ export function initSocket(server) {
             delete socketUsers[socket.id]
         })
     })
+}
+
+export function getIO() {
+    if (!io) {
+        throw new Error("Socket.io no inicializado")
+    }
+    return io
 }
 
 function consoleLogSocket(socketId, action) {

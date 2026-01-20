@@ -1,7 +1,9 @@
+import { getIO } from '#infrastructure/socket.js'
+
 const empresasStore = new Map()
 
 function obtenerEmpresa(id) {
-    return empresasStore.get(id);
+    return empresasStore.get(id)
 }
 
 function guardarEmpresa(id, values) {
@@ -22,12 +24,9 @@ function actualizarEmpresa(id, values) {
             sesion[key] = value
         }
     })
+
+    console.log(`📡 Empresa: ${values.razon_social} | Action: empresa updated`)
+    getIO().to(values.id).emit('empresa-updated', obtenerEmpresa(id))
 }
 
-export {
-    empresasStore,
-    obtenerEmpresa,
-    guardarEmpresa,
-    borrarEmpresa,
-    actualizarEmpresa,
-}
+export { empresasStore, obtenerEmpresa, guardarEmpresa, borrarEmpresa, actualizarEmpresa }
