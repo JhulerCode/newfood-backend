@@ -1578,8 +1578,8 @@ async function makePdf(doc, empresa) {
 
     const fonts = {
         Roboto: {
-            normal: 'src/fonts/Roboto-Regular.ttf',
-            bold: 'src/fonts/Roboto-Bold.ttf',
+            normal: 'src/shared/fonts/Roboto-Regular.ttf',
+            bold: 'src/shared/fonts/Roboto-Bold.ttf',
         }
     }
 
