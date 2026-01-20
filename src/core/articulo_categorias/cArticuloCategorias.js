@@ -24,8 +24,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -37,8 +36,7 @@ const findById = async (req, res) => {
         const data = await repository.find({ id })
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -49,11 +47,14 @@ const create = async (req, res) => {
         const { tipo, nombre, color, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, empresa }, res) == true) return
+        if ((await repository.existe({ nombre, empresa }, res)) == true) return
 
         // --- CREAR --- //
         const nuevo = await repository.create({
-            tipo, nombre, color, activo,
+            tipo,
+            nombre,
+            color,
+            activo,
             empresa,
             createdBy: colaborador,
         })
@@ -61,8 +62,7 @@ const create = async (req, res) => {
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -74,22 +74,26 @@ const update = async (req, res) => {
         const { tipo, nombre, color, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, id, empresa }, res) == true) return
+        if ((await repository.existe({ nombre, id, empresa }, res)) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update({ id }, {
-            tipo, nombre, color, activo,
-            updatedBy: colaborador
-        })
+        const updated = await repository.update(
+            { id },
+            {
+                tipo,
+                nombre,
+                color,
+                activo,
+                updatedBy: colaborador,
+            },
+        )
 
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
 
         res.json({ code: 0, data })
-
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -98,15 +102,13 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        if (await repository.delete({ id }) == false) return resDeleteFalse(res)
+        if ((await repository.delete({ id })) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
-
 
 // --- Funciones --- //
 async function loadOne(id) {
@@ -128,5 +130,5 @@ export default {
     findById,
     create,
     delet,
-    update
+    update,
 }

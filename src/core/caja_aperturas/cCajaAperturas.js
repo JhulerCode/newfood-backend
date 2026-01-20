@@ -1,55 +1,25 @@
 import { CajaApertura } from '#db/models/CajaApertura.js'
-import { DineroMovimiento } from '#db/models/DineroMovimiento.js'
-import { PagoMetodo } from '#db/models/PagoMetodo.js'
-import { Comprobante, ComprobanteItem } from '#db/models/Comprobante.js'
-import { Colaborador } from '#db/models/Colaborador.js'
-import { Transaccion } from '#db/models/Transaccion.js'
-import { applyFilters } from '#shared/mine.js'
+import { Repository } from '#db/Repository.js'
 import { arrayMap } from '#store/system.js'
+import { resUpdateFalse } from '#http/helpers.js'
 import dayjs from 'dayjs'
 import { Op, fn, col } from 'sequelize'
+
+const repository = new Repository('CajaApertura')
+const TransaccionRepository = new Repository('Transaccion')
+const DineroMovimientoRepository = new Repository('DineroMovimiento')
+const ComprobanteRepository = new Repository('Comprobante')
 
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
-        const findProps = {
-            attributes: ['id'],
-            order: [['createdAt', 'DESC']],
-            where: { empresa: empresa.id },
-            include: [],
-        }
+        qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const include1 = {
-            createdBy1: {
-                model: Colaborador,
-                as: 'createdBy1',
-                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-            },
-        }
+        const data = await repository.find(qry, true)
 
-        if (qry) {
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
-
-            if (qry.fltr) {
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-            }
-
-            if (qry.cols) {
-                findProps.attributes = findProps.attributes.concat(qry.cols)
-            }
-        }
-
-        let data = await CajaApertura.findAll(findProps)
-
-        if (data.length > 0 && qry.cols) {
-            data = data.map(a => a.toJSON())
-
+        if (data.length > 0) {
             const caja_apertura_estadosMap = arrayMap('caja_apertura_estados')
 
             for (const a of data) {
@@ -58,8 +28,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -70,18 +39,18 @@ const create = async (req, res) => {
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
         // --- CREAR --- //
-        const nuevo = await CajaApertura.create({
-            fecha_apertura, monto_apertura,
+        const nuevo = await repository.create({
+            fecha_apertura,
+            monto_apertura,
             estado: 1,
-            empresa: empresa.id,
-            createdBy: colaborador
+            empresa,
+            createdBy: colaborador,
         })
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -92,33 +61,36 @@ const cerrar = async (req, res) => {
         const { id } = req.params
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
-        const pedidos = await Transaccion.findAll({
-            where: { tipo: 2, estado: '1', empresa: empresa.id }
-        })
+        const qry = {
+            fltr: {
+                tipo: { op: 'Es', val: 2 },
+                estado: { op: 'Es', val: '1' },
+                empresa: { op: 'Es', val: empresa },
+            },
+        }
+        const pedidos = await TransaccionRepository.find(qry)
 
         if (pedidos.length > 0) {
             return res.json({ code: 1, msg: 'No se puede cerrar caja con pedidos pendientes' })
         }
 
         // --- ACTUALIZAR --- //
-        const [affectedRows] = await CajaApertura.update(
+        const updated = await repository.update(
+            { id },
             {
-                fecha_cierre, monto_cierre,
+                fecha_cierre,
+                monto_cierre,
                 estado: 2,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            { where: { id } }
         )
 
-        if (affectedRows > 0) {
-            const data = await loadOne(id)
-            res.json({ code: 0, data })
-        }
-        else {
-            res.json({ code: 1, msg: 'No se actualizó ningún registro' })
-        }
-    }
-    catch (error) {
+        if (updated == false) return resUpdateFalse(res)
+
+        const data = await loadOne(id)
+
+        res.json({ code: 0, data })
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -162,24 +134,18 @@ const findResumen = async (req, res) => {
         }
 
         // --- Dinero movimientos --- //
-        const dinero_movimientos = await DineroMovimiento.findAll({
-            order: [['createdAt', 'DESC']],
-            where: {
-                caja_apertura: id,
+        const qry = {
+            fltr: {
+                caja_apertura: { op: 'Es', val: id },
             },
-            include: [
-                {
-                    model: PagoMetodo,
-                    as: 'pago_metodo1',
-                    attributes: ['id', 'nombre'],
+            incl: ['pago_metodo1', 'comprobante1'],
+            iccl: {
+                comprobante1: {
+                    cols: ['caja_apertura'],
                 },
-                {
-                    model: Comprobante,
-                    as: 'comprobante1',
-                    attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'caja_apertura']
-                }
-            ]
-        })
+            },
+        }
+        const dinero_movimientos = await DineroMovimientoRepository.find(qry)
 
         const caja_operacionesMap = arrayMap('caja_operaciones')
 
@@ -198,21 +164,22 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.operacion == 1) {
-                        if (a.pago_metodo == `${empresa.subdominio}-EFECTIVO`) {
+                        if (a.pago_metodo == `${req.empresa.subdominio}-EFECTIVO`) {
                             send.efectivo_ingresos_total += Number(a.monto)
                         }
 
                         // --- MÉTODOS DE PAGO --- //
-                        const i = send.venta_pago_metodos.findIndex(b => b.id == a.pago_metodo1.id)
+                        const i = send.venta_pago_metodos.findIndex(
+                            (b) => b.id == a.pago_metodo1.id,
+                        )
                         if (i === -1) {
                             send.venta_pago_metodos.push({
                                 id: a.pago_metodo1.id,
                                 nombre: a.pago_metodo1.nombre,
                                 monto: Number(a.monto),
-                                cantidad: 1
+                                cantidad: 1,
                             })
-                        }
-                        else {
+                        } else {
                             send.venta_pago_metodos[i].monto += Number(a.monto)
                             send.venta_pago_metodos[i].cantidad++
                         }
@@ -227,7 +194,7 @@ const findResumen = async (req, res) => {
                         }
                     }
                 }
-                
+
                 if (a.tipo == 2) {
                     send.efectivo_egresos_total += Number(a.monto)
 
@@ -244,46 +211,88 @@ const findResumen = async (req, res) => {
         send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
 
         // --- Comprobantes --- //
-        const comprobantes = await Comprobante.findAll({
-            attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
-            order: [['createdAt', 'DESC']],
-            where: {
-                caja_apertura: id,
+        const qry1 = {
+            cols: [
+                'id',
+                'doc_tipo',
+                'serie',
+                'numero',
+                'serie_correlativo',
+                'monto',
+                'pago_condicion',
+                'estado',
+            ],
+            fltr: {
+                caja_apertura: { op: 'Es', val: id },
             },
-            include: [
-                {
-                    model: Comprobante,
-                    as: 'canjeado_por1',
-                    attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
+            incl: ['canjeado_por1', 'comprobante_items', 'transaccion1', 'dinero_movimientos'],
+            iccl: {
+                transaccion1: {
+                    cols: ['venta_canal'],
                 },
-                {
-                    model: ComprobanteItem,
-                    as: 'comprobante_items',
-                    attributes: ['id', 'articulo', 'descripcion', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+                dinero_movimientos: {
+                    incl: ['pago_metodo1'],
                 },
-                {
-                    model: Transaccion,
-                    as: 'transaccion1',
-                    attributes: ['venta_canal'],
-                },
-                {
-                    model: DineroMovimiento,
-                    as: 'dinero_movimientos',
-                    attributes: ['id', 'pago_metodo', 'monto', 'caja_apertura'],
-                    include: {
-                        model: PagoMetodo,
-                        as: 'pago_metodo1',
-                        attributes: ['id', 'nombre', 'color']
-                    }
-                }
-            ]
-        })
+            },
+        }
+        const comprobantes = await ComprobanteRepository.find(qry1)
+        //     attributes: [
+        //         'id',
+        //         'doc_tipo',
+        //         'serie',
+        //         'numero',
+        //         'serie_correlativo',
+        //         'monto',
+        //         'pago_condicion',
+        //         'estado',
+        //     ],
+        //     order: [['createdAt', 'DESC']],
+        //     where: {
+        //         caja_apertura: id,
+        //     },
+        //     include: [
+        //         {
+        //             model: Comprobante,
+        //             as: 'canjeado_por1',
+        //             attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
+        //         },
+        //         {
+        //             model: ComprobanteItem,
+        //             as: 'comprobante_items',
+        //             attributes: [
+        //                 'id',
+        //                 'articulo',
+        //                 'descripcion',
+        //                 'pu',
+        //                 'descuento_tipo',
+        //                 'descuento_valor',
+        //                 'cantidad',
+        //             ],
+        //         },
+        //         {
+        //             model: Transaccion,
+        //             as: 'transaccion1',
+        //             attributes: ['venta_canal'],
+        //         },
+        //         {
+        //             model: DineroMovimiento,
+        //             as: 'dinero_movimientos',
+        //             attributes: ['id', 'pago_metodo', 'monto', 'caja_apertura'],
+        //             include: {
+        //                 model: PagoMetodo,
+        //                 as: 'pago_metodo1',
+        //                 attributes: ['id', 'nombre', 'color'],
+        //             },
+        //         },
+        //     ],
+        // })
 
         const pago_comprobantesMap = arrayMap('comprobante_tipos')
         const venta_canalesMap = arrayMap('venta_canales')
 
         for (const a of comprobantes) {
-            const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+            // const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+            const tKey = setTipoComprobanteKey(a.doc_tipo)
             const tipo_comprobante_nombre = pago_comprobantesMap[tKey].nombre
 
             // --- ACEPTADOS --- //
@@ -293,57 +302,42 @@ const findResumen = async (req, res) => {
                 for (const b of a.dinero_movimientos) {
                     if (b.caja_apertura == id) {
                         comprobante_pagos_total += Number(b.monto)
-
-                        // const i = send.venta_pago_metodos.findIndex(c => c.id == b.pago_metodo1.id)
-                        // if (i === -1) {
-                        //     send.venta_pago_metodos.push({
-                        //         id: b.pago_metodo1.id,
-                        //         nombre: b.pago_metodo1.nombre,
-                        //         monto: Number(b.monto),
-                        //         cantidad: 1
-                        //     })
-                        // }
-                        // else {
-                        //     send.venta_pago_metodos[i].monto += Number(b.monto)
-                        //     send.venta_pago_metodos[i].cantidad++
-                        // }
                     }
                 }
 
                 // --- CRÉDITO --- //
                 if (a.monto > comprobante_pagos_total) {
-                    const k = send.venta_pago_metodos.findIndex(b => b.id == 'CRÉDITO')
+                    const k = send.venta_pago_metodos.findIndex((b) => b.id == 'CRÉDITO')
                     if (k === -1) {
                         send.venta_pago_metodos.push({
                             id: 'CRÉDITO',
                             nombre: 'CRÉDITO',
                             monto: Number(a.monto) - comprobante_pagos_total,
-                            cantidad: 1
+                            cantidad: 1,
                         })
-                    }
-                    else {
-                        send.venta_pago_metodos[k].monto += Number(a.monto) - comprobante_pagos_total
+                    } else {
+                        send.venta_pago_metodos[k].monto +=
+                            Number(a.monto) - comprobante_pagos_total
                         send.venta_pago_metodos[k].cantidad++
                     }
                 }
 
                 // --- TIPOS DE COMPROBANTES --- //
-                const i = send.venta_comprobantes.findIndex(b => b.id == a.doc_tipo)
+                const i = send.venta_comprobantes.findIndex((b) => b.id == a.doc_tipo)
                 if (i === -1) {
                     send.venta_comprobantes.push({
                         id: a.doc_tipo,
                         nombre: tipo_comprobante_nombre,
                         monto: Number(a.monto),
-                        cantidad: 1
+                        cantidad: 1,
                     })
-                }
-                else {
+                } else {
                     send.venta_comprobantes[i].monto += Number(a.monto)
                     send.venta_comprobantes[i].cantidad++
                 }
 
                 // --- CANALES --- //
-                const j = send.venta_canales.findIndex(b => b.id == a.transaccion1.venta_canal)
+                const j = send.venta_canales.findIndex((b) => b.id == a.transaccion1.venta_canal)
                 if (j === -1) {
                     send.venta_canales.push({
                         id: a.transaccion1.venta_canal,
@@ -351,10 +345,10 @@ const findResumen = async (req, res) => {
                         value: Number(a.monto),
                         cantidad: 0,
                     })
-                }
-                else {
+                } else {
                     send.venta_canales[j].value += Number(a.monto)
                 }
+                console.log('ASD1')
 
                 // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
@@ -368,7 +362,7 @@ const findResumen = async (req, res) => {
 
                 // --- PRODUCTOS --- //
                 for (const b of a.comprobante_items) {
-                    const k = send.productos.findIndex(c => c.id == b.articulo)
+                    const k = send.productos.findIndex((c) => c.id == b.articulo)
                     const prd = calcularUno({
                         pu: Number(b.pu),
                         descuento_tipo: b.descuento_tipo,
@@ -386,14 +380,15 @@ const findResumen = async (req, res) => {
                             monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
                         })
-                    }
-                    else {
+                    } else {
                         send.productos[k].cantidad += Number(b.cantidad)
                         send.productos[k].monto += Number(prd.total)
                         send.productos[k].descuento += prd.descuento == 0 ? null : prd.descuento
                     }
                 }
             }
+
+            console.log('ASD2')
 
             // --- ANULADOS --- //
             if (a.estado == 0) {
@@ -408,7 +403,7 @@ const findResumen = async (req, res) => {
 
                 // --- PRODUCTOS --- //
                 for (const b of a.comprobante_items) {
-                    const k = send.productos_anulados.findIndex(c => c.id == b.articulo)
+                    const k = send.productos_anulados.findIndex((c) => c.id == b.articulo)
                     const prd = calcularUno({
                         pu: Number(b.pu),
                         descuento_tipo: b.descuento_tipo,
@@ -426,11 +421,11 @@ const findResumen = async (req, res) => {
                             monto: Number(prd.total),
                             descuento: prd.descuento == 0 ? null : prd.descuento,
                         })
-                    }
-                    else {
+                    } else {
                         send.productos_anulados[k].cantidad += Number(b.cantidad)
                         send.productos_anulados[k].monto += Number(prd.total)
-                        send.productos_anulados[k].descuento += prd.descuento == 0 ? null : prd.descuento
+                        send.productos_anulados[k].descuento +=
+                            prd.descuento == 0 ? null : prd.descuento
                     }
                 }
             }
@@ -442,24 +437,32 @@ const findResumen = async (req, res) => {
                     id: a.serie_correlativo,
                     tipo: tipo_comprobante_nombre,
                     monto: Number(a.monto),
-                    canjeado_por: a.canjeado_por1.serie_correlativo
+                    canjeado_por: a.canjeado_por1.serie_correlativo,
                 })
             }
         }
+        console.log('ASD3')
 
         // --- Transacciones --- //
-        let pedidos = await Transaccion.findAll({
-            attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
-            order: [['createdAt', 'DESC']],
-            where: {
-                tipo: 2,
-                caja_apertura: id,
+        const qry2 = {
+            cols: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
+            fltr: {
+                tipo: { op: 'Es', val: 2 },
+                caja_apertura: { op: 'Es', val: id },
             },
-        })
+        }
+        let pedidos = await TransaccionRepository.find(qry2)
+        //     attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
+        //     order: [['createdAt', 'DESC']],
+        //     where: {
+        //         tipo: 2,
+        //         caja_apertura: id,
+        //     },
+        // })
 
         for (let a of pedidos) {
             if (['1', '2'].includes(a.estado)) {
-                const i = send.venta_canales.findIndex(b => b.id == a.venta_canal)
+                const i = send.venta_canales.findIndex((b) => b.id == a.venta_canal)
                 if (i !== -1) {
                     send.venta_canales[i].cantidad++
                 }
@@ -492,86 +495,98 @@ const findResumen = async (req, res) => {
             if (b.nombre === 'CRÉDITO' && a.nombre !== 'CRÉDITO') return -1
             return a.nombre.localeCompare(b.nombre)
         })
-        send.venta_comprobantes = send.venta_comprobantes.sort((a, b) => a.nombre.localeCompare(b.nombre))
+        send.venta_comprobantes = send.venta_comprobantes.sort((a, b) =>
+            a.nombre.localeCompare(b.nombre),
+        )
         send.productos = send.productos.sort((a, b) => a.nombre.localeCompare(b.nombre))
 
         if (is_past != 'true') {
             // --- Ventas del mes --- //
             const hoy = dayjs(fecha_apertura)
-            const mesInicio = hoy.startOf("month").format('YYYY-MM-DD')
-            const mesFin = hoy.endOf("month").format('YYYY-MM-DD')
+            const mesInicio = hoy.startOf('month').format('YYYY-MM-DD')
+            const mesFin = hoy.endOf('month').format('YYYY-MM-DD')
 
-            const caja_aperturas = await CajaApertura.findAll({
-                attributes: ['id', 'fecha_apertura'],
-                order: [['createdAt', 'DESC']],
-                where: {
-                    empresa: empresa.id,
-                    fecha_apertura: {
-                        [Op.between]: [mesInicio, mesFin],
-                    }
-                }
-            })
-
-            send.ventas_mes = await DineroMovimiento.findOne({
-                attributes: [[fn("SUM", col("monto")), "total"]],
-                where: {
-                    caja_apertura: caja_aperturas.map(a => a.id),
-                    estado: '2',
-                    operacion: '1',
+            const qry3 = {
+                cols: ['id', 'fecha_apertura'],
+                fltr: {
+                    empresa: { op: 'Es', val: empresa },
+                    fecha_apertura: { op: 'Está dentro de', val: mesInicio, val1: mesFin },
                 },
-                // raw: true,
-            })
+            }
+            const caja_aperturas = await repository.find(qry3)
+            //     attributes: ['id', 'fecha_apertura'],
+            //     order: [['createdAt', 'DESC']],
+            //     where: {
+            //         empresa: empresa.id,
+            //         fecha_apertura: {
+            //             [Op.between]: [mesInicio, mesFin],
+            //         },
+            //     },
+            // })
+
+            const qry4 = {
+                cols: [[fn('SUM', col('monto')), 'total']],
+                fltr: {
+                    caja_apertura: { op: 'Es', val: caja_aperturas.map((a) => a.id) },
+                    estado: { op: 'Es', val: '2' },
+                    operacion: { op: 'Es', val: '1' },
+                },
+            }
+            send.ventas_mes = await DineroMovimientoRepository.find(qry4)
+            //     attributes: [[fn('SUM', col('monto')), 'total']],
+            //     where: {
+            //         caja_apertura: caja_aperturas.map((a) => a.id),
+            //         estado: '2',
+            //         operacion: '1',
+            //     },
+            // })
 
             // --- Ventas ayer --- //
+            const qry5 = {}
             const caja_aperturas_ayer = await CajaApertura.findAll({
                 attributes: ['id', 'fecha_apertura'],
                 order: [['createdAt', 'DESC']],
                 where: {
-                    empresa: empresa.id,
+                    empresa,
                 },
-                limit: 2
+                limit: 2,
             })
 
             if (caja_aperturas_ayer.length > 1) {
-                send.ventas_ayer = await DineroMovimiento.findOne({
-                    attributes: [[fn("SUM", col("monto")), "total"]],
-                    where: {
-                        caja_apertura: caja_aperturas_ayer[1].id,
-                        estado: '2',
-                        operacion: '1',
+                const qry6 = {
+                    cols: [[fn('SUM', col('monto')), 'total']],
+                    fltr: {
+                        caja_apertura: { op: 'Es', val: caja_aperturas_ayer[1].id },
+                        estado: { op: 'Es', val: '2' },
+                        operacion: { op: 'Es', val: '1' },
                     },
-                    // raw: true,
-                })
+                }
+                const asd = await DineroMovimientoRepository.find(qry6)
+                send.ventas_ayer = asd[0]
+                //     attributes: [[fn('SUM', col('monto')), 'total']],
+                //     where: {
+                //         caja_apertura: caja_aperturas_ayer[1].id,
+                //         estado: '2',
+                //         operacion: '1',
+                //     },
+                // })
             }
         }
 
         res.json({
             code: 0,
             data: send,
-            // caja_aperturas,
         })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Funciones --- //
 async function loadOne(id) {
-    let data = await CajaApertura.findByPk(id, {
-        include: [
-            {
-                model: Colaborador,
-                as: 'createdBy1',
-                attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-            },
-        ],
-    })
+    const data = await repository.find({ id, incl: ['createdBy1'] }, true)
 
     if (data) {
-        data = data.toJSON()
-
         const estadosMap = arrayMap('transaccion_estados')
 
         data.estado1 = estadosMap[data.estado]
@@ -581,11 +596,7 @@ async function loadOne(id) {
 }
 
 function calcularUno(item) {
-    if (
-        item.descuento_tipo != null &&
-        item.descuento_valor != null &&
-        item.descuento_valor != 0
-    ) {
+    if (item.descuento_tipo != null && item.descuento_valor != null && item.descuento_valor != 0) {
         if (item.descuento_tipo == 1) {
             item.pu_desc = item.descuento_valor
         } else if (item.descuento_tipo == 2) {
@@ -596,9 +607,22 @@ function calcularUno(item) {
     }
 
     item.descuento = item.pu_desc
-    item.total = (item.cantidad * item.pu) - item.descuento
+    item.total = item.cantidad * item.pu - item.descuento
 
     return item
+}
+
+function setTipoComprobanteKey (doc_tipo) {
+    let key = 'NV'
+    if (doc_tipo.includes('01')) {
+        key = '01'
+    } else if (doc_tipo.includes('03')) {
+        key = '03'
+    }
+
+    // const comprobante_tipos = arrayMap('comprobante_tipos')
+    // return comprobante_tipos[key]
+    return key
 }
 
 export default {

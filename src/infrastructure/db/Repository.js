@@ -46,7 +46,7 @@ const include1 = {
     categoria1: {
         model: ArticuloCategoria,
         as: 'categoria1',
-        attributes: ['id', 'nombre']
+        attributes: ['id', 'nombre'],
     },
     articulo1: {
         model: Articulo,
@@ -56,7 +56,12 @@ const include1 = {
     colaborador1: {
         model: Colaborador,
         as: 'colaborador1',
-        attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
+        attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+    },
+    canjeado_por1: {
+        model: Comprobante,
+        as: 'canjeado_por1',
+        attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
     },
     combo_articulos: {
         model: ComboArticulo,
@@ -76,12 +81,35 @@ const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
-        attributes: ['id', 'serie', 'numero', 'serie_correlativo'],
+        attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
+    },
+    comprobante_items: {
+        model: ComprobanteItem,
+        as: 'comprobante_items',
+        attributes: [
+            'id',
+            'articulo',
+            'descripcion',
+            'pu',
+            'descuento_tipo',
+            'descuento_valor',
+            'cantidad',
+        ],
     },
     createdBy1: {
         model: Colaborador,
         as: 'createdBy1',
         attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+    },
+    dinero_movimientos: {
+        model: DineroMovimiento,
+        as: 'dinero_movimientos',
+        attributes: ['id', 'pago_metodo', 'monto', 'caja_apertura'],
+        include: {
+            model: PagoMetodo,
+            as: 'pago_metodo1',
+            attributes: ['id', 'nombre', 'color'],
+        },
     },
     kardexes: {
         model: Kardex,
@@ -94,10 +122,15 @@ const include1 = {
         as: 'mesas',
         attributes: ['id', 'nombre', 'activo', 'unida', 'unidos'],
     },
+    pago_metodo1: {
+        model: PagoMetodo,
+        as: 'pago_metodo1',
+        attributes: ['id', 'nombre', 'color'],
+    },
     produccion_area1: {
         model: ProduccionArea,
         as: 'produccion_area1',
-        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre']
+        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
     },
     receta_insumos: {
         model: RecetaInsumo,
@@ -107,12 +140,12 @@ const include1 = {
     salon1: {
         model: Salon,
         as: 'salon1',
-        attributes: ['id', 'nombre']
+        attributes: ['id', 'nombre'],
     },
     socio1: {
         model: Socio,
         as: 'socio1',
-        attributes: ['id', 'nombres', 'doc_nombres']
+        attributes: ['id', 'nombres', 'doc_nombres'],
     },
     transaccion1: {
         model: Transaccion,
@@ -133,12 +166,16 @@ const include1 = {
 
 const sqls1 = {
     comprobantes_monto: [
-        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`),
-        "comprobantes_monto"
+        literal(
+            `(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`,
+        ),
+        'comprobantes_monto',
     ],
     pagos_monto: [
-        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.transaccion = "transacciones"."id")`),
-        "pagos_monto"
+        literal(
+            `(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.transaccion = "transacciones"."id")`,
+        ),
+        'pagos_monto',
     ],
     // articulo_movimientos_cantidad: [
     //     Sequelize.fn('COALESCE',
@@ -174,7 +211,7 @@ export class Repository {
     }
 
     async find(qry, tojson = false) {
-        const columns = Object.keys(this.model.getAttributes());
+        const columns = Object.keys(this.model.getAttributes())
 
         const findProps = {
             include: [],
@@ -188,14 +225,14 @@ export class Repository {
                 findProps.include.push({
                     ...include1[a],
                     attributes: include1[a].attributes ? [...include1[a].attributes] : undefined,
-                    include: []
+                    include: [],
                 })
             }
         }
 
         if (qry?.iccl) {
             for (const [key, val] of Object.entries(qry.iccl)) {
-                const item = findProps.include.find(b => b.as === key);
+                const item = findProps.include.find((b) => b.as === key)
                 if (item) {
                     if (val.incl) {
                         for (const a of val.incl) {
@@ -213,9 +250,8 @@ export class Repository {
         if (qry?.cols) {
             if (qry.cols.exclude) {
                 findProps.attributes = { exclude: qry.cols.exclude }
-            }
-            else {
-                const cols1 = qry.cols.filter(a => columns.includes(a))
+            } else {
+                const cols1 = qry.cols.filter((a) => columns.includes(a))
                 findProps.attributes.push(...cols1)
             }
         }
@@ -228,15 +264,15 @@ export class Repository {
 
         if (qry?.fltr) {
             const fltr1 = Object.fromEntries(
-                Object.entries(qry.fltr).filter(([key]) => columns.includes(key))
+                Object.entries(qry.fltr).filter(([key]) => columns.includes(key)),
             )
             Object.assign(findProps.where, applyFilters(fltr1))
 
             // Filtros de relaciones
             Object.entries(qry.fltr)
-                .filter(([k]) => Object.keys(include1).some(pref => k.startsWith(pref)))
+                .filter(([k]) => Object.keys(include1).some((pref) => k.startsWith(pref)))
                 .forEach(([k, v]) =>
-                    Object.assign(findProps.where, applyFilters({ [`$${k}$`]: v }))
+                    Object.assign(findProps.where, applyFilters({ [`$${k}$`]: v })),
                 )
         }
 
@@ -254,18 +290,15 @@ export class Repository {
 
             if (tojson) {
                 return data.toJSON()
-            }
-            else {
+            } else {
                 return data
             }
-        }
-        else {
+        } else {
             const data = await this.model.findAll(findProps)
 
             if (tojson) {
-                return data.map(a => a.toJSON())
-            }
-            else {
+                return data.map((a) => a.toJSON())
+            } else {
                 return data
             }
         }
@@ -294,8 +327,7 @@ export class Repository {
         if (affectedRows == 0) {
             // if (res) res.json({ code: 1, msg: 'No se actualizó ningún registro' })
             return false
-        }
-        else {
+        } else {
             return true
         }
     }
@@ -306,8 +338,7 @@ export class Repository {
         if (deletedCount == 0) {
             // res.json({ code: 1, msg: 'No se eliminó ningún registro' })
             return false
-        }
-        else {
+        } else {
             return true
         }
     }
