@@ -22,10 +22,10 @@ const find = async (req, res) => {
             const estadosMap = arrayMap('estados')
 
             for (const a of data) {
-                if (qry.cols.includes('sexo')) a.sexo1 = generosMap[a.sexo]
-                if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = documentos_identidadMap[a.doc_tipo]
-                if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
-                if (qry.cols.includes('has_signin')) a.has_signin1 = estadosMap[a.has_signin]
+                if (qry?.cols?.includes('sexo')) a.sexo1 = generosMap[a.sexo]
+                if (qry?.cols?.includes('doc_tipo')) a.doc_tipo1 = documentos_identidadMap[a.doc_tipo]
+                if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry?.cols?.includes('has_signin')) a.has_signin1 = estadosMap[a.has_signin]
             }
         }
 

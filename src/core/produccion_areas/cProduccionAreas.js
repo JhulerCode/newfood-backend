@@ -17,8 +17,8 @@ const find = async (req, res) => {
             const impresora_tiposMap = arrayMap('impresora_tipos')
 
             for (const a of data) {
-                if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
-                if (qry.cols.includes('impresora_tipo')) a.impresora_tipo1 = impresora_tiposMap[a.impresora_tipo]
+                if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry?.cols?.includes('impresora_tipo')) a.impresora_tipo1 = impresora_tiposMap[a.impresora_tipo]
             }
         }
 

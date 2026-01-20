@@ -19,9 +19,9 @@ const find = async (req, res) => {
             const dinero_movimiento_estadosMap = arrayMap('dinero_movimiento_estados')
 
             for (const a of data) {
-                if (qry.cols.includes('tipo')) a.tipo1 = caja_operacion_tiposMap[a.tipo]
-                if (qry.cols.includes('operacion')) a.operacion1 = caja_operacionesMap[a.operacion]
-                if (qry.cols.includes('estado')) a.estado1 = dinero_movimiento_estadosMap[a.estado]
+                if (qry?.cols?.includes('tipo')) a.tipo1 = caja_operacion_tiposMap[a.tipo]
+                if (qry?.cols?.includes('operacion')) a.operacion1 = caja_operacionesMap[a.operacion]
+                if (qry?.cols?.includes('estado')) a.estado1 = dinero_movimiento_estadosMap[a.estado]
             }
         }
 

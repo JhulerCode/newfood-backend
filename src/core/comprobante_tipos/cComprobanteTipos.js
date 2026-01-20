@@ -17,8 +17,8 @@ const find = async (req, res) => {
             const activo_estadosMap = arrayMap('activo_estados')
 
             for (const a of data) {
-                if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
-                if (qry.cols.includes('estandar')) a.estandar1 = estadosMap[a.estandar]
+                if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry?.cols?.includes('estandar')) a.estandar1 = estadosMap[a.estandar]
             }
         }
 

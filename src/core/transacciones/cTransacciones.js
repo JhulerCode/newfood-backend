@@ -1,16 +1,13 @@
-import sequelize from '#db/sequelize.js'
-import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
-import { Articulo } from '#db/models/Articulo.js'
-import { Comprobante } from '#db/models/Comprobante.js'
-
 import { Repository } from '#db/Repository.js'
 import { arrayMap } from '#store/system.js'
 import { resUpdateFalse } from '#http/helpers.js'
+import sequelize from '#db/sequelize.js'
 
 const repository = new Repository('Transaccion')
 const CajaAperturaRepository = new Repository('CajaApertura')
 const TransaccionItemRepository = new Repository('TransaccionItem')
 const KardexRepository = new Repository('Kardex')
+const ComprobanteRepository = new Repository('Comprobante')
 
 const find = async (req, res) => {
     try {
@@ -28,17 +25,20 @@ const find = async (req, res) => {
             const estados = arrayMap('estados')
 
             for (const a of data) {
-                if (qry?.cols?.includes('venta_canal')) a.venta_canal1 = venta_canalesMap[a.venta_canal]
-                if (qry?.cols?.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
+                if (qry?.cols?.includes('venta_canal'))
+                    a.venta_canal1 = venta_canalesMap[a.venta_canal]
+                if (qry?.cols?.includes('pago_condicion'))
+                    a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry?.cols?.includes('estado')) a.estado1 = transaccion_estadosMap[a.estado]
-                if (qry?.cols?.includes('venta_facturado')) a.venta_facturado1 = estados[a.venta_facturado]
-                if (qry?.cols?.includes('venta_entregado')) a.venta_entregado1 = estados[a.venta_entregado]
+                if (qry?.cols?.includes('venta_facturado'))
+                    a.venta_facturado1 = estados[a.venta_facturado]
+                if (qry?.cols?.includes('venta_entregado'))
+                    a.venta_entregado1 = estados[a.venta_entregado]
             }
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -105,8 +105,7 @@ const findById = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -117,46 +116,73 @@ const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const {
-            tipo, fecha, socio,
-            pago_condicion, monto,
-            observacion, estado, anulado_motivo,
-            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
-            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
+            tipo,
+            fecha,
+            socio,
+            pago_condicion,
+            monto,
+            observacion,
+            estado,
+            anulado_motivo,
+            compra_comprobante,
+            compra_comprobante_serie,
+            compra_comprobante_correlativo,
+            venta_codigo,
+            venta_canal,
+            venta_mesa,
+            venta_pago_metodo,
+            venta_pago_con,
+            venta_socio_datos,
+            venta_entregado,
             transaccion_items,
         } = req.body
 
         let caja_apertura = {}
 
         if (tipo == 2) {
+            // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
             const qry = {
-                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } }
+                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
             }
 
             caja_apertura = await CajaAperturaRepository.find(qry, true)
 
-            if (caja_apertura == null) {
+            if (caja_apertura.length == 0) {
                 await transaction.rollback()
-                return res.json({ code: 1, msg: 'La caja no fue aperturada, no se puede generar pedidos' })
+                res.json({ code: 1, msg: 'La caja no está aperturada, no puede generar pedidos' })
+                return
             }
         }
 
         // --- CREAR --- //
         const nuevo = await repository.create(
             {
-                tipo, fecha, socio,
-                pago_condicion, monto,
-                observacion, estado, anulado_motivo,
-                compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
-                venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos,
-                caja_apertura: caja_apertura.id,
+                tipo,
+                fecha,
+                socio,
+                pago_condicion,
+                monto,
+                observacion,
+                estado,
+                anulado_motivo,
+                compra_comprobante,
+                compra_comprobante_serie,
+                compra_comprobante_correlativo,
+                venta_codigo,
+                venta_canal,
+                venta_mesa,
+                venta_pago_metodo,
+                venta_pago_con,
+                venta_socio_datos,
+                caja_apertura: caja_apertura[0].id,
                 empresa,
-                createdBy: colaborador
+                createdBy: colaborador,
             },
-            transaction
+            transaction,
         )
 
         // --- GUARDAR ITEMS --- //
-        const items = transaccion_items.map(a => ({
+        const items = transaccion_items.map((a) => ({
             articulo: a.articulo,
             cantidad: a.cantidad,
 
@@ -172,21 +198,21 @@ const create = async (req, res) => {
 
             transaccion: nuevo.id,
             empresa,
-            createdBy: colaborador
+            createdBy: colaborador,
         }))
 
         await TransaccionItemRepository.createBulk(items, transaction)
 
         if (tipo == 1) {
             // --- GUARAR KARDEX --- //
-            const kardexItems = transaccion_items.map(a => ({
+            const kardexItems = transaccion_items.map((a) => ({
                 tipo,
                 fecha,
                 articulo: a.articulo,
                 cantidad: a.cantidad,
                 transaccion: nuevo.id,
                 empresa,
-                createdBy: colaborador
+                createdBy: colaborador,
             }))
 
             await KardexRepository.createBulk(kardexItems, transaction)
@@ -197,19 +223,22 @@ const create = async (req, res) => {
             const signo = tipoInfo.operacion === 1 ? 1 : -1
 
             const cases = transaccion_items
-                .map(a => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
+                .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
                 .join(' ')
 
-            const ids = transaccion_items.map(a => `'${a.articulo}'`).join(',')
+            const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
 
-            await sequelize.query(`
+            await sequelize.query(
+                `
                 UPDATE articulos
                 SET stock = COALESCE(stock, 0) + CASE id
                     ${cases}
                     ELSE 0
                 END
                 WHERE id IN (${ids})
-            `, { transaction })
+            `,
+                { transaction },
+            )
         }
 
         await transaction.commit()
@@ -217,8 +246,7 @@ const create = async (req, res) => {
         // --- DEVOLVER --- //
         const data = await loadOne(nuevo.id)
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -232,11 +260,24 @@ const update = async (req, res) => {
         const { colaborador, empresa } = req.user
         const { id } = req.params
         const {
-            tipo, fecha, socio,
-            pago_condicion, monto,
-            observacion, estado, anulado_motivo,
-            compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
-            venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
+            tipo,
+            fecha,
+            socio,
+            pago_condicion,
+            monto,
+            observacion,
+            estado,
+            anulado_motivo,
+            compra_comprobante,
+            compra_comprobante_serie,
+            compra_comprobante_correlativo,
+            venta_codigo,
+            venta_canal,
+            venta_mesa,
+            venta_pago_metodo,
+            venta_pago_con,
+            venta_socio_datos,
+            venta_entregado,
             transaccion_items,
             edit_type,
         } = req.body
@@ -244,14 +285,27 @@ const update = async (req, res) => {
         const updated = await repository.update(
             { id },
             {
-                tipo, fecha, socio,
-                pago_condicion, monto,
-                observacion, estado, anulado_motivo,
-                compra_comprobante, compra_comprobante_serie, compra_comprobante_correlativo,
-                venta_codigo, venta_canal, venta_mesa, venta_pago_metodo, venta_pago_con, venta_socio_datos, venta_entregado,
-                updatedBy: colaborador
+                tipo,
+                fecha,
+                socio,
+                pago_condicion,
+                monto,
+                observacion,
+                estado,
+                anulado_motivo,
+                compra_comprobante,
+                compra_comprobante_serie,
+                compra_comprobante_correlativo,
+                venta_codigo,
+                venta_canal,
+                venta_mesa,
+                venta_pago_metodo,
+                venta_pago_con,
+                venta_socio_datos,
+                venta_entregado,
+                updatedBy: colaborador,
             },
-            transaction
+            transaction,
         )
 
         if (updated == false) return resUpdateFalse(res)
@@ -260,7 +314,7 @@ const update = async (req, res) => {
             await TransaccionItemRepository.delete({ transaccion: id }, transaction)
 
             // --- GUARDAR ITEMS --- //
-            const items = transaccion_items.map(a => ({
+            const items = transaccion_items.map((a) => ({
                 articulo: a.articulo,
                 cantidad: a.cantidad,
 
@@ -275,19 +329,19 @@ const update = async (req, res) => {
                 combo_articulos: a.combo_articulos,
 
                 transaccion: id,
-                empresa: empresa.id,
-                createdBy: colaborador
+                empresa,
+                createdBy: colaborador,
             }))
 
-            await TransaccionItemRepository.bulkCreate(items, { transaction })
+            await TransaccionItemRepository.createBulk(items, transaction)
         }
 
         await transaction.commit()
 
         const data = await loadOne(id)
+
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -307,8 +361,8 @@ const delet = async (req, res) => {
 
         await repository.delete({ id }, transaction)
 
-        if (estado != 0) {
-            const transaccion_items = await TransaccionItem.findAll({
+        if (estado != 0 && tipo == 1) {
+            const transaccion_items = await TransaccionItemRepository.findAll({
                 where: { transaccion: id },
                 attributes: ['id', 'articulo', 'cantidad'],
             })
@@ -318,45 +372,49 @@ const delet = async (req, res) => {
             const signo = tipoInfo.operacion === 1 ? -1 : 1
 
             const cases = transaccion_items
-                .map(a => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
+                .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
                 .join(' ')
 
-            const ids = transaccion_items.map(a => `'${a.articulo}'`).join(',')
+            const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
 
-            await sequelize.query(`
-                UPDATE articulos
-                SET stock = COALESCE(stock, 0) + CASE id
-                    ${cases}
-                    ELSE 0
-                END
-                WHERE id IN (${ids})
-            `, { transaction })
+            await sequelize.query(
+                `
+                    UPDATE articulos
+                    SET stock = COALESCE(stock, 0) + CASE id
+                        ${cases}
+                        ELSE 0
+                    END
+                    WHERE id IN (${ids})
+                `,
+                { transaction },
+            )
         }
 
         await transaction.commit()
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Helpers --- //
 async function loadOne(id) {
-    let data = await repository.find({
-        id,
-        sqls: ['comprobantes_monto'],
-        incl: ['socio1', 'createdBy1', 'venta_mesa1'],
-        iccl: {
-            venta_mesa1: {
-                incl: ['salon1']
-            }
-        }
-    }, true)
+    let data = await repository.find(
+        {
+            id,
+            sqls: ['comprobantes_monto'],
+            incl: ['socio1', 'createdBy1', 'venta_mesa1'],
+            iccl: {
+                venta_mesa1: {
+                    incl: ['salon1'],
+                },
+            },
+        },
+        true,
+    )
 
     if (data) {
         const pago_condicionesMap = arrayMap('pago_condiciones')
@@ -372,8 +430,41 @@ async function loadOne(id) {
     return data
 }
 
-
 // --- Para ventas --- //
+const anular = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+        const { anulado_motivo, item } = req.body
+
+        const qry = {
+            fltr: { transaccion: { op: 'Es', val: id } },
+        }
+        const comprobantes = await ComprobanteRepository.find(qry)
+
+        if (comprobantes.length > 0) {
+            res.json({ code: 1, msg: 'No se puedee anular, el pedido ya tiene comprobantes' })
+            return
+        }
+
+        await repository.update(
+            { id },
+            {
+                estado: 0,
+                anulado_motivo,
+                updatedBy: colaborador,
+            },
+        )
+
+        // --- DEVOLVER --- //
+        const data = await loadOne(id)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const addProductos = async (req, res) => {
     const transaction = await sequelize.transaction()
 
@@ -382,7 +473,7 @@ const addProductos = async (req, res) => {
         const { id } = req.params
         const { monto, transaccion_items } = req.body
 
-        const items = transaccion_items.map(a => ({
+        const items = transaccion_items.map((a) => ({
             articulo: a.articulo,
             cantidad: a.cantidad,
             pu: a.pu,
@@ -394,21 +485,19 @@ const addProductos = async (req, res) => {
             receta_insumos: a.receta_insumos,
             is_combo: a.is_combo,
             combo_articulos: a.combo_articulos,
-            empresa: empresa.id,
-            createdBy: colaborador
+            empresa,
+            createdBy: colaborador,
         }))
 
-        await TransaccionItem.bulkCreate(items, { transaction })
+        await TransaccionItemRepository.createBulk(items, transaction)
 
-        await Transaccion.update(
+        await repository.update(
+            { id },
             {
                 monto: sequelize.literal(`COALESCE(monto, 0) + ${monto}`),
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            {
-                where: { id },
-                transaction
-            }
+            transaction,
         )
 
         await transaction.commit()
@@ -416,45 +505,9 @@ const addProductos = async (req, res) => {
         // --- DEVOLVER --- //
         const data = await loadOne(id)
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const anular = async (req, res) => {
-    try {
-        const { colaborador } = req.user
-        const { id } = req.params
-        const { anulado_motivo, item } = req.body
-
-        const comprobantes = await Comprobante.findAll({
-            where: { transaccion: id }
-        })
-
-        if (comprobantes.length > 0) {
-            res.json({ code: 1, msg: 'No se puedee anular, el pedido ya tiene comprobantes' })
-            return
-        }
-
-        await Transaccion.update(
-            {
-                estado: 0,
-                anulado_motivo,
-                updatedBy: colaborador
-            },
-            {
-                where: { id }
-            }
-        )
-
-        // --- DEVOLVER --- //
-        const data = await loadOne(id)
-        res.json({ code: 0, data })
-    }
-    catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -465,19 +518,18 @@ const cambiarMesa = async (req, res) => {
         const { id } = req.params
         const { venta_mesa } = req.body
 
-        // --- ENTREGAR Y FINALIZAR --- //
-        await Transaccion.update(
+        await repository.update(
+            { id },
             {
                 venta_mesa,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            { where: { id } }
         )
 
         const data = await loadOne(id)
+
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -488,19 +540,19 @@ const entregar = async (req, res) => {
         const { id } = req.params
 
         // --- ENTREGAR Y FINALIZAR --- //
-        await Transaccion.update(
+        await repository.update(
+            { id },
             {
                 venta_entregado: true,
                 estado: 2,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            { where: { id } }
         )
 
         const data = await loadOne(id)
+
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }

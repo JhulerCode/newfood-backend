@@ -23,7 +23,7 @@ const find = async (req, res) => {
             const caja_apertura_estadosMap = arrayMap('caja_apertura_estados')
 
             for (const a of data) {
-                if (qry.cols.includes('estado')) a.estado1 = caja_apertura_estadosMap[a.estado]
+                if (qry?.cols?.includes('estado')) a.estado1 = caja_apertura_estadosMap[a.estado]
             }
         }
 

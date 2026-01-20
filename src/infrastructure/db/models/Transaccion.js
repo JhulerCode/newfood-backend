@@ -29,7 +29,6 @@ export const Transaccion = sequelize.define('transacciones', {
 
     venta_codigo: { type: DataTypes.STRING },
     venta_canal: { type: DataTypes.STRING },
-    // venta_salon: { type: DataTypes.STRING },
     venta_mesa: { type: DataTypes.STRING },
     venta_pago_metodo: { type: DataTypes.STRING },
     venta_pago_con: { type: DataTypes.DECIMAL(10, 2) },
@@ -38,7 +37,6 @@ export const Transaccion = sequelize.define('transacciones', {
     venta_entregado: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     caja_apertura: { type: DataTypes.STRING },
-    
     sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },

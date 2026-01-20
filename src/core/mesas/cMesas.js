@@ -19,7 +19,7 @@ const find = async (req, res) => {
             const activo_estadosMap = arrayMap('activo_estados')
 
             for (const a of data) {
-                if (qry.cols.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
             }
         }
 
@@ -164,7 +164,7 @@ const unir = async (req, res) => {
                 estado: { op: 'Es', val: '1' }
             }
         }
-        const pedidos = await transaccionRepository(qry)
+        const pedidos = await transaccionRepository.find(qry)
 
         if (pedidos.length > 0) {
             const pedidosId = pedidos.map(a => a.id)

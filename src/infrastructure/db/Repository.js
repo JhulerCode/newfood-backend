@@ -72,16 +72,6 @@ const include1 = {
         model: ComboArticulo,
         as: 'combo_articulos',
         attributes: ['articulo_principal', 'articulo', 'cantidad'],
-        // include: {
-        //     model: Articulo,
-        //     as: 'articulo1',
-        //     attributes: ['id', 'nombre', 'unidad', 'has_receta'],
-        //     include: {
-        //         model: RecetaInsumo,
-        //         as: 'receta_insumos',
-        //         attributes: ['articulo_principal', 'articulo', 'cantidad']
-        //     }
-        // }
     },
     comprobante1: {
         model: Comprobante,
@@ -167,6 +157,11 @@ const include1 = {
         as: 'venta_mesa1',
         attributes: ['id', 'nombre'],
     },
+    venta_pago_metodo1: {
+        model: PagoMetodo,
+        as: 'venta_pago_metodo1',
+        attributes: ['id', 'nombre'],
+    },
 }
 
 const sqls1 = {
@@ -181,6 +176,12 @@ const sqls1 = {
             `(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.transaccion = "transacciones"."id")`,
         ),
         'pagos_monto',
+    ],
+    comprobante_pagos_monto: [
+        literal(
+            `(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.comprobante = "comprobantes"."id")`,
+        ),
+        'comprobante_pagos_monto',
     ],
     // articulo_movimientos_cantidad: [
     //     Sequelize.fn('COALESCE',
@@ -246,7 +247,11 @@ export class Repository {
                     }
 
                     if (val.cols) {
-                        item.attributes.push(...val.cols)
+                        if (val.cols.exclude) {
+                            item.attributes = { exclude: val.cols.exclude }
+                        } else {
+                            item.attributes.push(...val.cols)
+                        }
                     }
                 }
             }
@@ -271,6 +276,8 @@ export class Repository {
             const fltr1 = Object.fromEntries(
                 Object.entries(qry.fltr).filter(([key]) => columns.includes(key)),
             )
+            // --- Manejo de or --- //
+            if (qry.fltr.or) fltr1.or = qry.fltr.or
             Object.assign(findProps.where, applyFilters(fltr1))
 
             // Filtros de relaciones

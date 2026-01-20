@@ -1,116 +1,113 @@
-import sequelize from '#db/sequelize.js'
-import { literal } from 'sequelize'
-import { Comprobante, ComprobanteItem } from '#db/models/Comprobante.js'
-import { Empresa } from '#db/models/Empresa.js'
-import { Socio } from '#db/models/Socio.js'
-import { ComprobanteTipo } from '#db/models/ComprobanteTipo.js'
-import { Kardex } from '#db/models/Kardex.js'
-import { Articulo } from '#db/models/Articulo.js'
-import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
-import { Colaborador } from '#db/models/Colaborador.js'
-import { CajaApertura } from '#db/models/CajaApertura.js'
-import { DineroMovimiento } from "#db/models/DineroMovimiento.js"
-import { Mesa } from '#db/models/Mesa.js'
-import { Salon } from '#db/models/Salon.js'
-import { PagoMetodo } from '#db/models/PagoMetodo.js'
-import { applyFilters, numeroATexto } from '#shared/mine.js'
+import { Repository } from '#db/Repository.js'
 import { arrayMap } from '#store/system.js'
-import dayjs from "dayjs"
-import utc from 'dayjs/plugin/utc.js'
-import timezone from 'dayjs/plugin/timezone.js'
+import dayjs from '#shared/dayjs.js'
+import sequelize from '#db/sequelize.js'
 
 import PdfPrinter from 'pdfmake'
-import { pathXml, getFilePath } from '#shared/uploadFiles.js'
-import fs from "fs"
-import path from "path"
+import { numeroATexto } from '#shared/mine.js'
 
 import config from '../../config.js'
 import { Resend } from 'resend'
 import { comprobanteHtml } from '#shared/layouts.js'
 
-// import { crearXml } from '#shared/sunat/crearXml.js'
-// import { firmarXml } from '#shared/sunat/firmarXml.js'
-// import { enviarSunat } from '#shared/sunat/enviarSunat.js'
-import { sendDoc, anularDoc, estadoDoc, xmlDoc, calculateInvoiceLineValues } from '#shared/sunat/mifact.js'
+import { sendDoc, anularDoc, estadoDoc, xmlDoc } from '#shared/sunat/mifact.js'
 
+const repository = new Repository('Comprobante')
+const ComprobanteItemRepository = new Repository('ComprobanteItem')
+const CajaAperturaRepository = new Repository('CajaApertura')
+const TransaccionRepository = new Repository('Transaccion')
+const TransaccionItemRepository = new Repository('TransaccionItem')
+const ComprobanteTipoRepository = new Repository('ComprobanteTipo')
+const SocioRepository = new Repository('Socio')
+const KardexRepository = new Repository('Kardex')
+const ArticuloRepository = new Repository('Articulo')
+const DineroMovimientoRepository = new Repository('DineroMovimiento')
 
-const include1 = {
-    socio1: {
-        model: Socio,
-        as: 'socio1',
-        attributes: ['id', 'nombres']
-    },
-    createdBy1: {
-        model: Colaborador,
-        as: 'createdBy1',
-        attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
-    },
-    // pago_comprobante1: {
-    //     model: ComprobanteTipo,
-    //     as: 'pago_comprobante1',
-    //     attributes: ['id', 'nombre']
-    // },
-    comprobante_items: {
-        model: ComprobanteItem,
-        as: 'comprobante_items',
-    },
-    transaccion1: {
-        model: Transaccion,
-        as: 'transaccion1',
-        attributes: ['id', 'venta_codigo', 'venta_canal', 'venta_mesa'],
-    },
-    caja_apertura1: {
-        model: CajaApertura,
-        as: 'caja_apertura1',
-        attributes: ['id', 'createdAt']
-    },
+const find = async (req, res) => {
+    try {
+        const { empresa } = req.user
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        qry.fltr.empresa = { op: 'Es', val: empresa }
+
+        const data = await repository.find(qry, true)
+
+        if (data.length > 0) {
+            const pago_condicionesMap = arrayMap('pago_condiciones')
+            const pago_comprobantesMap = arrayMap('comprobante_tipos')
+            const comprobante_estadosMap = arrayMap('comprobante_estados')
+
+            for (const a of data) {
+                const tKey = setTKey(a.doc_tipo)
+                if (qry?.cols?.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantesMap[tKey]
+                if (qry?.cols?.includes('pago_condicion'))
+                    a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
+                if (qry?.cols?.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
+            }
+        }
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
 }
 
-const sqls1 = {
-    pagos_monto: [
-        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM dinero_movimientos AS c WHERE c.comprobante = "comprobantes"."id")`),
-        "pagos_monto"
-    ]
+const findById = async (req, res) => {
+    try {
+        const { empresa } = req.user
+        const { id } = req.params
+        const data = await getComprobante(id)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
 }
 
-dayjs.extend(utc)
-dayjs.extend(timezone)
-dayjs.tz.setDefault('America/Lima')
-
-// --- Rutas --- //
 const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
         const { colaborador, empresa } = req.user
         const {
-            fecha_emision, doc_tipo, socio, pago_condicion, estado,
+            fecha_emision,
+            doc_tipo,
+            socio,
+            pago_condicion,
+            estado,
             // sub_total_ventas, anticipos, descuentos, valor_venta,
             // isc, igv, icbper, otros_cargos, otros_tributos,
-            gravado, exonerado, inafecto, gratuito, descuentos,
-            igv, isc, icbper,
-            monto, nota,
-            comprobante_items, transaccion1, pago_metodos,
+            gravado,
+            exonerado,
+            inafecto,
+            gratuito,
+            descuentos,
+            igv,
+            isc,
+            icbper,
+            monto,
+            nota,
+            comprobante_items,
+            transaccion1,
+            pago_metodos,
             comes_from,
         } = req.body
         let { transaccion } = req.body
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
-        const caja_apertura = await CajaApertura.findOne({
-            where: {
-                estado: '1',
-                empresa: empresa.id,
-            }
-        })
+        const qry = {
+            fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
+        }
+        const caja_aperturas = await CajaAperturaRepository.find(qry)
 
-        if (caja_apertura == null) {
+        if (caja_aperturas.length == 0) {
             await transaction.rollback()
-            res.json({ code: 1, msg: 'La caja no está aperturada' })
+            res.json({ code: 1, msg: 'La caja no está aperturada, no puede generar comprobantes' })
             return
         }
+        const caja_apertura = caja_aperturas[0]
 
-        // --- VENTA POS --- //
-        // console.log(transaccion1)
+        // --- VENTA DIRECTA (POS) --- //
         if (transaccion1.venta_canal == '4') {
             const sendT = {
                 tipo: transaccion1.tipo,
@@ -120,53 +117,56 @@ const create = async (req, res) => {
                 pago_condicion,
                 monto,
 
-                // observacion,
+                observacion,
                 estado: 2,
-                // anulado_motivo,
-
-                // compra_comprobante,
-                // compra_comprobante_serie,
-                // compra_comprobante_correlativo,
 
                 venta_codigo: transaccion1.venta_codigo,
                 venta_canal: transaccion1.venta_canal,
-                // venta_mesa,
-                // venta_pago_metodo,
-                // venta_pago_con,
-                // venta_socio_datos,
-                venta_entregado: true,
                 venta_facturado: pago_condicion == 1 ? true : false,
+                venta_entregado: true,
 
-                empresa: empresa.id,
+                caja_apertura: caja_apertura.id,
+                empresa,
                 createdBy: colaborador,
             }
 
-            const newTransaccion = await Transaccion.create(sendT, { transaction })
+            const newTransaccion = await TransaccionRepository.create(sendT, transaction)
             transaccion = newTransaccion.id
 
-            const itemsT = comprobante_items.map(a => ({
-                articulo: a.articulo,
-                cantidad: a.cantidad,
-                pu: a.pu,
-                igv_afectacion: a.igv_afectacion,
-                igv_porcentaje: a.igv_porcentaje,
-                observacion: a.observacion,
-                transaccion,
-                has_receta: a.has_receta,
-                receta_insumos: a.receta_insumos,
-                is_combo: a.is_combo,
-                combo_articulos: a.combo_articulos,
-                venta_entregado: a.cantidad,
+            const itemsT = []
+            for (const a of comprobante_items) {
+                randomId = crypto.randomUUID()
+                a.id = randomId
+                a.id1 = randomId
 
-                empresa: empresa.id,
-                createdBy: colaborador
-            }))
+                const send = {
+                    articulo: a.articulo,
+                    cantidad: a.cantidad,
 
-            await TransaccionItem.bulkCreate(itemsT, { transaction })
+                    pu: a.pu,
+                    igv_afectacion: a.igv_afectacion,
+                    igv_porcentaje: a.igv_porcentaje,
+
+                    observacion: a.observacion,
+                    has_receta: a.has_receta,
+                    receta_insumos: a.receta_insumos,
+                    is_combo: a.is_combo,
+                    combo_articulos: a.combo_articulos,
+                    venta_entregado: a.cantidad,
+
+                    transaccion,
+                    empresa,
+                    createdBy: colaborador,
+                }
+
+                itemsT.push(send)
+            }
+
+            await TransaccionItemRepository.createBulk(itemsT, transaction)
         }
 
         // --- CORRELATIVO COMPROBANTE --- //
-        const pago_comprobante = await ComprobanteTipo.findByPk(doc_tipo)
+        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo })
 
         if (pago_comprobante == null) {
             await transaction.rollback()
@@ -182,16 +182,15 @@ const create = async (req, res) => {
 
         // --- CLIENTE DATOS --- //
         let cliente = {}
-        if (socio == `${empresa.subdominio}-CLIENTES-VARIOS`) {
+        if (socio == `${req.empresa.subdominio}-CLIENTES-VARIOS`) {
             cliente = {
                 doc_tipo: '0',
                 doc_numero: '00000000',
                 doc_nombres: '00000000 - CLIENTES VARIOS',
                 nombres: 'CLIENTES VARIOS',
             }
-        }
-        else {
-            cliente = await Socio.findByPk(socio)
+        } else {
+            cliente = await SocioRepository.find({ id: socio })
         }
 
         // --- CREAR --- //
@@ -214,6 +213,7 @@ const create = async (req, res) => {
                 departamento: empresa.departamento,
                 anexo: '0000',
             },
+
             cliente_datos: {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
@@ -253,11 +253,11 @@ const create = async (req, res) => {
             nota,
             mifact: {},
 
-            empresa: empresa.id,
-            createdBy: colaborador
+            empresa,
+            createdBy: colaborador,
         }
 
-        const nuevo = await Comprobante.create(send, { transaction })
+        const nuevo = await repository.create(send, transaction)
 
         // --- GUARDAR ITEMS --- //
         const items = []
@@ -300,28 +300,33 @@ const create = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
-                empresa: empresa.id,
-                createdBy: colaborador
+                empresa,
+                createdBy: colaborador,
             })
 
             i++
         }
         send.items = items
-        await ComprobanteItem.bulkCreate(items, { transaction })
+        await ComprobanteItemRepository.createBulk(items, transaction)
 
         // --- CREAR MIFACT --- //
         let res_mifact
-        // if ([`${empresa.subdominio}-01`, `${empresa.subdominio}-03`].includes(doc_tipo)) {
-        if (['01', '03'].includes(doc_tipo)) {
+        if (false) {
+            // if (doc_tipo.includes('01') || doc_tipo.includes('03')) {
             res_mifact = await sendDoc(send)
-            if (res_mifact.errors && res_mifact.errors != "") {
+            if (res_mifact.errors && res_mifact.errors != '') {
                 await transaction.rollback()
-                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
+                res.json({
+                    code: 1,
+                    msg: 'Problemas al emitir comprobante, verifique datos',
+                    data: res_mifact,
+                })
                 return
             }
 
             // --- ACTUALIZAR RESPUESTA SUNAT --- //
-            await Comprobante.update(
+            await repository.update(
+                { id: nuevo.id },
                 {
                     hash: res_mifact.codigo_hash,
                     estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
@@ -329,41 +334,54 @@ const create = async (req, res) => {
                     sunat_respuesta_nota: res_mifact.sunat_note,
                     sunat_respuesta_descripcion: res_mifact.sunat_description,
                 },
-                {
-                    where: { id: nuevo.id },
-                    transaction
-                }
+                transaction,
             )
-        }
-        else {
-            await Comprobante.update(
+        } else {
+            await repository.update(
+                { id: nuevo.id },
                 {
                     estado: 3,
                 },
-                {
-                    where: { id: nuevo.id },
-                    transaction
-                }
+                transaction,
             )
         }
-        // throw error
 
         // --- ACTUALIZAR CORRELATIVO --- //
-        await ComprobanteTipo.update(
+        await ComprobanteTipoRepository.update(
+            { id: doc_tipo },
             { correlativo: pago_comprobante.correlativo + 1 },
-            {
-                where: { id: doc_tipo },
-                transaction
-            }
+            transaction,
         )
 
         // --- GUARDAR KARDEX --- //
         const kardexItems = []
+        const articulosRecetasIds = []
         for (const a of comprobante_items) {
             if (a.is_combo == true) {
                 for (const b of a.combo_articulos) {
                     if (b.articulo1.has_receta) {
-                        for (const c of b.articulo1.receta_insumos) {
+                        articulosRecetasIds.push(b.articulo)
+                    }
+                }
+            } else {
+                if (a.has_receta == true) {
+                    articulosRecetasIds.push(a.articulo)
+                }
+            }
+        }
+        const qry1 = {
+            fltr: { id: { op: 'Es', val: articulosRecetasIds } },
+            incl: ['receta_insumos'],
+        }
+        const articulosRecetas = await ArticuloRepository.find(qry1, true)
+        const articulosRecetasMap = articulosRecetas.reduce((obj, a) => ((obj[a.id] = a), obj), {})
+
+        for (const a of comprobante_items) {
+            if (a.is_combo == true) {
+                for (const b of a.combo_articulos) {
+                    if (b.articulo1.has_receta) {
+                        const receta = articulosRecetasMap[b.articulo].receta_insumos
+                        for (const c of receta) {
                             kardexItems.push({
                                 tipo: 2,
                                 fecha: fecha_emision,
@@ -371,9 +389,10 @@ const create = async (req, res) => {
                                 cantidad: c.cantidad * b.cantidad * a.cantidad,
                                 estado: 1,
                                 transaccion,
+                                transaccion_item: a.id1,
                                 comprobante: nuevo.id,
-                                empresa: empresa.id,
-                                createdBy: colaborador
+                                empresa,
+                                createdBy: colaborador,
                             })
                         }
                     } else {
@@ -384,16 +403,17 @@ const create = async (req, res) => {
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
                             transaccion,
+                            transaccion_item: a.id1,
                             comprobante: nuevo.id,
-                            empresa: empresa.id,
-                            createdBy: colaborador
+                            empresa,
+                            createdBy: colaborador,
                         })
                     }
                 }
-            }
-            else {
+            } else {
                 if (a.has_receta == true) {
-                    for (const b of a.receta_insumos) {
+                    const receta = articulosRecetasMap[a.articulo].receta_insumos
+                    for (const b of receta) {
                         kardexItems.push({
                             tipo: 2,
                             fecha: fecha_emision,
@@ -401,9 +421,10 @@ const create = async (req, res) => {
                             cantidad: b.cantidad * a.cantidad,
                             estado: 1,
                             transaccion,
+                            transaccion_item: a.id1,
                             comprobante: nuevo.id,
-                            empresa: empresa.id,
-                            createdBy: colaborador
+                            empresa,
+                            createdBy: colaborador,
                         })
                     }
                 } else {
@@ -414,74 +435,105 @@ const create = async (req, res) => {
                         cantidad: a.cantidad,
                         estado: 1,
                         transaccion,
+                        transaccion_item: a.id1,
                         comprobante: nuevo.id,
-                        empresa: empresa.id,
-                        createdBy: colaborador
+                        empresa,
+                        createdBy: colaborador,
                     })
                 }
             }
         }
-        await Kardex.bulkCreate(kardexItems, { transaction })
+        await KardexRepository.createBulk(kardexItems, transaction)
 
         // --- ACTUALIZAR STOCK --- //
         const transaccion_tiposMap = arrayMap('kardex_tipos')
         const tipoInfo = transaccion_tiposMap[2]
+        const agrupado = {}
+
         for (const a of kardexItems) {
-            await Articulo.update(
-                {
-                    stock: sequelize.literal(`COALESCE(stock, 0) ${tipoInfo.operacion == 1 ? '+' : '-'} ${a.cantidad}`)
-                },
-                {
-                    where: { id: a.articulo },
-                    transaction
-                }
-            )
+            agrupado[a.articulo] =
+                (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
         }
+
+        const cases = Object.entries(agrupado)
+            .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
+            .join(' ')
+
+        const ids = Object.keys(agrupado)
+            .map((id) => `'${id}'`)
+            .join(',')
+
+        await sequelize.query(
+            `
+                UPDATE articulos
+                SET stock = COALESCE(stock, 0) + CASE id
+                    ${cases}
+                    ELSE 0
+                END
+                WHERE id IN (${ids})
+            `,
+            { transaction },
+        )
 
         // --- ACTUALIZAR PEDIDO ITEMS --- //
         if (transaccion1.venta_canal != '4') {
+            const acumulado = {}
+
             for (const a of comprobante_items) {
-                await TransaccionItem.update(
-                    {
-                        venta_entregado: sequelize.literal(`COALESCE(venta_entregado, 0) + ${Number(a.cantidad)}`)
-                    },
-                    {
-                        where: {
-                            id: a.id1,
-                            transaccion
-                        },
-                        transaction
-                    }
-                )
+                acumulado[a.id1] = (acumulado[a.id1] || 0) + Number(a.cantidad)
             }
+
+            const cases = Object.entries(acumulado)
+                .map(([id, cant]) => `WHEN '${id}' THEN ${cant}`)
+                .join(' ')
+
+            const ids = Object.keys(acumulado)
+                .map((id) => `'${id}'`)
+                .join(',')
+
+            await sequelize.query(
+                `
+                    UPDATE transaccion_items
+                    SET venta_entregado = COALESCE(venta_entregado, 0) + CASE id
+                        ${cases}
+                        ELSE 0
+                    END
+                    WHERE id IN (${ids})
+                        AND transaccion = '${transaccion}'
+                `,
+                { transaction },
+            )
         }
 
         // --- GUARDAR PAGOS --- //
         if (pago_condicion == 1) {
-            const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
-                fecha: fecha_emision,
-                tipo: 1,
-                operacion: 1,
-                detalle: null,
-                pago_metodo: a.id,
-                monto: a.monto,
-                comprobante: nuevo.id,
-                caja_apertura: caja_apertura.id,
-                empresa: empresa.id,
-                createdBy: colaborador
-            }))
-            await DineroMovimiento.bulkCreate(pagoItems, { transaction })
+            const pagoItems = pago_metodos
+                .filter((a) => a.monto > 0)
+                .map((a) => ({
+                    fecha: fecha_emision,
+                    tipo: 1,
+                    operacion: 1,
+                    detalle: null,
+                    pago_metodo: a.id,
+                    monto: a.monto,
+                    comprobante: nuevo.id,
+                    caja_apertura: caja_apertura.id,
+                    empresa,
+                    createdBy: colaborador,
+                }))
+            await DineroMovimientoRepository.createBulk(pagoItems, transaction)
         }
 
         await transaction.commit()
 
-        // --- ACTUALIZAR PEDIDO SI SE FACTURÓ TODO --- //
+        // --- ACTUALIZAR PEDIDO SI SE ENTREGÓ TODO --- //
         if (transaccion1.venta_canal != '4') {
-            const pedido_items = await TransaccionItem.findAll({
-                where: { transaccion }
-            })
+            const qry2 = {
+                fltr: { transaccion: { op: 'Es', val: transaccion } },
+            }
+            const pedido_items = await TransaccionItemRepository.find(qry2)
 
-            const is_pendiente = pedido_items.some(a => a.venta_entregado < a.cantidad)
+            const is_pendiente = pedido_items.some((a) => a.venta_entregado < a.cantidad)
             if (is_pendiente == false) {
                 // --- Si es mesa --- //
                 const send = { venta_facturado: true }
@@ -490,100 +542,18 @@ const create = async (req, res) => {
                     send.estado = 2
                 }
 
-                await Transaccion.update(
-                    send,
-                    {
-                        where: { id: transaccion },
-                    }
-                )
+                await TransaccionRepository.update({ id: transaccion }, send)
             }
         }
 
         // --- DEVOLVER --- //
-        const data = await getComprobante(nuevo.id, empresa)
+        const data = await getComprobante(nuevo.id)
         const data_transaccion = await loadOneTransaccion(transaccion)
 
         res.json({ code: 0, data, facturacion: res_mifact, data_transaccion })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const find = async (req, res) => {
-    try {
-        const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
-        const findProps = {
-            attributes: ['id'],
-            order: [['numero', 'ASC']],
-            where: { empresa: empresa.id },
-            include: []
-        }
-
-        if (qry) {
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
-
-            if (qry.fltr) {
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-            }
-
-            if (qry.cols) {
-                const excludeCols = ['pagos_monto']
-                const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
-                findProps.attributes = findProps.attributes.concat(cols1)
-
-                // --- AGREAGAR LOS REF QUE SI ESTÁN EN LA BD --- //
-                if (qry.cols.includes('socio')) findProps.include.push(include1.socio1)
-            }
-
-            if (qry.sqls) {
-                for (const a of qry.sqls) {
-                    if (sqls1[a]) findProps.attributes.push(sqls1[a])
-                }
-            }
-        }
-
-        let data = await Comprobante.findAll(findProps)
-
-        if (data.length > 0 && qry.cols) {
-            data = data.map(a => a.toJSON())
-
-            const pago_condicionesMap = arrayMap('pago_condiciones')
-            const pago_comprobantesMap = arrayMap('comprobante_tipos')
-            const comprobante_estadosMap = arrayMap('comprobante_estados')
-
-            for (const a of data) {
-                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
-                if (qry.cols.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantesMap[tKey]
-                if (qry.cols.includes('pago_condicion')) a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
-                if (qry.cols.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
-            }
-        }
-
-        res.json({ code: 0, data })
-    }
-    catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const findById = async (req, res) => {
-    try {
-        const { empresa } = req.user
-        const { id } = req.params
-        const data = await getComprobante(id, empresa)
-
-        res.json({ code: 0, data })
-    }
-    catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -593,25 +563,23 @@ const getPdf = async (req, res) => {
         const { empresa } = req.user
         const { id } = req.params
 
-        const data = await getComprobante(id, empresa)
-        const buffer = await makePdf(data, empresa)
+        const data = await getComprobante(id)
+        const buffer = await makePdf(data, req.empresa)
 
-        res.setHeader("Content-Type", "application/pdf")
-        res.setHeader("Content-Disposition", `inline; filename=${data.serie}-${data.numero}.pdf`)
+        res.setHeader('Content-Type', 'application/pdf')
+        res.setHeader('Content-Disposition', `inline; filename=${data.serie}-${data.numero}.pdf`)
         res.send(buffer)
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
 const sendMail = async (req, res) => {
     try {
-        const { empresa } = req.user
         const { id, email_to_send } = req.body
 
-        const data = await getComprobante(id, empresa)
-        const buffer = await makePdf(data, empresa)
+        const data = await getComprobante(id)
+        const buffer = await makePdf(data, req.empresa)
         const comprobante_numero = `${data.serie}-${data.numero}`
         const empresa_nombre = data.empresa_datos.razon_social
         const html = comprobanteHtml(comprobante_numero, empresa_nombre)
@@ -625,21 +593,21 @@ const sendMail = async (req, res) => {
             attachments: [
                 {
                     filename: `${comprobante_numero}.pdf`,
-                    content: buffer.toString("base64"),
-                    encoding: "base64",
+                    content: buffer.toString('base64'),
+                    encoding: 'base64',
                 },
             ],
         })
 
         if (result.error) {
-            console.error("Error al enviar email:", result.error);
-            return res.status(500).json({ code: 1, msg: "No se pudo enviar el correo", error: result.error });
-        }
-        else {
+            console.error('Error al enviar email:', result.error)
+            return res
+                .status(500)
+                .json({ code: 1, msg: 'No se pudo enviar el correo', error: result.error })
+        } else {
             res.json({ code: 0 })
         }
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -654,44 +622,50 @@ const actualizarPago = async (req, res) => {
 
         let caja_apertura1
         if (modal_mode == 1) {
-            caja_apertura1 = await CajaApertura.findOne({ where: { estado: '1' } })
-
             // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
-            if (caja_apertura1 == null) {
+            const qry = {
+                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
+            }
+            const caja_apertura = await CajaAperturaRepository.find(qry, true)
+
+            if (caja_apertura.length == 0) {
                 await transaction.rollback()
-                res.json({ code: 1, msg: 'La caja no está aperturada' })
+                res.json({
+                    code: 1,
+                    msg: 'La caja no está aperturada, no puede generar comprobantes',
+                })
                 return
             }
+
+            caja_apertura1 = caja_apertura[0]
         }
 
         if (modal_mode == 2) {
             // --- ELIMINAR PAGOS ANTERIORES --- //
-            await DineroMovimiento.destroy({
-                where: { comprobante: id },
-                transaction
-            })
+            await DineroMovimientoRepository.delete({ comprobante: id }, transaction)
         }
 
         // --- GUARDAR PAGOS --- //
-        const pagoItems = pago_metodos.filter(a => a.monto > 0).map(a => ({
-            fecha: modal_mode == 1 ? caja_apertura1.fecha_apertura : fecha_emision,
-            tipo: 1,
-            operacion: 1,
-            detalle: null,
-            pago_metodo: a.id,
-            monto: a.monto,
-            comprobante: id,
-            caja_apertura: modal_mode == 1 ? caja_apertura1.id : caja_apertura,
-            empresa: empresa.id,
-            createdBy: colaborador
-        }))
-        await DineroMovimiento.bulkCreate(pagoItems, { transaction })
+        const pagoItems = pago_metodos
+            .filter((a) => a.monto > 0)
+            .map((a) => ({
+                fecha: modal_mode == 1 ? caja_apertura1.fecha_apertura : fecha_emision,
+                tipo: 1,
+                operacion: 1,
+                detalle: null,
+                pago_metodo: a.id,
+                monto: a.monto,
+                comprobante: id,
+                caja_apertura: modal_mode == 1 ? caja_apertura1.id : caja_apertura,
+                empresa,
+                createdBy: colaborador,
+            }))
+        await DineroMovimientoRepository.createBulk(pagoItems, transaction)
 
         await transaction.commit()
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -708,9 +682,10 @@ const anular = async (req, res) => {
 
         // --- ANULAR MIFACT --- //
         let res_mifact
-        if (['01', '03'].includes(item.doc_tipo)) {
+        if (false) {
+            // if (doc_tipo.includes('01') || doc_tipo.includes('03')) {
             res_mifact = await anularDoc(item)
-            if (res_mifact.errors && res_mifact.errors != "") {
+            if (res_mifact.errors && res_mifact.errors != '') {
                 await transaction.rollback()
                 res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res_mifact })
                 return
@@ -718,34 +693,29 @@ const anular = async (req, res) => {
         }
 
         // --- ANULAR --- //
-        await Comprobante.update(
+        await repository.update(
+            { id },
             {
                 estado: 0,
                 anulado_motivo,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            {
-                where: { id },
-                transaction
-            }
+            transaction,
         )
 
         // --- ANULAR PAGOS --- //
-        await DineroMovimiento.update(
+        await DineroMovimientoRepository.update(
+            { comprobante: id },
             {
                 estado: 0,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            {
-                where: { comprobante: id },
-                transaction
-            }
+            transaction,
         )
 
         await transaction.commit()
 
         res.json({ code: 0, data: res_mifact })
-
     } catch (error) {
         await transaction.rollback()
 
@@ -759,33 +729,37 @@ const canjear = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const {
-            fecha_emision, doc_tipo, doc_tipo1, socio
-        } = req.body
+        const { fecha_emision, doc_tipo, doc_tipo1, socio } = req.body
 
-        const comprobante = await Comprobante.findByPk(id, {
-            include: [
-                {
-                    model: ComprobanteItem,
-                    as: 'comprobante_items',
+        const qry = {
+            fltr: { id: { op: 'Es', val: id } },
+            cols: { exclude: [] },
+            incl: ['comprobante_items'],
+            iccl: {
+                comprobante_items: {
+                    // cols: { exclude: [] },
                 },
-            ]
-        })
+            },
+        }
+
+        const comprobantes = await repository.find(qry, true)
+        const comprobante = comprobantes[0]
 
         // --- ANULAR MIFACT --- //
         let res1_mifact
-        // if (comprobante.doc_tipo != `${empresa.subdominio}-NV`) {
-        //     res1_mifact = await anularDoc(comprobante)
-        //     if (res1_mifact.errors && res1_mifact.errors != "") {
-        //         await transaction.rollback()
-        //         res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res1_mifact })
-        //         return
-        //     }
-        // }
+        if (false) {
+            // if (doc_tipo.includes('01') || doc_tipo.includes('03')) {
+            res1_mifact = await anularDoc(comprobante)
+            if (res1_mifact.errors && res1_mifact.errors != '') {
+                await transaction.rollback()
+                res.json({ code: 1, msg: 'No se pudo anular el comprobante', data: res1_mifact })
+                return
+            }
+        }
 
         // --- CREAR NUEVO COMPROBANTE --- //
-        const cliente = await Socio.findByPk(socio)
-        const pago_comprobante = await ComprobanteTipo.findByPk(doc_tipo1)
+        const cliente = await SocioRepository.find({ id: socio }, true)
+        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo1 }, true)
 
         const send = {
             socio,
@@ -823,17 +797,15 @@ const canjear = async (req, res) => {
             nota: comprobante.nota,
             mifact: {},
 
-            empresa: empresa.id,
-            createdBy: colaborador
+            empresa,
+            createdBy: colaborador,
         }
-
-        const nuevo = await Comprobante.create(send, { transaction })
+        const nuevo = await repository.create(send, transaction)
+        console.log('ASD1')
 
         // --- GUARDAR ITEMS --- //
         const items = []
         for (const a of comprobante.comprobante_items) {
-            // calculateInvoiceLineValues(a)
-
             items.push({
                 articulo: a.articulo,
                 descripcion: a.descripcion,
@@ -871,25 +843,31 @@ const canjear = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
-                empresa: empresa.id,
-                createdBy: colaborador
+                empresa,
+                createdBy: colaborador,
             })
         }
         send.items = items
-        await ComprobanteItem.bulkCreate(items, { transaction })
+        await ComprobanteItemRepository.createBulk(items, transaction)
 
         // --- CREAR MIFACT --- //
         let res_mifact
-        if (['01', '03'].includes(doc_tipo1)) {
+        if (false) {
+            // if (doc_tipo.includes('01') || doc_tipo.includes('03')) {
             res_mifact = await sendDoc(send)
-            if (res_mifact.errors && res_mifact.errors != "") {
+            if (res_mifact.errors && res_mifact.errors != '') {
                 await transaction.rollback()
-                res.json({ code: 1, msg: 'Problemas al emitir comprobante, verifique datos', data: res_mifact })
+                res.json({
+                    code: 1,
+                    msg: 'Problemas al emitir comprobante, verifique datos',
+                    data: res_mifact,
+                })
                 return
             }
 
             // --- ACTUALIZAR RESPUESTA SUNAT --- //
-            await Comprobante.update(
+            await repository.update(
+                { id: nuevo.id },
                 {
                     hash: res_mifact.codigo_hash,
                     estado: res_mifact.sunat_responsecode == 0 ? 3 : 2,
@@ -897,63 +875,50 @@ const canjear = async (req, res) => {
                     sunat_respuesta_nota: res_mifact.sunat_note,
                     sunat_respuesta_descripcion: res_mifact.sunat_description,
                 },
-                {
-                    where: { id: nuevo.id },
-                    transaction
-                }
+                transaction,
             )
-        }
-        else {
-            await Comprobante.update(
+        } else {
+            await repository.update(
+                { id: nuevo.id },
                 {
                     estado: 3,
                 },
-                {
-                    where: { id: nuevo.id },
-                    transaction
-                }
+                transaction,
             )
         }
 
         // --- ACTUALIZAR CORRELATIVO --- //
-        await ComprobanteTipo.update(
+        await ComprobanteTipoRepository.update(
+            { id: doc_tipo1 },
             { correlativo: pago_comprobante.correlativo + 1 },
-            {
-                where: { id: doc_tipo1 },
-                transaction
-            }
+            transaction,
         )
 
         // --- ACTUALIZAR ESTADO CANJEADO --- //
-        await Comprobante.update(
+        await repository.update(
+            { id },
             {
                 estado: 4,
                 canjeado_por: nuevo.id,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            {
-                where: { id },
-                transaction
-            }
+            transaction,
         )
 
         // --- ACTUALIZAR PAGOS --- //
-        await DineroMovimiento.update(
+        await DineroMovimientoRepository.update(
+            { comprobante: id },
             {
                 comprobante: nuevo.id,
-                updatedBy: colaborador
+                updatedBy: colaborador,
             },
-            {
-                where: { comprobante: id },
-                transaction
-            }
+            transaction,
         )
 
         await transaction.commit()
 
         res.json({ code: 0, new: res_mifact, past: res1_mifact })
-    }
-    catch (error) {
+    } catch (error) {
         await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -965,39 +930,45 @@ const resumen = async (req, res) => {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
-        const findProps = {
-            attributes: ['id', 'fecha_emision', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'pago_condicion', 'estado'],
-            order: [['createdAt', 'ASC']],
-            where: { empresa: empresa.id },
-            include: [
-                {
-                    model: ComprobanteItem,
-                    as: 'comprobante_items',
-                    attributes: ['id', 'articulo', 'descripcion', 'pu', 'descuento_tipo', 'descuento_valor', 'cantidad'],
+        const qry1 = {
+            cols: [
+                'id',
+                'fecha_emision',
+                'doc_tipo',
+                'serie',
+                'numero',
+                'serie_correlativo',
+                'monto',
+                'pago_condicion',
+                'estado',
+            ],
+            ordr: [['createdAt', 'ASC']],
+            incl: ['comprobante_items', 'transaccion1', 'dinero_movimientos'],
+            iccl: {
+                componente_items: {
+                    cols: [
+                        'id',
+                        'articulo',
+                        'descripcion',
+                        'pu',
+                        'descuento_tipo',
+                        'descuento_valor',
+                        'cantidad',
+                    ],
                 },
-                {
-                    model: Transaccion,
-                    as: 'transaccion1',
-                    attributes: ['id', 'venta_canal'],
+                transaccion1: {
+                    cols: ['venta_canal'],
                 },
-                {
-                    model: DineroMovimiento,
-                    as: 'dinero_movimientos',
-                    attributes: ['id', 'pago_metodo', 'monto'],
-                    include: {
-                        model: PagoMetodo,
-                        as: 'pago_metodo1',
-                        attributes: ['id', 'nombre', 'color']
-                    }
+                dinero_movimientos: {
+                    incl: ['pago_metodo1']
                 }
-            ]
+            },
+            fltr: { empresa: { op: 'Es', val: empresa } },
         }
 
-        if (qry) {
-            Object.assign(findProps.where, applyFilters(qry.fltr))
-        }
+        if (qry) Object.assign(qry1.fltr, qry.fltr)
 
-        const comprobantes = await Comprobante.findAll(findProps)
+        const comprobantes = await repository.find(qry1, true)
 
         const ventas = {
             tiempo: {},
@@ -1029,7 +1000,7 @@ const resumen = async (req, res) => {
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
                 ventas.total += Number(a.monto)
-
+                console.log('ASD')
                 // --- MÉTODOS DE PAGO --- //
                 for (const b of a.dinero_movimientos) {
                     const mkey = b.pago_metodo
@@ -1038,7 +1009,7 @@ const resumen = async (req, res) => {
                             id: mkey,
                             name: b.pago_metodo1.nombre,
                             value: Number(b.monto),
-                            itemStyle: { color: b.pago_metodo1.color }
+                            itemStyle: { color: b.pago_metodo1.color },
                         }
                         ventas.pago_metodos.push(item)
                         pagoMetodosMap[mkey] = item
@@ -1046,9 +1017,9 @@ const resumen = async (req, res) => {
                         pagoMetodosMap[mkey].value += Number(b.monto)
                     }
                 }
-
+                console.log('ASD1')
                 // --- TIPOS DE COMPROBANTES --- //
-                const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                const tKey = setTKey(a.doc_tipo)
                 if (!comprobanteTiposMap[tKey]) {
                     const item = {
                         id: tKey,
@@ -1060,7 +1031,7 @@ const resumen = async (req, res) => {
                 } else {
                     comprobanteTiposMap[tKey].value += Number(a.monto)
                 }
-
+                console.log('ASD2')
                 // --- CANALES --- //
                 const cKey = a.transaccion1.venta_canal
                 if (!canalesMap[cKey]) {
@@ -1111,7 +1082,7 @@ const resumen = async (req, res) => {
                 }
 
                 // --- TIEMPO --- //
-                const mes = dayjs(a.fecha_emision).format("YYYY-MMM")
+                const mes = dayjs(a.fecha_emision).format('YYYY-MMM')
                 if (!mesesMap[mes]) mesesMap[mes] = 0
                 mesesMap[mes] += Number(a.monto)
             }
@@ -1142,57 +1113,48 @@ const resumen = async (req, res) => {
         const data = {
             ventas,
             anulados,
-            general: ventas.total + anulados.total + ventas.descuentos + anulados.descuentos
+            general: ventas.total + anulados.total + ventas.descuentos + anulados.descuentos,
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
+// --- Helpers --- //
+async function getComprobante(id) {
+    const qry = {
+        fltr: { id: { op: 'Es', val: id } },
+        cols: { exclude: [] },
+        incl: ['comprobante_items', 'dinero_movimientos'],
+        iccl: {
+            dinero_movimientos: {
+                incl: ['pago_metodo1'],
+            },
+            comprobante_items: {
+                cols: { exclude: [] },
+            },
+        },
+    }
+    const comprobante = await repository.find(qry, true)
+    const data = comprobante[0]
 
-// --- Funciones --- //
-async function getComprobante(id, empresa) {
-    let data = await Comprobante.findByPk(id, {
-        include: [
-            {
-                model: ComprobanteItem,
-                as: 'comprobante_items',
+    const qry1 = {
+        fltr: { comprobante: { op: 'Es', val: id } },
+        cols: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
+        incl: ['venta_mesa1'],
+        iccl: {
+            venta_mesa1: {
+                incl: ['salon1'],
             },
-            {
-                model: Transaccion,
-                as: 'transaccion1',
-                attributes: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
-                include: {
-                    model: Mesa,
-                    as: 'venta_mesa1',
-                    attributes: ['id', 'nombre'],
-                    include: {
-                        model: Salon,
-                        as: 'salon1',
-                        attributes: ['id', 'nombre']
-                    }
-                }
-            },
-            {
-                model: DineroMovimiento,
-                as: 'dinero_movimientos',
-                attributes: ['id', 'pago_metodo', 'monto'],
-                include: {
-                    model: PagoMetodo,
-                    as: 'pago_metodo1',
-                    attributes: ['id', 'nombre']
-                }
-            }
-        ]
-    })
+        },
+    }
+    const transaccion = await TransaccionRepository.find(qry1, true)
+    data.transaccion1 = transaccion[0]
 
     if (data) {
-        data = data.toJSON()
-
-        const tKey = data.doc_tipo.replace(`${empresa.subdominio}-`, '')
+        const tKey = setTKey(data.doc_tipo)
         const pago_comprobantesMap = arrayMap('comprobante_tipos')
         const documentos_identidadMap = arrayMap('documentos_identidad')
         const pago_condicionesMap = arrayMap('pago_condiciones')
@@ -1209,7 +1171,7 @@ async function getComprobante(id, empresa) {
 
         data.moneda1 = {
             plural: 'SOLES',
-            singular: 'SOL'
+            singular: 'SOL',
         }
     }
 
@@ -1232,7 +1194,7 @@ async function makePdf(doc, empresa) {
     // const logoPath = getFilePath(empresa.logo)
     // const logoBase64 = fs.readFileSync(logoPath).toString("base64");
     const logoBase64 = await getImageBase64(empresa.logo_url)
-    const tKey = doc.doc_tipo.replace(`${empresa.subdominio}-`, '')
+    const tKey = setTKey(doc.doc_tipo)
 
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
@@ -1259,14 +1221,14 @@ async function makePdf(doc, empresa) {
     const pagosStack =
         doc.dinero_movimientos.length > 0
             ? {
-                stack: [
-                    ...doc.dinero_movimientos.map((p) => ({
-                        text: `${p.pago_metodo1.nombre}: ${p.monto}`,
-                        style: 'datosExtra',
-                    })),
-                    { text: `VUELTO: ${doc.vuelto.toFixed(2)}`, style: 'datosExtra' },
-                ],
-            }
+                  stack: [
+                      ...doc.dinero_movimientos.map((p) => ({
+                          text: `${p.pago_metodo1.nombre}: ${p.monto}`,
+                          style: 'datosExtra',
+                      })),
+                      { text: `VUELTO: ${doc.vuelto.toFixed(2)}`, style: 'datosExtra' },
+                  ],
+              }
             : null
 
     // --- PARA DELIVERY --- //
@@ -1274,27 +1236,30 @@ async function makePdf(doc, empresa) {
     const deliveryStack =
         doc.transaccion1.venta_tipo == 3
             ? {
-                stack: [
-                    {
-                        text: `TELEFONO: ${doc.transaccion1.venta_socio_datos.telefono || ''}`,
-                        style: 'datosExtra',
-                    },
-                    {
-                        text: `DIRECCIÓN: ${doc.transaccion1.venta_socio_datos.direccion || ''}`,
-                        style: 'datosExtra',
-                    },
-                ],
-            }
+                  stack: [
+                      {
+                          text: `TELEFONO: ${doc.transaccion1.venta_socio_datos.telefono || ''}`,
+                          style: 'datosExtra',
+                      },
+                      {
+                          text: `DIRECCIÓN: ${doc.transaccion1.venta_socio_datos.direccion || ''}`,
+                          style: 'datosExtra',
+                      },
+                  ],
+              }
             : null
 
     // --- QR --- //
     // "20100100100|01|F009|00000001|180.00|1180.00|2025-09-20|6|20601847834|IZVMmltTcKneNX1RyLO0zjlSqrk="
-    const qrStack = tKey == 'NV' ? null : {
-        qr: doc.qr_string,
-        fit: 115,
-        alignment: "center",
-        margin: [0, 10, 0, 10],
-    }
+    const qrStack =
+        tKey == 'NV'
+            ? null
+            : {
+                  qr: doc.qr_string,
+                  fit: 115,
+                  alignment: 'center',
+                  margin: [0, 10, 0, 10],
+              }
 
     // --- SUNAT --- //
     let sunatStack = null
@@ -1313,10 +1278,9 @@ async function makePdf(doc, empresa) {
                 //     text: `${doc.hash}`,
                 //     style: 'empresa_style',
                 // },
-            ]
+            ],
         }
-    }
-    else if (tKey == '03') {
+    } else if (tKey == '03') {
         sunatStack = {
             stack: [
                 {
@@ -1331,7 +1295,7 @@ async function makePdf(doc, empresa) {
                 //     text: `${doc.hash}`,
                 //     style: 'empresa_style',
                 // },
-            ]
+            ],
         }
     }
 
@@ -1349,7 +1313,7 @@ async function makePdf(doc, empresa) {
         {
             image: logoBase64, // el logo en base64
             fit: [65 * 2.83465, 45 * 2.83465], // ajusta tamaño
-            alignment: "center", // opcional (left, center, right)
+            alignment: 'center', // opcional (left, center, right)
             margin: [0, 0, 0, 10],
         },
         // --- EMPRESA --- //
@@ -1364,7 +1328,10 @@ async function makePdf(doc, empresa) {
         },
         // --- TIPO DE DOCUMENTO --- //
         {
-            stack: [`${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`, `${doc.serie}-${doc.numero}`],
+            stack: [
+                `${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`,
+                `${doc.serie}-${doc.numero}`,
+            ],
             style: 'tipo_doc',
         },
         // --- CLIENTE --- //
@@ -1384,7 +1351,7 @@ async function makePdf(doc, empresa) {
                     style: 'datosExtra',
                 },
                 {
-                    text: `DIRECCIÓN: ${doc.cliente_datos.direccion || ""}`,
+                    text: `DIRECCIÓN: ${doc.cliente_datos.direccion || ''}`,
                     style: 'datosExtra',
                 },
             ],
@@ -1562,7 +1529,12 @@ async function makePdf(doc, empresa) {
         ...(qrStack ? [qrStack] : []),
         // --- SUNAT --- //
         ...(sunatStack ? [sunatStack] : []),
-        { text: 'GRACIAS POR SU PREFERENCIA', style: 'empresa_style', fontSize: 8, margin: [0, 10, 0, 0] },
+        {
+            text: 'GRACIAS POR SU PREFERENCIA',
+            style: 'empresa_style',
+            fontSize: 8,
+            margin: [0, 10, 0, 0],
+        },
     ]
 
     docDefinition.styles = {
@@ -1580,7 +1552,7 @@ async function makePdf(doc, empresa) {
         Roboto: {
             normal: 'src/shared/fonts/Roboto-Regular.ttf',
             bold: 'src/shared/fonts/Roboto-Bold.ttf',
-        }
+        },
     }
 
     return new Promise((resolve, reject) => {
@@ -1588,75 +1560,76 @@ async function makePdf(doc, empresa) {
         const pdfDoc = printer.createPdfKitDocument(docDefinition)
 
         let chunks = []
-        pdfDoc.on("data", chunk => chunks.push(chunk))
-        pdfDoc.on("end", () => {
+        pdfDoc.on('data', (chunk) => chunks.push(chunk))
+        pdfDoc.on('end', () => {
             const buffer = Buffer.concat(chunks)
             resolve(buffer)
         })
-        pdfDoc.on("error", reject)
+        pdfDoc.on('error', reject)
         pdfDoc.end()
     })
 }
 
-function calcularUno(item) {
-    if (
-        item.descuento_tipo != null &&
-        item.descuento_valor != null &&
-        item.descuento_valor != 0
-    ) {
-        if (item.descuento_tipo == 1) {
-            item.pu_desc = item.descuento_valor
-        } else if (item.descuento_tipo == 2) {
-            item.pu_desc = item.cantidad * item.pu * (item.descuento_valor / 100)
-        }
-    } else {
-        item.pu_desc = 0
+function setTKey(doc_tipo) {
+    let tKey = 'NV'
+
+    if (doc_tipo.includes('01')) {
+        tKey = '01'
+    } else if (doc_tipo.includes('03')) {
+        tKey = '03'
     }
 
-    item.descuento = item.pu_desc
-    item.total = (item.cantidad * item.pu) - item.descuento
-
-    return item
+    return tKey
 }
 
 async function loadOneTransaccion(id) {
     try {
-        let data = await Transaccion.findByPk(id, {
-            attributes: {
-                include: [
-                    [
-                        literal(`(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`), "comprobantes_monto"
-                    ]
-                ]
+        const qry = {
+            id,
+            sqls: ['comprobantes_monto'],
+            incl: ['socio1', 'createdBy1', 'venta_mesa1'],
+            iccl: {
+                venta_mesa1: {
+                    incl: ['salon1'],
+                },
             },
-            include: [
-                {
-                    model: Socio,
-                    as: 'socio1',
-                    attributes: ['id', 'nombres']
-                },
-                {
-                    model: Colaborador,
-                    as: 'createdBy1',
-                    attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos']
-                },
-                {
-                    model: Mesa,
-                    as: 'venta_mesa1',
-                    attributes: ['id', 'nombre'],
-                    include: {
-                        model: Salon,
-                        as: 'salon1',
-                        attributes: ['id', 'nombre']
-                    }
-                }
-            ]
-        })
+        }
+        const data = await repository.find(qry)
+        //     attributes: {
+        //         include: [
+        //             [
+        //                 literal(
+        //                     `(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`,
+        //                 ),
+        //                 'comprobantes_monto',
+        //             ],
+        //         ],
+        //     },
+        //     include: [
+        //         {
+        //             model: Socio,
+        //             as: 'socio1',
+        //             attributes: ['id', 'nombres'],
+        //         },
+        //         {
+        //             model: Colaborador,
+        //             as: 'createdBy1',
+        //             attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
+        //         },
+        //         {
+        //             model: Mesa,
+        //             as: 'venta_mesa1',
+        //             attributes: ['id', 'nombre'],
+        //             include: {
+        //                 model: Salon,
+        //                 as: 'salon1',
+        //                 attributes: ['id', 'nombre'],
+        //             },
+        //         },
+        //     ],
+        // })
 
         if (data) {
-            data = data.toJSON()
-            // console.log(data)
-
             const pago_condicionesMap = arrayMap('pago_condiciones')
             const transaccion_estadosMap = arrayMap('transaccion_estados')
             const estados = arrayMap('estados')
@@ -1673,6 +1646,22 @@ async function loadOneTransaccion(id) {
     }
 }
 
+function calcularUno(item) {
+    if (item.descuento_tipo != null && item.descuento_valor != null && item.descuento_valor != 0) {
+        if (item.descuento_tipo == 1) {
+            item.pu_desc = item.descuento_valor
+        } else if (item.descuento_tipo == 2) {
+            item.pu_desc = item.cantidad * item.pu * (item.descuento_valor / 100)
+        }
+    } else {
+        item.pu_desc = 0
+    }
+
+    item.descuento = item.pu_desc
+    item.total = item.cantidad * item.pu - item.descuento
+
+    return item
+}
 
 // --- Mifact --- //
 const consultarEstado = async (req, res) => {
@@ -1695,27 +1684,16 @@ const downloadXml = async (req, res) => {
 
         if (res_mifact.code == 1) {
             res.json({ code: 1, msg: res_mifact.msg })
-        }
-        else {
+        } else {
             const { name, buffer } = res_mifact
 
-            res.setHeader("Content-Type", "application/xml")
-            res.setHeader("Content-Disposition", `inline; filename=${name}`)
+            res.setHeader('Content-Type', 'application/xml')
+            res.setHeader('Content-Disposition', `inline; filename=${name}`)
             res.send(buffer)
         }
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
-
-    // const filePath = path.join(pathXml, id)
-
-    // const exists = fs.existsSync(filePath)
-    // if (exists) {
-    //     res.sendFile(filePath)
-    // }
-    // else {
-    //     res.status(404).json({ msg: 'Archivo no encontrado' })
-    // }
 }
 
 export default {
