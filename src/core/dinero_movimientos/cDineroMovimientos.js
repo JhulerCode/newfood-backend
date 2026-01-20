@@ -1,75 +1,19 @@
-import { CajaApertura } from '#db/models/CajaApertura.js'
-import { Colaborador } from '#db/models/Colaborador.js'
-import { Comprobante, ComprobanteItem } from '#db/models/Comprobante.js'
-import { DineroMovimiento } from '#db/models/DineroMovimiento.js'
-import { PagoMetodo } from '#db/models/PagoMetodo.js'
-import { Transaccion } from '#db/models/Transaccion.js'
-import { applyFilters } from '#shared/mine.js'
-import cSistema from '../_sistema/cSistema.js'
+import { Repository } from '#db/Repository.js'
+import { arrayMap } from '#store/system.js'
+import { resDeleteFalse } from '#http/helpers.js'
 
-const include1 = {
-    pago_metodo1: {
-        model: PagoMetodo,
-        as: 'pago_metodo1',
-        attributes: ['id', 'nombre'],
-    },
-    comprobante1: {
-        model: Comprobante,
-        as: 'comprobante1',
-        attributes: ['id', 'fecha_emision', 'serie', 'numero', 'serie_correlativo', 'monto'],
-    },
-    transaccion1: {
-        model: Transaccion,
-        as: 'transaccion1',
-        attributes: ['id', 'fecha', 'monto', 'venta_canal'],
-    },
-    caja_apertura1: {
-        model: CajaApertura,
-        as: 'caja_apertura1',
-        attributes: ['id', 'fecha_apertura', 'fecha_apertura'],
-    },
-    createdBy1: {
-        model: Colaborador,
-        as: 'createdBy1',
-        attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-    },
-}
+const repository = new Repository('DineroMovimiento')
 
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
-        const findProps = {
-            attributes: ['id'],
-            order: [['createdAt', 'DESC']],
-            where: { empresa: empresa.id },
-            include: [],
-        }
+        qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        if (qry) {
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
-
-            if (qry.fltr) {
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-            }
-
-            if (qry.cols) {
-                const excludeCols = []
-                const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
-                findProps.attributes = findProps.attributes.concat(cols1)
-            }
-        }
-
-        let data = await DineroMovimiento.findAll(findProps)
+        const data = await repository.find(qry, true)
 
         if (data.length > 0) {
-            data = data.map(a => a.toJSON())
-
             const caja_operacion_tiposMap = arrayMap('caja_operacion_tipos')
             const caja_operacionesMap = arrayMap('caja_operaciones')
             const dinero_movimiento_estadosMap = arrayMap('dinero_movimiento_estados')
@@ -82,8 +26,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -92,26 +35,39 @@ const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const {
-            fecha, tipo, operacion, detalle,
-            pago_metodo, monto,
-            comrpobante, Transaccion, caja_apertura
+            fecha,
+            tipo,
+            operacion,
+            detalle,
+
+            pago_metodo,
+            monto,
+
+            comprobante,
+            caja_apertura,
         } = req.body
 
         // --- CREAR --- //
-        const nuevo = await DineroMovimiento.create({
-            fecha, tipo, operacion, detalle,
-            pago_metodo: `${empresa.subdominio}-EFECTIVO`,
+        const nuevo = await repository.create({
+            fecha,
+            tipo,
+            operacion,
+            detalle,
+
+            pago_metodo,
             monto,
-            comrpobante, Transaccion, caja_apertura,
-            empresa: empresa.id,
-            createdBy: colaborador
+
+            comprobante,
+            caja_apertura,
+
+            empresa,
+            createdBy: colaborador,
         })
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -120,27 +76,19 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        const deletedCount = await DineroMovimiento.destroy({ where: { id } })
+        if ((await repository.delete({ id })) == false) return resDeleteFalse(res)
 
-        const send = deletedCount > 0 ? { code: 0 } : { code: 1, msg: 'No se eliminó ningún registro' }
-
-        res.json(send)
-    }
-    catch (error) {
+                res.json({ code: 0 })
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Funciones --- //
 async function loadOne(id) {
-    let data = await DineroMovimiento.findByPk(id, {
-        include: [include1.pago_metodo1]
-    })
+    const data = await repository.find({ id, incl: ['pago_metodo1'] }, true)
 
     if (data) {
-        data = data.toJSON()
-
         const caja_operacion_tiposMap = arrayMap('caja_operacion_tipos')
         const caja_operacionesMap = arrayMap('caja_operaciones')
         const dinero_movimiento_estadosMap = arrayMap('dinero_movimiento_estados')
@@ -157,5 +105,4 @@ export default {
     find,
     create,
     delet,
-    // findResumen,
 }

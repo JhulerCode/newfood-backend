@@ -135,6 +135,7 @@ const findResumen = async (req, res) => {
 
         // --- Dinero movimientos --- //
         const qry = {
+            cols: { exclude: [] },
             fltr: {
                 caja_apertura: { op: 'Es', val: id },
             },
@@ -145,7 +146,7 @@ const findResumen = async (req, res) => {
                 },
             },
         }
-        const dinero_movimientos = await DineroMovimientoRepository.find(qry)
+        const dinero_movimientos = await DineroMovimientoRepository.find(qry, true)
 
         const caja_operacionesMap = arrayMap('caja_operaciones')
 
@@ -235,7 +236,7 @@ const findResumen = async (req, res) => {
                 },
             },
         }
-        const comprobantes = await ComprobanteRepository.find(qry1)
+        const comprobantes = await ComprobanteRepository.find(qry1, true)
         //     attributes: [
         //         'id',
         //         'doc_tipo',
@@ -348,7 +349,6 @@ const findResumen = async (req, res) => {
                 } else {
                     send.venta_canales[j].value += Number(a.monto)
                 }
-                console.log('ASD1')
 
                 // --- COMPROBANTES --- //
                 send.comprobantes_aceptados_total += Number(a.monto)
@@ -387,8 +387,6 @@ const findResumen = async (req, res) => {
                     }
                 }
             }
-
-            console.log('ASD2')
 
             // --- ANULADOS --- //
             if (a.estado == 0) {
@@ -441,7 +439,6 @@ const findResumen = async (req, res) => {
                 })
             }
         }
-        console.log('ASD3')
 
         // --- Transacciones --- //
         const qry2 = {
@@ -451,7 +448,7 @@ const findResumen = async (req, res) => {
                 caja_apertura: { op: 'Es', val: id },
             },
         }
-        let pedidos = await TransaccionRepository.find(qry2)
+        let pedidos = await TransaccionRepository.find(qry2, true)
         //     attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
         //     order: [['createdAt', 'DESC']],
         //     where: {
@@ -513,7 +510,7 @@ const findResumen = async (req, res) => {
                     fecha_apertura: { op: 'Está dentro de', val: mesInicio, val1: mesFin },
                 },
             }
-            const caja_aperturas = await repository.find(qry3)
+            const caja_aperturas = await repository.find(qry3, true)
             //     attributes: ['id', 'fecha_apertura'],
             //     order: [['createdAt', 'DESC']],
             //     where: {
@@ -532,7 +529,7 @@ const findResumen = async (req, res) => {
                     operacion: { op: 'Es', val: '1' },
                 },
             }
-            send.ventas_mes = await DineroMovimientoRepository.find(qry4)
+            send.ventas_mes = await DineroMovimientoRepository.find(qry4, true)
             //     attributes: [[fn('SUM', col('monto')), 'total']],
             //     where: {
             //         caja_apertura: caja_aperturas.map((a) => a.id),
@@ -561,7 +558,7 @@ const findResumen = async (req, res) => {
                         operacion: { op: 'Es', val: '1' },
                     },
                 }
-                const asd = await DineroMovimientoRepository.find(qry6)
+                const asd = await DineroMovimientoRepository.find(qry6, true)
                 send.ventas_ayer = asd[0]
                 //     attributes: [[fn('SUM', col('monto')), 'total']],
                 //     where: {
@@ -612,7 +609,7 @@ function calcularUno(item) {
     return item
 }
 
-function setTipoComprobanteKey (doc_tipo) {
+function setTipoComprobanteKey(doc_tipo) {
     let key = 'NV'
     if (doc_tipo.includes('01')) {
         key = '01'

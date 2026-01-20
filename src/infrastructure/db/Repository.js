@@ -58,6 +58,11 @@ const include1 = {
         as: 'colaborador1',
         attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
     },
+    caja_apertura1: {
+        model: CajaApertura,
+        as: 'caja_apertura1',
+        attributes: ['id', 'fecha_apertura', 'fecha_apertura'],
+    },
     canjeado_por1: {
         model: Comprobante,
         as: 'canjeado_por1',
@@ -81,7 +86,7 @@ const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
-        attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
+        attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto'],
     },
     comprobante_items: {
         model: ComprobanteItem,
