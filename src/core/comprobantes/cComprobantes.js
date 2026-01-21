@@ -90,7 +90,6 @@ const create = async (req, res) => {
             comprobante_items,
             transaccion1,
             pago_metodos,
-            comes_from,
         } = req.body
         let { transaccion } = req.body
 
@@ -98,7 +97,7 @@ const create = async (req, res) => {
         const qry = {
             fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
         }
-        const caja_aperturas = await CajaAperturaRepository.find(qry)
+        const caja_aperturas = await CajaAperturaRepository.find(qry, true)
 
         if (caja_aperturas.length == 0) {
             await transaction.rollback()
@@ -166,7 +165,7 @@ const create = async (req, res) => {
         }
 
         // --- CORRELATIVO COMPROBANTE --- //
-        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo })
+        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo }, true)
 
         if (pago_comprobante == null) {
             await transaction.rollback()
@@ -190,7 +189,7 @@ const create = async (req, res) => {
                 nombres: 'CLIENTES VARIOS',
             }
         } else {
-            cliente = await SocioRepository.find({ id: socio })
+            cliente = await SocioRepository.find({ id: socio }, true)
         }
 
         // --- CREAR --- //
@@ -531,14 +530,16 @@ const create = async (req, res) => {
         // --- ACTUALIZAR PEDIDO SI SE ENTREGÓ TODO --- //
         if (transaccion1.venta_canal != '4') {
             const qry2 = {
+                cols: ['venta_entregado', 'cantidad'],
                 fltr: { transaccion: { op: 'Es', val: transaccion } },
             }
-            const pedido_items = await TransaccionItemRepository.find(qry2)
+            const pedido_items = await TransaccionItemRepository.find(qry2, true)
 
             const is_pendiente = pedido_items.some((a) => a.venta_entregado < a.cantidad)
             if (is_pendiente == false) {
-                // --- Si es mesa --- //
                 const send = { venta_facturado: true }
+
+                // --- Si es mesa --- //
                 if (transaccion1.venta_canal == 1) {
                     send.venta_entregado = true
                     send.estado = 2
@@ -1003,7 +1004,7 @@ const resumen = async (req, res) => {
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
                 ventas.total += Number(a.monto)
-                console.log('ASD')
+
                 // --- MÉTODOS DE PAGO --- //
                 for (const b of a.dinero_movimientos) {
                     const mkey = b.pago_metodo
@@ -1020,7 +1021,7 @@ const resumen = async (req, res) => {
                         pagoMetodosMap[mkey].value += Number(b.monto)
                     }
                 }
-                console.log('ASD1')
+
                 // --- TIPOS DE COMPROBANTES --- //
                 const tKey = setTKey(a.doc_tipo)
                 if (!comprobanteTiposMap[tKey]) {
@@ -1034,7 +1035,7 @@ const resumen = async (req, res) => {
                 } else {
                     comprobanteTiposMap[tKey].value += Number(a.monto)
                 }
-                console.log('ASD2')
+
                 // --- CANALES --- //
                 const cKey = a.transaccion1.venta_canal
                 if (!canalesMap[cKey]) {
