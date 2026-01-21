@@ -76,7 +76,7 @@ const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
-        attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto'],
+        attributes: ['id', 'fecha_emision', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'estado'],
     },
     comprobante_items: {
         model: ComprobanteItem,

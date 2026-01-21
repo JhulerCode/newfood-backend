@@ -1,86 +1,33 @@
-import { Comprobante, ComprobanteItem } from '#db/models/Comprobante.js'
-import { Articulo } from '#db/models/Articulo.js'
+import { Repository } from '#db/Repository.js'
 import { arrayMap } from '#store/system.js'
-import { applyFilters, redondear } from '#shared/mine.js'
+import { redondear } from '#shared/mine.js'
+
+const repository = new Repository('ComprobanteItem')
 
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
 
-        const findProps = {
-            attributes: ['id'],
-            where: { empresa: empresa.id },
-            include: [],
-            order: [['createdAt', 'DESC']],
-        }
+        qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        if (qry) {
-            if (qry.incl) {
-                for (const a of qry.incl) {
-                    if (qry.incl.includes(a)) findProps.include.push(include1[a])
-                }
-            }
+        const data = await repository.find(qry, true)
 
-            if (qry.fltr) {
-                const fltr1 = JSON.parse(JSON.stringify(qry.fltr))
-
-                delete qry.fltr.comprobante_fecha
-                delete qry.fltr.comprobante_tipo
-                delete qry.fltr.comprobante_serie
-                delete qry.fltr.comprobante_correlativo
-                delete qry.fltr.comprobante_estado
-
-                Object.assign(findProps.where, applyFilters(qry.fltr))
-
-                if (fltr1.comprobante_fecha) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.fecha_emision$': fltr1.comprobante_fecha }))
-                }
-
-                if (fltr1.comprobante_tipo) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.doc_tipo$': fltr1.comprobante_tipo }))
-                }
-
-                if (fltr1.comprobante_serie) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.serie$': fltr1.comprobante_serie }))
-                }
-
-                if (fltr1.comprobante_correlativo) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.numero$': fltr1.comprobante_correlativo }))
-                }
-
-                if (fltr1.comprobante_estado) {
-                    Object.assign(findProps.where, applyFilters({ '$comprobante1.estado$': fltr1.comprobante_estado }))
-                }
-            }
-
-            if (qry.cols) {
-                if (qry.cols.includes('pu')) qry.cols.push('descuento_tipo', 'descuento_valor')
-
-                const excludeCols = [
-                    'comprobante_fecha', 'comprobante_tipo', 'comprobante_serie', 'comprobante_correlativo', 'comprobante_estado',
-                    'descuento_mostrar', 'total'
-                ]
-                const cols1 = qry.cols.filter(a => !excludeCols.includes(a))
-                findProps.attributes = findProps.attributes.concat(cols1)
-            }
-        }
-
-        let data = await ComprobanteItem.findAll(findProps)
-
-        if (data.length > 0 && qry.cols) {
-            data = data.map(a => a.toJSON())
-
+        if (data.length > 0) {
             const pago_comprobantesMap = arrayMap('comprobante_tipos')
             const comprobante_estadosMap = arrayMap('comprobante_estados')
 
             for (const a of data) {
-                const tKey = a.comprobante1.doc_tipo.replace(`${empresa.subdominio}-`, '')
-                a.comprobante1.doc_tipo1 = pago_comprobantesMap[tKey]
-                a.comprobante_estado1 = comprobante_estadosMap[a.comprobante1.estado]
-                a.comprobante_estado = a.comprobante_estado1.id
+                if (a.comprobante1) {
+                    // const tKey = a.comprobante1.doc_tipo.replace(`${empresa.subdominio}-`, '')
+                    const tKey = setTKey(a.comprobante1.doc_tipo)
+                    a.comprobante1.doc_tipo1 = pago_comprobantesMap[tKey]
 
-                if (qry.cols.includes('pu') && qry.cols.includes('cantidad')) {
+                    a.comprobante_estado1 = comprobante_estadosMap[a.comprobante1.estado]
+                    a.comprobante_estado = a.comprobante_estado1.id
+                }
+
+                if (qry?.cols?.includes('pu') && qry.cols.includes('cantidad')) {
                     const prd = calcularUno({
                         pu: Number(a.pu),
                         descuento_tipo: a.descuento_tipo,
@@ -130,6 +77,18 @@ function calcularUno(item) {
     item.total = (item.cantidad * item.pu) - item.descuento
 
     return item
+}
+
+function setTKey(doc_tipo) {
+    let tKey = 'NV'
+
+    if (doc_tipo.includes('01')) {
+        tKey = '01'
+    } else if (doc_tipo.includes('03')) {
+        tKey = '03'
+    }
+
+    return tKey
 }
 
 export default {
