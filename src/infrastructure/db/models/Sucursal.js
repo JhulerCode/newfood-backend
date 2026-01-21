@@ -6,9 +6,9 @@ import { Colaborador } from './Colaborador.js'
 export const Salon = sequelize.define('salones', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     nombre: { type: DataTypes.STRING },
+    direccion: { type: DataTypes.STRING },
     activo: { type: DataTypes.BOOLEAN },
 
-    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }

@@ -1,15 +1,15 @@
-import { Op, Sequelize, literal } from 'sequelize'
+import { Op, literal } from 'sequelize'
 import { Articulo } from '#db/models/Articulo.js'
 import { ArticuloCategoria } from '#db/models/ArticuloCategoria.js'
 import { CajaApertura } from '#db/models/CajaApertura.js'
 import { Colaborador } from '#db/models/Colaborador.js'
 import { ComboArticulo } from '#db/models/ComboArticulo.js'
 import { Comprobante, ComprobanteItem } from '#db/models/Comprobante.js'
+import { ComprobanteTipo } from '#db/models/ComprobanteTipo.js'
 import { DineroMovimiento } from '#db/models/DineroMovimiento.js'
 import { Empresa } from '#db/models/Empresa.js'
 import { Kardex } from '#db/models/Kardex.js'
 import { Mesa } from '#db/models/Mesa.js'
-import { ComprobanteTipo } from '#db/models/ComprobanteTipo.js'
 import { PagoMetodo } from '#db/models/PagoMetodo.js'
 import { ProduccionArea } from '#db/models/ProduccionArea.js'
 import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
@@ -18,7 +18,6 @@ import { Socio } from '#db/models/Socio.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
 
 import { applyFilters } from '#db/helpers.js'
-import { sistemaData } from '#store/system.js'
 
 export const models = {
     Articulo,
@@ -183,32 +182,6 @@ const sqls1 = {
         ),
         'comprobante_pagos_monto',
     ],
-    // articulo_movimientos_cantidad: [
-    //     Sequelize.fn('COALESCE',
-    //         Sequelize.fn('SUM',
-    //             Sequelize.literal(`
-    //                 CASE ${sistemaData.kardex_operaciones.map(t => `WHEN kardexes.tipo = ${t.id} THEN kardexes.cantidad * ${t.operacion}`).join(' ')}
-    //                 ELSE 0 END
-    //                 `)
-    //         ), 0
-    //     ),
-    //     'cantidad'
-    // ],
-    // articulo_stock: [Sequelize.literal(`(
-    //         SELECT COALESCE(SUM(k.stock), 0)
-    //         FROM kardexes AS k
-    //         WHERE k.articulo = articulos.id AND k.is_lote_padre = TRUE
-    //     )`),
-    //     'stock'
-    // ],
-    // productos_terminados: [
-    //     Sequelize.literal(`(
-    //         SELECT COALESCE(SUM(k.cantidad), 0)
-    //         FROM kardexes AS k
-    //         WHERE k.produccion_orden = produccion_ordenes.id AND k.tipo = 4
-    //     )`),
-    //     'productos_terminados'
-    // ],
 }
 
 export class Repository {

@@ -1,5 +1,3 @@
-// import { ActivityLog } from "../database/models/ActivityLog.js"
-
 function verifyPermiso(requiredPermissions = []) {
     return (req, res, next) => {
         const log = {
@@ -25,8 +23,6 @@ function verifyPermiso(requiredPermissions = []) {
         )
 
         log.hasPermission = hasPermission
-
-        // if (log.method != 'GET') ActivityLog.create(log)
 
         if (!hasPermission) return res.status(403).json({ msg: 'Acceso denegado: permisos insuficientes' })
 
