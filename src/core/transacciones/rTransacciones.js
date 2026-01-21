@@ -53,6 +53,7 @@ router.delete(
     controller.delet
 )
 
+
 // --- PARA VENTAS --- //
 router.patch(
     '/add-productos/:id',
@@ -71,14 +72,6 @@ router.patch(
     controller.anular
 )
 
-// router.get(
-//     '/ventas-pendientes',
-//     verifyPermiso([
-//         'vPedidos:listar',
-//     ]),
-//     controller.ventasPendientes
-// )
-
 router.patch(
     '/cambiar-mesa/:id',
     verifyPermiso(['vPedidos:cambiarMesa']),
@@ -89,6 +82,12 @@ router.patch(
     '/entregar/:id',
     verifyPermiso(['vPedidos:entregar']),
     controller.entregar
+)
+
+router.post(
+    '/entregar-bulk',
+    verifyPermiso(['vPedidos:entregar']),
+    controller.entregarBulk
 )
 
 export default router

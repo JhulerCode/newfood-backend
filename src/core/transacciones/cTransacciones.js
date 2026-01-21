@@ -48,49 +48,7 @@ const findById = async (req, res) => {
         const { id } = req.params
 
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-        console.log(qry)
         const data = await repository.find({ id, ...qry }, true)
-
-        // let data = await Transaccion.findByPk(id, {
-        //     include: [
-        //         {
-        //             model: TransaccionItem,
-        //             as: 'transaccion_items',
-        //             include: [
-        //                 {
-        //                     model: Articulo,
-        //                     as: 'articulo1',
-        //                     attributes: ['nombre', 'unidad'],
-        //                     include: {
-        //                         model: ProduccionArea,
-        //                         as: 'produccion_area1',
-        //                         attributes: ['id', 'impresora_tipo', 'impresora']
-        //                     }
-        //                 },
-        //             ]
-        //         },
-        //         {
-        //             model: Socio,
-        //             as: 'socio1',
-        //             attributes: ['id', 'nombres']
-        //         },
-        //         {
-        //             model: Mesa,
-        //             as: 'venta_mesa1',
-        //             attributes: ['id', 'nombre'],
-        //             include: {
-        //                 model: Salon,
-        //                 as: 'salon1',
-        //                 attributes: ['id', 'nombre']
-        //             }
-        //         },
-        //         {
-        //             model: PagoMetodo,
-        //             as: 'venta_pago_metodo1',
-        //             attributes: ['id', 'nombre']
-        //         }
-        //     ]
-        // })
 
         if (data) {
             const pago_condicionesMap = arrayMap('pago_condiciones')
@@ -98,10 +56,6 @@ const findById = async (req, res) => {
 
             data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
             data.estado1 = transaccion_estadosMap[data.estado]
-
-            // for (const a of data.transaccion_items) {
-            //     a.cantidad_anterior = a.cantidad || 0
-            // }
         }
 
         res.json({ code: 0, data })
@@ -400,36 +354,6 @@ const delet = async (req, res) => {
     }
 }
 
-// --- Helpers --- //
-async function loadOne(id) {
-    let data = await repository.find(
-        {
-            id,
-            sqls: ['comprobantes_monto'],
-            incl: ['socio1', 'createdBy1', 'venta_mesa1'],
-            iccl: {
-                venta_mesa1: {
-                    incl: ['salon1'],
-                },
-            },
-        },
-        true,
-    )
-
-    if (data) {
-        const pago_condicionesMap = arrayMap('pago_condiciones')
-        const transaccion_estadosMap = arrayMap('transaccion_estados')
-        const estados = arrayMap('estados')
-
-        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-        data.estado1 = transaccion_estadosMap[data.estado]
-        data.venta_facturado1 = estados[data.venta_facturado]
-        data.venta_entregado1 = estados[data.venta_entregado]
-    }
-
-    return data
-}
-
 // --- Para ventas --- //
 const anular = async (req, res) => {
     try {
@@ -557,6 +481,57 @@ const entregar = async (req, res) => {
     }
 }
 
+const entregarBulk = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { ids } = req.body
+
+        // --- ENTREGAR Y FINALIZAR --- //
+        await repository.update(
+            { id: ids },
+            {
+                venta_entregado: true,
+                estado: 2,
+                updatedBy: colaborador,
+            },
+        )
+
+        res.json({ code: 0 })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+// --- Helpers --- //
+async function loadOne(id) {
+    let data = await repository.find(
+        {
+            id,
+            sqls: ['comprobantes_monto'],
+            incl: ['socio1', 'createdBy1', 'venta_mesa1'],
+            iccl: {
+                venta_mesa1: {
+                    incl: ['salon1'],
+                },
+            },
+        },
+        true,
+    )
+
+    if (data) {
+        const pago_condicionesMap = arrayMap('pago_condiciones')
+        const transaccion_estadosMap = arrayMap('transaccion_estados')
+        const estados = arrayMap('estados')
+
+        data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
+        data.estado1 = transaccion_estadosMap[data.estado]
+        data.venta_facturado1 = estados[data.venta_facturado]
+        data.venta_entregado1 = estados[data.venta_entregado]
+    }
+
+    return data
+}
+
 export default {
     create,
     update,
@@ -566,7 +541,7 @@ export default {
 
     addProductos,
     anular,
-    // ventasPendientes,
     cambiarMesa,
     entregar,
+    entregarBulk,
 }

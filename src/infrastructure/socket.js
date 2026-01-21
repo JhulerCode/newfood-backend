@@ -70,6 +70,13 @@ export function initSocket(server) {
             io.to(empresa.id).emit("vPedidos:entregar", data)
         })
 
+        socket.on("vPedidos:entregarBulk", (data) => {
+            consoleLogSocket(socket.id, "vPedidos:entregarBulk")
+            const socket_user = socketUsers[socket.id]
+            const { empresa } = socket_user
+            io.to(empresa.id).emit("vPedidos:entregarBulk", data)
+        })
+
         socket.on("mCambiarMesa:cambiar", (data) => {
             consoleLogSocket(socket.id, "mCambiarMesa:cambiar")
             const socket_user = socketUsers[socket.id]
