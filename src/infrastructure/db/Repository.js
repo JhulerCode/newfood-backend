@@ -297,7 +297,9 @@ export class Repository {
         }
 
         if (qry?.id) {
-            delete findProps.attributes
+            // delete findProps.attributes
+            findProps.attributes.push(...columns)
+
             const data = await this.model.findByPk(qry.id, findProps)
 
             if (tojson) {

@@ -202,15 +202,15 @@ const create = async (req, res) => {
             estado,
 
             empresa_datos: {
-                ruc: empresa.ruc,
-                razon_social: empresa.razon_social,
-                nombre_comercial: empresa.nombre_comercial,
-                telefono: empresa.telefono,
-                domicilio_fiscal: empresa.domicilio_fiscal,
-                ubigeo: empresa.ubigeo,
-                distrito: empresa.distrito,
-                provincia: empresa.provincia,
-                departamento: empresa.departamento,
+                ruc: req.empresa.ruc,
+                razon_social: req.empresa.razon_social,
+                nombre_comercial: req.empresa.nombre_comercial,
+                telefono: req.empresa.telefono,
+                domicilio_fiscal: req.empresa.domicilio_fiscal,
+                ubigeo: req.empresa.ubigeo,
+                distrito: req.empresa.distrito,
+                provincia: req.empresa.provincia,
+                departamento: req.empresa.departamento,
                 anexo: '0000',
             },
 
@@ -446,34 +446,36 @@ const create = async (req, res) => {
         await KardexRepository.createBulk(kardexItems, transaction)
 
         // --- ACTUALIZAR STOCK --- //
-        const transaccion_tiposMap = arrayMap('kardex_tipos')
-        const tipoInfo = transaccion_tiposMap[2]
-        const agrupado = {}
+        if (kardexItems.length > 0) {
+            const transaccion_tiposMap = arrayMap('kardex_tipos')
+            const tipoInfo = transaccion_tiposMap[2]
+            const agrupado = {}
 
-        for (const a of kardexItems) {
-            agrupado[a.articulo] =
-                (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
+            for (const a of kardexItems) {
+                agrupado[a.articulo] =
+                    (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
+            }
+
+            const cases = Object.entries(agrupado)
+                .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
+                .join(' ')
+
+            const ids = Object.keys(agrupado)
+                .map((id) => `'${id}'`)
+                .join(',')
+
+            await sequelize.query(
+                `
+                    UPDATE articulos
+                    SET stock = COALESCE(stock, 0) + CASE id
+                        ${cases}
+                        ELSE 0
+                    END
+                    WHERE id IN (${ids})
+                `,
+                { transaction },
+            )
         }
-
-        const cases = Object.entries(agrupado)
-            .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
-            .join(' ')
-
-        const ids = Object.keys(agrupado)
-            .map((id) => `'${id}'`)
-            .join(',')
-
-        await sequelize.query(
-            `
-                UPDATE articulos
-                SET stock = COALESCE(stock, 0) + CASE id
-                    ${cases}
-                    ELSE 0
-                END
-                WHERE id IN (${ids})
-            `,
-            { transaction },
-        )
 
         // --- ACTUALIZAR PEDIDO ITEMS --- //
         if (transaccion1.venta_canal != '4') {
@@ -551,6 +553,7 @@ const create = async (req, res) => {
         const data_transaccion = await loadOneTransaccion(transaccion)
 
         res.json({ code: 0, data, facturacion: res_mifact, data_transaccion })
+        // res.json({ code: 0, data_transaccion })
     } catch (error) {
         await transaction.rollback()
 
@@ -737,7 +740,7 @@ const canjear = async (req, res) => {
             incl: ['comprobante_items'],
             iccl: {
                 comprobante_items: {
-                    // cols: { exclude: [] },
+                    cols: { exclude: [] },
                 },
             },
         }
@@ -801,12 +804,12 @@ const canjear = async (req, res) => {
             createdBy: colaborador,
         }
         const nuevo = await repository.create(send, transaction)
-        console.log('ASD1')
 
         // --- GUARDAR ITEMS --- //
         const items = []
         for (const a of comprobante.comprobante_items) {
             items.push({
+                codigo: a.codigo,
                 articulo: a.articulo,
                 descripcion: a.descripcion,
                 codigo: a.codigo_producto,
@@ -960,8 +963,8 @@ const resumen = async (req, res) => {
                     cols: ['venta_canal'],
                 },
                 dinero_movimientos: {
-                    incl: ['pago_metodo1']
-                }
+                    incl: ['pago_metodo1'],
+                },
             },
             fltr: { empresa: { op: 'Es', val: empresa } },
         }
@@ -1125,8 +1128,7 @@ const resumen = async (req, res) => {
 // --- Helpers --- //
 async function getComprobante(id) {
     const qry = {
-        fltr: { id: { op: 'Es', val: id } },
-        cols: { exclude: [] },
+        id,
         incl: ['comprobante_items', 'dinero_movimientos'],
         iccl: {
             dinero_movimientos: {
@@ -1137,11 +1139,10 @@ async function getComprobante(id) {
             },
         },
     }
-    const comprobante = await repository.find(qry, true)
-    const data = comprobante[0]
+    const data = await repository.find(qry, true)
 
     const qry1 = {
-        fltr: { comprobante: { op: 'Es', val: id } },
+        id: data.transaccion,
         cols: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
         incl: ['venta_mesa1'],
         iccl: {
@@ -1150,8 +1151,7 @@ async function getComprobante(id) {
             },
         },
     }
-    const transaccion = await TransaccionRepository.find(qry1, true)
-    data.transaccion1 = transaccion[0]
+    data.transaccion1 = await TransaccionRepository.find(qry1, true)
 
     if (data) {
         const tKey = setTKey(data.doc_tipo)
@@ -1159,11 +1159,13 @@ async function getComprobante(id) {
         const documentos_identidadMap = arrayMap('documentos_identidad')
         const pago_condicionesMap = arrayMap('pago_condiciones')
         const venta_canalesMap = arrayMap('venta_canales')
+        const comprobante_estadosMap = arrayMap('comprobante_estados')
 
         data.doc_tipo1 = pago_comprobantesMap[tKey]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
+        data.estado1 = comprobante_estadosMap[data.estado]
 
         data.total_letras = numeroATexto(data.monto)
         // data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
@@ -1191,9 +1193,7 @@ async function getImageBase64(url) {
 
 async function makePdf(doc, empresa) {
     // --- LOGO --- //
-    // const logoPath = getFilePath(empresa.logo)
-    // const logoBase64 = fs.readFileSync(logoPath).toString("base64");
-    const logoBase64 = await getImageBase64(empresa.logo_url)
+    const logoBase64 = await getImageBase64(empresa.foto.url)
     const tKey = setTKey(doc.doc_tipo)
 
     // --- TABLE ITEMS --- //
@@ -1207,14 +1207,14 @@ async function makePdf(doc, empresa) {
             alignment: 'right',
         },
     ])
-    // console.log(1)
+
     // --- TIPO DE ATENCIÓN --- //
     if (doc.transaccion1.venta_canal == 1) {
         doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
     } else {
         doc.atencion = doc.venta_canal1.nombre
     }
-    // console.log(2)
+
     // --- PAGOS --- //
     const totalPagado = doc.dinero_movimientos.reduce((acc, p) => acc + Number(p.monto), 0)
     doc.vuelto = totalPagado - Number(doc.monto)
@@ -1232,7 +1232,6 @@ async function makePdf(doc, empresa) {
             : null
 
     // --- PARA DELIVERY --- //
-    // console.log(3)
     const deliveryStack =
         doc.transaccion1.venta_tipo == 3
             ? {
@@ -1585,6 +1584,7 @@ function setTKey(doc_tipo) {
 async function loadOneTransaccion(id) {
     try {
         const qry = {
+            // fltr: { id: { op: 'Es', val: id } },
             id,
             sqls: ['comprobantes_monto'],
             incl: ['socio1', 'createdBy1', 'venta_mesa1'],
@@ -1594,7 +1594,7 @@ async function loadOneTransaccion(id) {
                 },
             },
         }
-        const data = await repository.find(qry)
+        const data = await TransaccionRepository.find(qry, true)
         //     attributes: {
         //         include: [
         //             [

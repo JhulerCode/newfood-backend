@@ -3,19 +3,6 @@ import { Articulo } from '#db/models/Articulo.js'
 import { arrayMap } from '#store/system.js'
 import { applyFilters, redondear } from '#shared/mine.js'
 
-const include1 = {
-    comprobante1: {
-        model: Comprobante,
-        as: 'comprobante1',
-        attributes: ['doc_tipo', 'serie', 'numero', 'fecha_emision', 'estado']
-    },
-    articulo1: {
-        model: Articulo,
-        as: 'articulo1',
-        attributes: ['nombre']
-    }
-}
-
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
