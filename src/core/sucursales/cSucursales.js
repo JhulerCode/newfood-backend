@@ -1,4 +1,11 @@
-import { SucursalRepository } from '#db/repositories.js'
+import sequelize from '#infrastructure/db/sequelize.js'
+import {
+    SucursalRepository,
+    SucursalComprobanteTipoRepository,
+    SucursalPagoMetodoRepository,
+    ComprobanteTipoRepository,
+    PagoMetodoRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 
 const find = async (req, res) => {
@@ -19,8 +26,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -32,34 +38,68 @@ const findById = async (req, res) => {
         const data = await SucursalRepository.find({ id })
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
 const create = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador, empresa } = req.user
-        const {
-            codigo, direccion, telefono, correo, activo,
-        } = req.body
+        const { codigo, direccion, telefono, correo, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await SucursalRepository.existe({ codigo, empresa }, res) == true) return
+        if ((await SucursalRepository.existe({ codigo, empresa }, res)) == true) return
 
         // --- CREAR --- //
-        const nuevo = await SucursalRepository.create({
-            codigo, direccion, telefono, correo, activo,
+        const nuevo = await SucursalRepository.create(
+            {
+                codigo,
+                direccion,
+                telefono,
+                correo,
+                activo,
+                empresa,
+                createdBy: colaborador,
+            },
+            transaction,
+        )
+
+        // --- CREAR TIPOS DE COMPROBANTE --- //
+        const qry = {
+            fltr: { empresa: { op: 'Es', val: empresa } },
+        }
+        const produccion_areas = await ComprobanteTipoRepository.find(qry, true)
+        const produccion_areas_new = produccion_areas.map((a) => ({
+            sucursal: nuevo.id,
+            comprobante_tipo: a.id,
+            estado: true,
             empresa,
-            createdBy: colaborador
-        })
+            createdBy: colaborador,
+        }))
+        await SucursalComprobanteTipoRepository.createBulk(produccion_areas_new, transaction)
+
+        // --- CREAR MÉTODOS DE PAGO --- //
+        const pago_metodos = await PagoMetodoRepository.find(qry, true)
+        const pago_metodos_new = pago_metodos.map((a) => ({
+            sucursal: nuevo.id,
+            pago_metodo: a.id,
+            estado: true,
+            empresa,
+            createdBy: colaborador,
+        }))
+        await SucursalPagoMetodoRepository.createBulk(pago_metodos_new, transaction)
+
+        await transaction.commit()
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -68,26 +108,30 @@ const update = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const {
-            codigo, direccion, telefono, correo, activo,
-        } = req.body
+        const { codigo, direccion, telefono, correo, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await SucursalRepository.existe({ codigo, id, empresa }, res) == true) return
+        if ((await SucursalRepository.existe({ codigo, id, empresa }, res)) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await SucursalRepository.update({ id }, {
-            codigo, direccion, telefono, correo, activo,
-            updatedBy: colaborador
-        })
+        const updated = await SucursalRepository.update(
+            { id },
+            {
+                codigo,
+                direccion,
+                telefono,
+                correo,
+                activo,
+                updatedBy: colaborador,
+            },
+        )
 
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -97,15 +141,13 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ACTUALIZAR --- //
-        if (await SucursalRepository.delete({ id }) == false) return resDeleteFalse(res)
+        if ((await SucursalRepository.delete({ id })) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
-
 
 // --- Funciones --- //
 async function loadOne(id) {

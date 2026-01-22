@@ -8,7 +8,7 @@ import { Repository } from '#db/Repository.js'
 
 const EmpresaRepository = new Repository('Empresa')
 const ColaboradorRepository = new Repository('Colaborador')
-import { ProduccionArea } from '#db/models/ProduccionArea.js'
+import { ImpresionArea } from '#db/models/ImpresionArea.js'
 
 const signin = async (req, res) => {
     try {
@@ -53,7 +53,7 @@ const signin = async (req, res) => {
         // -- GUARDAR SESSION --- //
         const token = jat.encrypt({ id: colaborador.id }, config.tokenMyApi)
 
-        const impresora_caja = await ProduccionArea.findOne({
+        const impresora_caja = await ImpresionArea.findOne({
             where: {
                 nombre: 'CAJA',
                 empresa: empresa.id,

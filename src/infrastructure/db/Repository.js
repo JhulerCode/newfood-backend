@@ -11,11 +11,13 @@ import { Empresa } from '#db/models/Empresa.js'
 import { Kardex } from '#db/models/Kardex.js'
 import { Mesa } from '#db/models/Mesa.js'
 import { PagoMetodo } from '#db/models/PagoMetodo.js'
-import { ProduccionArea } from '#db/models/ProduccionArea.js'
+import { ImpresionArea } from '#db/models/ImpresionArea.js'
 import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
 import { Salon } from '#db/models/Salon.js'
 import { Socio } from '#db/models/Socio.js'
 import { Sucursal } from '#db/models/Sucursal.js'
+import { SucursalComprobanteTipo } from '#db/models/SucursalComprobanteTipo.js'
+import { SucursalPagoMetodo } from '#db/models/SucursalPagoMetodo.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
 
 import { applyFilters } from '#db/helpers.js'
@@ -34,11 +36,13 @@ export const models = {
     Mesa,
     ComprobanteTipo,
     PagoMetodo,
-    ProduccionArea,
+    ImpresionArea,
     RecetaInsumo,
     Salon,
     Socio,
     Sucursal,
+    SucursalComprobanteTipo,
+    SucursalPagoMetodo,
     Transaccion,
     TransaccionItem,
 }
@@ -77,7 +81,21 @@ const include1 = {
     comprobante1: {
         model: Comprobante,
         as: 'comprobante1',
-        attributes: ['id', 'fecha_emision', 'doc_tipo', 'serie', 'numero', 'serie_correlativo', 'monto', 'estado'],
+        attributes: [
+            'id',
+            'fecha_emision',
+            'doc_tipo',
+            'serie',
+            'numero',
+            'serie_correlativo',
+            'monto',
+            'estado',
+        ],
+    },
+    comprobante_tipo1: {
+        model: ComprobanteTipo,
+        as: 'comprobante_tipo1',
+        attributes: ['id', 'serie'],
     },
     comprobante_items: {
         model: ComprobanteItem,
@@ -124,7 +142,7 @@ const include1 = {
         attributes: ['id', 'nombre', 'color'],
     },
     produccion_area1: {
-        model: ProduccionArea,
+        model: ImpresionArea,
         as: 'produccion_area1',
         attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
     },
