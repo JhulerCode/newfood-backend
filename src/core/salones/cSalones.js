@@ -1,7 +1,5 @@
-import { Repository } from '#db/Repository.js'
+import { SalonRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-
-const repository = new Repository('Salon')
 
 const find = async (req, res) => {
     try {
@@ -10,7 +8,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        let data = await repository.find(qry, true)
+        let data = await SalonRepository.find(qry, true)
 
         if (data.length > 0) {
             const activo_estadosMap = arrayMap('activo_estados')
@@ -31,7 +29,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await repository.find({ id })
+        const data = await SalonRepository.find({ id })
 
         res.json({ code: 0, data })
     }
@@ -44,15 +42,16 @@ const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const {
-            nombre, activo,
+            nombre, activo, sucursal,
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, empresa }, res) == true) return
+        if (await SalonRepository.existe({ nombre, empresa }, res) == true) return
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
+        const nuevo = await SalonRepository.create({
             nombre, activo,
+            sucursal,
             empresa,
             createdBy: colaborador
         })
@@ -75,10 +74,10 @@ const update = async (req, res) => {
         } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, id, empresa }, res) == true) return
+        if (await SalonRepository.existe({ nombre, id, empresa }, res) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update({ id }, {
+        const updated = await SalonRepository.update({ id }, {
             nombre, activo,
             updatedBy: colaborador
         })
@@ -99,7 +98,7 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ACTUALIZAR --- //
-        if (await repository.delete({ id }) == false) return resDeleteFalse(res)
+        if (await SalonRepository.delete({ id }) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
     }
@@ -111,7 +110,7 @@ const delet = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id }, true)
+    const data = await SalonRepository.find({ id, incl: ['sucursal1'] }, true)
 
     if (data) {
         const activo_estadosMap = arrayMap('activo_estados')

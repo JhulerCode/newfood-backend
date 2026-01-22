@@ -4,9 +4,10 @@ import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
 import { Transaccion } from './Transaccion.js'
 import { CajaApertura } from "./CajaApertura.js";
+import { ComprobanteTipo } from './ComprobanteTipo.js'
+import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
-import { ComprobanteTipo } from './ComprobanteTipo.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -57,6 +58,7 @@ export const Comprobante = sequelize.define('comprobantes', {
     sunat_respuesta_descripcion: { type: DataTypes.STRING },
     hash: { type: DataTypes.STRING },
 
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
@@ -83,6 +85,9 @@ Comprobante.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_ape
 
 Comprobante.hasOne(Comprobante, { foreignKey: 'canjeado_por', as: 'comprobante_inicial', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Comprobante, { foreignKey: 'canjeado_por', as: 'canjeado_por1' })
+
+Sucursal.hasMany(Comprobante, { foreignKey: 'sucursal', as: 'comprobantes', onDelete: 'RESTRICT' })
+Comprobante.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(Comprobante, { foreignKey: 'empresa', as: 'comprobantes', onDelete: 'RESTRICT' })
 Comprobante.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
@@ -118,6 +123,7 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     // descuento_vu: { type: DataTypes.DOUBLE },
     comprobante: { type: DataTypes.STRING },
 
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
@@ -128,6 +134,9 @@ ComprobanteItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
 
 Comprobante.hasMany(ComprobanteItem, { foreignKey: 'comprobante', as: 'comprobante_items', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Comprobante, { foreignKey: 'comprobante', as: 'comprobante1' })
+
+Sucursal.hasMany(ComprobanteItem, { foreignKey: 'sucursal', as: 'comprobante_items', onDelete: 'RESTRICT' })
+ComprobanteItem.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(ComprobanteItem, { foreignKey: 'empresa', as: 'comprobante_items', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })

@@ -25,6 +25,7 @@ import produccion_areas from '#core/produccion_areas/rProduccionAreas.js'
 import receta_insumos from '#core/receta_insumos/rRecetaInsumos.js'
 import salones from '#core/salones/rSalones.js'
 import socios from '#core/socios/rSocios.js'
+import sucursales from '#core/sucursales/rSucursales.js'
 import transacciones from '#core/transacciones/rTransacciones.js'
 import transaccion_items from '#core/transaccion_items/rTransaccionItems.js'
 
@@ -58,6 +59,7 @@ router.use('/api/produccion_areas', produccion_areas)
 router.use('/api/receta_insumos', receta_insumos)
 router.use('/api/salones', salones)
 router.use('/api/socios', socios)
+router.use('/api/sucursales', sucursales)
 router.use('/api/transacciones', transacciones)
 router.use('/api/transaccion_items', transaccion_items)
 

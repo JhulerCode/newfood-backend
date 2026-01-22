@@ -7,6 +7,7 @@ import { ComprobanteTipo } from './ComprobanteTipo.js'
 import { PagoMetodo } from './PagoMetodo.js'
 import { Mesa } from './Mesa.js'
 import { Salon } from './Salon.js'
+import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { CajaApertura } from './CajaApertura.js'
 
@@ -46,9 +47,6 @@ export const Transaccion = sequelize.define('transacciones', {
 Socio.hasMany(Transaccion, { foreignKey: 'socio', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Socio, { foreignKey: 'socio', as: 'socio1' })
 
-// ComprobanteTipo.hasMany(Transaccion, { foreignKey: 'compra_comprobante', as: 'transacciones', onDelete: 'RESTRICT' })
-// Transaccion.belongsTo(ComprobanteTipo, { foreignKey: 'compra_comprobante', as: 'compra_comprobante1' })
-
 Salon.hasMany(Transaccion, { foreignKey: 'venta_salon', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Salon, { foreignKey: 'venta_salon', as: 'venta_salon1' })
 
@@ -60,6 +58,9 @@ Transaccion.belongsTo(PagoMetodo, { foreignKey: 'venta_pago_metodo', as: 'venta_
 
 CajaApertura.hasMany(Transaccion, { foreignKey: 'caja_apertura', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(CajaApertura, { foreignKey: 'caja_apertura', as: 'caja_apertura1' })
+
+Sucursal.hasMany(Transaccion, { foreignKey: 'sucursal', as: 'transacciones', onDelete: 'RESTRICT' })
+Transaccion.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(Transaccion, { foreignKey: 'empresa', as: 'transacciones', onDelete: 'RESTRICT' })
 Transaccion.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
@@ -80,9 +81,6 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
     igv_afectacion: { type: DataTypes.STRING },
     igv_porcentaje: { type: DataTypes.DOUBLE },
 
-    // descuento_tipo: { type: DataTypes.STRING },
-    // descuento_valor: { type: DataTypes.DOUBLE },
-
     observacion: { type: DataTypes.STRING },
     has_receta: { type: DataTypes.BOOLEAN },
     receta_insumos: { type: DataTypes.JSON },
@@ -91,9 +89,13 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
     venta_entregado: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
     transaccion: { type: DataTypes.STRING },
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
+
+    descuento_tipo: { type: DataTypes.STRING }, //eliminar
+    descuento_valor: { type: DataTypes.DOUBLE }, //eliminar
 })
 
 Articulo.hasMany(TransaccionItem, { foreignKey: 'articulo', as: 'transaccion_items', onDelete: 'RESTRICT' })
@@ -101,6 +103,9 @@ TransaccionItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
 
 Transaccion.hasMany(TransaccionItem, { foreignKey: 'transaccion', as: 'transaccion_items', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })
+
+Sucursal.hasMany(TransaccionItem, { foreignKey: 'sucursal', as: 'transaccion_items', onDelete: 'RESTRICT' })
+TransaccionItem.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(TransaccionItem, { foreignKey: 'empresa', as: 'transaccion_items', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })

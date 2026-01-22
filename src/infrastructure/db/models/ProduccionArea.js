@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
+import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
@@ -10,10 +11,14 @@ export const ProduccionArea = sequelize.define('produccion_areas', {
     impresora: { type: DataTypes.STRING },
     activo: { type: DataTypes.BOOLEAN },
 
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
 })
+
+Sucursal.hasMany(ProduccionArea, { foreignKey: 'sucursal', as: 'produccion_areas', onDelete: 'RESTRICT' })
+ProduccionArea.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(ProduccionArea, { foreignKey: 'empresa', as: 'produccion_areas', onDelete: 'RESTRICT' })
 ProduccionArea.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })

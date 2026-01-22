@@ -3,6 +3,7 @@ import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
 import { Transaccion, TransaccionItem } from './Transaccion.js'
 import { Comprobante } from './Comprobante.js'
+import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
@@ -21,6 +22,7 @@ export const Kardex = sequelize.define('kardexes', {
     transaccion_item: { type: DataTypes.STRING },
     comprobante: { type: DataTypes.STRING },
 
+    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING }
@@ -37,6 +39,9 @@ Kardex.belongsTo(TransaccionItem, { foreignKey: 'transaccion_item', as: 'transac
 
 Comprobante.hasMany(Kardex, { foreignKey: 'comprobante', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Comprobante, { foreignKey: 'comprobante', as: 'comprobante1' })
+
+Sucursal.hasMany(Kardex, { foreignKey: 'sucursal', as: 'kardexes', onDelete: 'RESTRICT' })
+Kardex.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
 
 Empresa.hasMany(Kardex, { foreignKey: 'empresa', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })

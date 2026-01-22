@@ -15,6 +15,7 @@ import { ProduccionArea } from '#db/models/ProduccionArea.js'
 import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
 import { Salon } from '#db/models/Salon.js'
 import { Socio } from '#db/models/Socio.js'
+import { Sucursal } from '#db/models/Sucursal.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
 
 import { applyFilters } from '#db/helpers.js'
@@ -37,6 +38,7 @@ export const models = {
     RecetaInsumo,
     Salon,
     Socio,
+    Sucursal,
     Transaccion,
     TransaccionItem,
 }
@@ -140,6 +142,11 @@ const include1 = {
         model: Socio,
         as: 'socio1',
         attributes: ['id', 'nombres', 'doc_nombres'],
+    },
+    sucursal1: {
+        model: Sucursal,
+        as: 'sucursal1',
+        attributes: ['id', 'codigo'],
     },
     transaccion1: {
         model: Transaccion,
