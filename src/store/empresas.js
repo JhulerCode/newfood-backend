@@ -19,7 +19,6 @@ function actualizarEmpresa(id, values) {
     if (!sesion || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
-        // Evita asignar undefined (por ejemplo, si no se pasó la propiedad)
         if (value !== undefined) {
             sesion[key] = value
         }

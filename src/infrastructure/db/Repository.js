@@ -168,6 +168,11 @@ const include1 = {
         as: 'sucursal1',
         attributes: ['id', 'codigo'],
     },
+    sucursales: {
+        model: Sucursal,
+        as: 'sucursales',
+        attributes: ['id', 'codigo'],
+    },
     transaccion1: {
         model: Transaccion,
         as: 'transaccion1',

@@ -23,7 +23,8 @@ const signin = async (req, res) => {
                 fltr: {
                     subdominio: { op: 'Es', val: xEmpresa }
                 },
-                cols: { exclude: [] }
+                cols: { exclude: [] },
+                incl: ['sucursales']
             }
 
             const empresas = await EmpresaRepository.find(qry, true)
@@ -33,7 +34,7 @@ const signin = async (req, res) => {
             guardarEmpresa(xEmpresa, empresa)
         }
 
-        // -- VERIFICAR COLABORADOR --- //
+        // --- VERIFICAR COLABORADOR --- //
         const qry1 = {
             fltr: {
                 usuario: { op: 'Es', val: usuario },
