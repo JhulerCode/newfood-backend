@@ -16,6 +16,7 @@ import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
 import { Salon } from '#db/models/Salon.js'
 import { Socio } from '#db/models/Socio.js'
 import { Sucursal } from '#db/models/Sucursal.js'
+import { SucursalArticulo } from '#db/models/SucursalArticulo.js'
 import { SucursalComprobanteTipo } from '#db/models/SucursalComprobanteTipo.js'
 import { SucursalPagoMetodo } from '#db/models/SucursalPagoMetodo.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
@@ -41,6 +42,7 @@ export const models = {
     Salon,
     Socio,
     Sucursal,
+    SucursalArticulo,
     SucursalComprobanteTipo,
     SucursalPagoMetodo,
     Transaccion,

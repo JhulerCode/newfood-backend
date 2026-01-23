@@ -1,8 +1,10 @@
 import sequelize from '#infrastructure/db/sequelize.js'
 import {
     SucursalRepository,
+    SucursalArticuloRepository,
     SucursalComprobanteTipoRepository,
     SucursalPagoMetodoRepository,
+    ArticuloRepository,
     ComprobanteTipoRepository,
     PagoMetodoRepository,
 } from '#db/repositories.js'
@@ -67,10 +69,21 @@ const create = async (req, res) => {
             transaction,
         )
 
-        // --- CREAR TIPOS DE COMPROBANTE --- //
         const qry = {
             fltr: { empresa: { op: 'Es', val: empresa } },
         }
+        // --- CREAR ARTICULOS --- //
+        const articulos = await ArticuloRepository.find(qry, true)
+        const articulos_new = articulos.map((a) => ({
+            sucursal: nuevo.id,
+            articulo: a.id,
+            estado: true,
+            empresa,
+            createdBy: colaborador,
+        }))
+        await SucursalArticuloRepository.createBulk(articulos_new, transaction)
+
+        // --- CREAR TIPOS DE COMPROBANTE --- //
         const produccion_areas = await ComprobanteTipoRepository.find(qry, true)
         const produccion_areas_new = produccion_areas.map((a) => ({
             sucursal: nuevo.id,
