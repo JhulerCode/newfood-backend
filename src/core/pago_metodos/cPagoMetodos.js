@@ -1,7 +1,6 @@
-import { Repository } from '#db/Repository.js'
+import sequelize from '#db/sequelize.js'
+import { PagoMetodoRepository, SucursalPagoMetodoRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-
-const repository = new Repository('PagoMetodo')
 
 const find = async (req, res) => {
     try {
@@ -10,7 +9,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        let data = await repository.find(qry, true)
+        let data = await PagoMetodoRepository.find(qry, true)
 
         if (data.length > 0) {
             const activo_estadosMap = arrayMap('activo_estados')
@@ -21,8 +20,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -31,37 +29,57 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await repository.find({ id })
+        const data = await PagoMetodoRepository.find({ id })
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
 const create = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador, empresa } = req.user
-        const {
-            nombre, color, activo,
-        } = req.body
+        const { nombre, color, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, empresa }, res) == true) return
+        if ((await PagoMetodoRepository.existe({ nombre, empresa }, res)) == true) return
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
-            nombre, color, activo,
-            empresa,
-            createdBy: colaborador
-        })
+        const nuevo = await PagoMetodoRepository.create(
+            {
+                nombre,
+                color,
+                activo,
+
+                empresa,
+                createdBy: colaborador,
+            },
+            transaction,
+        )
+
+        // --- CREAR SUCURSAL COMPROBANTE TIPOS --- //
+        const sucursales = []
+        for (const b of req.empresa.sucursales) {
+            sucursales.push({
+                sucursal: b.id,
+                pago_metodo: nuevo.id,
+                empresa,
+                createdBy: colaborador,
+            })
+        }
+        await SucursalPagoMetodoRepository.createBulk(sucursales, transaction)
+
+        await transaction.commit()
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -70,47 +88,56 @@ const update = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const {
-            nombre, color, activo,
-        } = req.body
+        const { nombre, color, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombre, id, empresa }, res) == true) return
+        if ((await PagoMetodoRepository.existe({ nombre, id, empresa }, res)) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update({ id }, {
-            nombre, color, activo,
-            updatedBy: colaborador
-        })
+        const updated = await PagoMetodoRepository.update(
+            { id },
+            {
+                nombre,
+                color,
+                activo,
+                updatedBy: colaborador,
+            },
+        )
 
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
 const delet = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { id } = req.params
 
-        if (await repository.delete({ id }) == false) return resDeleteFalse(res)
+        await SucursalPagoMetodoRepository.delete({ pago_metodo: id }, transaction)
+
+        if ((await PagoMetodoRepository.delete({ id }, transaction)) == false)
+            return resDeleteFalse(res)
+
+        await transaction.commit()
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
 
-
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id }, true)
+    const data = await PagoMetodoRepository.find({ id }, true)
 
     if (data) {
         const activo_estadosMap = arrayMap('activo_estados')
