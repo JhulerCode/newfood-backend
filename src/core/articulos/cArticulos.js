@@ -333,13 +333,24 @@ const createBulk = async (req, res) => {
 }
 
 const deleteBulk = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { ids } = req.body
 
-        if ((await ArticuloRepository.delete({ id: ids })) == false) return resDeleteFalse(res)
+        await ComboArticuloRepository.delete({ articulo_principal: ids }, transaction)
+
+        await SucursalArticuloRepository.delete({ articulo: ids }, transaction)
+
+        if ((await ArticuloRepository.delete({ id: ids }, transaction)) == false)
+            return resDeleteFalse(res)
+
+        await transaction.commit()
 
         res.json({ code: 0 })
     } catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
