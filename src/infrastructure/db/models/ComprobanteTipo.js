@@ -5,7 +5,7 @@ import { Colaborador } from './Colaborador.js'
 
 export const ComprobanteTipo = sequelize.define('pago_comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    nombre: { type: DataTypes.STRING },
+    tipo: { type: DataTypes.STRING },
     serie: { type: DataTypes.STRING },
     numero: { type: DataTypes.INTEGER },
     correlativo: { type: DataTypes.INTEGER },
@@ -14,7 +14,9 @@ export const ComprobanteTipo = sequelize.define('pago_comprobantes', {
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
+
+    nombre: { type: DataTypes.STRING }, //eliminar
 })
 
 Empresa.hasMany(ComprobanteTipo, { foreignKey: 'empresa', as: 'pago_comprobantes', onDelete: 'RESTRICT' })

@@ -9,7 +9,7 @@ export const SucursalComprobanteTipo = sequelize.define('sucursal_comprobante_ti
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     sucursal: { type: DataTypes.STRING },
     comprobante_tipo: { type: DataTypes.STRING },
-    estado: { type: DataTypes.BOOLEAN },
+    estado: { type: DataTypes.BOOLEAN, defaultValue: true },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },

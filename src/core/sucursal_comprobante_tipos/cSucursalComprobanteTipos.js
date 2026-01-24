@@ -9,9 +9,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        console.log('ASD', qry)
         let data = await SucursalComprobanteTipoRepository.find(qry, true)
-        console.log(data)
 
         if (data.length > 0) {
             const activo_estadosMap = arrayMap('activo_estados')

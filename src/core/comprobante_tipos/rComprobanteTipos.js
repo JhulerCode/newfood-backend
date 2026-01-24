@@ -13,16 +13,22 @@ router.get(
     controller.find
 )
 
-router.get(
-    '/uno/:id',
-    verifyPermiso(['vComprobanteTipos:editar']),
-    controller.findById
+// router.get(
+//     '/uno/:id',
+//     verifyPermiso(['vComprobanteTipos:editar']),
+//     controller.findById
+// )
+
+router.post(
+    '/',
+    verifyPermiso(['vComprobanteTipos:crear']),
+    controller.create
 )
 
-router.patch(
+router.delete(
     '/:id',
-    verifyPermiso(['vComprobanteTipos:editar']),
-    controller.update
+    verifyPermiso(['vComprobanteTipos:eliminar']),
+    controller.delet
 )
 
 export default router
