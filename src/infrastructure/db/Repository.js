@@ -333,7 +333,7 @@ export class Repository {
             where.id = { [Op.not]: where.id }
         }
 
-        const result = await this.model.findAll({ where })
+        const result = await this.model.findAll({ where, attributes: ['id'] })
 
         if (result.length > 0) {
             res.json({ code: 1, msg: ms ? ms : 'El nombre ya existe' })

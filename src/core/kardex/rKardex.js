@@ -9,6 +9,8 @@ router.get(
     verifyPermiso([
         'vInsumos:kardex',
         'vProductos:kardex',
+        'vInventarioInsumos:kardex',
+        'vInventarioProductos:kardex',
     ]),
     controller.find
 )
@@ -18,6 +20,8 @@ router.post(
     verifyPermiso([
         'vInsumos:ajusteStock',
         'vProductos:ajusteStock',
+        'vInventarioInsumos:ajusteStock',
+        'vInventarioProductos:ajusteStock',
     ]),
     controller.create
 )
@@ -27,6 +31,8 @@ router.delete(
     verifyPermiso([
         'vInsumos:ajusteStock',
         'vProductos:ajusteStock',
+        'vInventarioInsumos:ajusteStock',
+        'vInventarioProductos:ajusteStock',
     ]),
     controller.delet
 )

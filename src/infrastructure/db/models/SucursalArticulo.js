@@ -9,7 +9,7 @@ export const SucursalArticulo = sequelize.define('sucursal_articulos', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     sucursal: { type: DataTypes.STRING },
     articulo: { type: DataTypes.STRING },
-    estado: { type: DataTypes.BOOLEAN },
+    estado: { type: DataTypes.BOOLEAN, defaultValue: true },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
