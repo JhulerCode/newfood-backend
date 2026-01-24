@@ -19,8 +19,7 @@ const find = async (req, res) => {
         }
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -32,8 +31,7 @@ const findById = async (req, res) => {
         const data = await SalonRepository.find({ id })
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -41,26 +39,24 @@ const findById = async (req, res) => {
 const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
-        const {
-            nombre, activo, sucursal,
-        } = req.body
+        const { nombre, activo, sucursal } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await SalonRepository.existe({ nombre, empresa }, res) == true) return
+        if ((await SalonRepository.existe({ nombre, empresa }, res)) == true) return
 
         // --- CREAR --- //
         const nuevo = await SalonRepository.create({
-            nombre, activo,
+            nombre,
+            activo,
             sucursal,
             empresa,
-            createdBy: colaborador
+            createdBy: colaborador,
         })
 
         const data = await loadOne(nuevo.id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -69,26 +65,27 @@ const update = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const {
-            nombre, activo,
-        } = req.body
+        const { nombre, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await SalonRepository.existe({ nombre, id, empresa }, res) == true) return
+        if ((await SalonRepository.existe({ nombre, id, empresa }, res)) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await SalonRepository.update({ id }, {
-            nombre, activo,
-            updatedBy: colaborador
-        })
+        const updated = await SalonRepository.update(
+            { id },
+            {
+                nombre,
+                activo,
+                updatedBy: colaborador,
+            },
+        )
 
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
 
         res.json({ code: 0, data })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -98,15 +95,13 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ACTUALIZAR --- //
-        if (await SalonRepository.delete({ id }) == false) return resDeleteFalse(res)
+        if ((await SalonRepository.delete({ id })) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
-
 
 // --- Funciones --- //
 async function loadOne(id) {

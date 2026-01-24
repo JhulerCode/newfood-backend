@@ -96,16 +96,22 @@ const create = async (req, res) => {
         if (tipo == 2) {
             // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
             const qry = {
-                fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
+                fltr: {
+                    estado: { op: 'Es', val: '1' },
+                    sucursal: { op: 'Es', val: req.sucursal.id },
+                    empresa: { op: 'Es', val: empresa },
+                },
             }
 
-            caja_apertura = await CajaAperturaRepository.find(qry, true)
+            const caja_aperturas = await CajaAperturaRepository.find(qry, true)
 
-            if (caja_apertura.length == 0) {
+            if (caja_aperturas.length == 0) {
                 await transaction.rollback()
                 res.json({ code: 1, msg: 'La caja no está aperturada, no puede generar pedidos' })
                 return
             }
+
+            caja_apertura = caja_aperturas[0]
         }
 
         // --- CREAR --- //
@@ -114,21 +120,26 @@ const create = async (req, res) => {
                 tipo,
                 fecha,
                 socio,
+
                 pago_condicion,
                 monto,
+
                 observacion,
                 estado,
-                anulado_motivo,
+
                 compra_comprobante,
                 compra_comprobante_serie,
                 compra_comprobante_correlativo,
+
                 venta_codigo,
                 venta_canal,
-                venta_mesa,
+                // venta_mesa,
                 venta_pago_metodo,
                 venta_pago_con,
                 venta_socio_datos,
-                caja_apertura: caja_apertura[0].id,
+
+                caja_apertura: caja_apertura.id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             },
@@ -137,6 +148,7 @@ const create = async (req, res) => {
 
         // --- GUARDAR ITEMS --- //
         const items = transaccion_items.map((a) => ({
+            id: a.id,
             articulo: a.articulo,
             cantidad: a.cantidad,
 
@@ -151,6 +163,7 @@ const create = async (req, res) => {
             combo_articulos: a.combo_articulos,
 
             transaccion: nuevo.id,
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         }))
@@ -162,37 +175,42 @@ const create = async (req, res) => {
             const kardexItems = transaccion_items.map((a) => ({
                 tipo,
                 fecha,
+
                 articulo: a.articulo,
                 cantidad: a.cantidad,
+
                 transaccion: nuevo.id,
+                transaccion_item: a.id,
+
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             }))
 
             await KardexRepository.createBulk(kardexItems, transaction)
 
-            // --- ACTUALIZAR STOCK --- //
-            const transaccion_tiposMap = arrayMap('kardex_tipos')
-            const tipoInfo = transaccion_tiposMap[tipo]
-            const signo = tipoInfo.operacion === 1 ? 1 : -1
+            // // --- ACTUALIZAR STOCK --- //
+            // const transaccion_tiposMap = arrayMap('kardex_tipos')
+            // const tipoInfo = transaccion_tiposMap[tipo]
+            // const signo = tipoInfo.operacion === 1 ? 1 : -1
 
-            const cases = transaccion_items
-                .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
-                .join(' ')
+            // const cases = transaccion_items
+            //     .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
+            //     .join(' ')
 
-            const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
+            // const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
 
-            await sequelize.query(
-                `
-                UPDATE articulos
-                SET stock = COALESCE(stock, 0) + CASE id
-                    ${cases}
-                    ELSE 0
-                END
-                WHERE id IN (${ids})
-            `,
-                { transaction },
-            )
+            // await sequelize.query(
+            //     `
+            //     UPDATE articulos
+            //     SET stock = COALESCE(stock, 0) + CASE id
+            //         ${cases}
+            //         ELSE 0
+            //     END
+            //     WHERE id IN (${ids})
+            // `,
+            //     { transaction },
+            // )
         }
 
         await transaction.commit()
@@ -400,15 +418,19 @@ const addProductos = async (req, res) => {
         const items = transaccion_items.map((a) => ({
             articulo: a.articulo,
             cantidad: a.cantidad,
+
             pu: a.pu,
             igv_afectacion: a.igv_afectacion,
             igv_porcentaje: a.igv_porcentaje,
+
             observacion: a.observacion,
-            transaccion: id,
             has_receta: a.has_receta,
             receta_insumos: a.receta_insumos,
             is_combo: a.is_combo,
             combo_articulos: a.combo_articulos,
+
+            transaccion: id,
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         }))

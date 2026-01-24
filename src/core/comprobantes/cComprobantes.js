@@ -95,7 +95,11 @@ const create = async (req, res) => {
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
         const qry = {
-            fltr: { estado: { op: 'Es', val: '1' }, empresa: { op: 'Es', val: empresa } },
+            fltr: {
+                estado: { op: 'Es', val: '1' },
+                sucursal: { op: 'Es', val: req.sucursal.id },
+                empresa: { op: 'Es', val: empresa },
+            },
         }
         const caja_aperturas = await CajaAperturaRepository.find(qry, true)
 
@@ -125,6 +129,7 @@ const create = async (req, res) => {
                 venta_entregado: true,
 
                 caja_apertura: caja_apertura.id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             }
@@ -154,6 +159,7 @@ const create = async (req, res) => {
                     venta_entregado: a.cantidad,
 
                     transaccion,
+                    sucursal: req.sucursal.id,
                     empresa,
                     createdBy: colaborador,
                 }
@@ -252,6 +258,7 @@ const create = async (req, res) => {
             nota,
             mifact: {},
 
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         }
@@ -299,6 +306,7 @@ const create = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             })
@@ -384,12 +392,15 @@ const create = async (req, res) => {
                             kardexItems.push({
                                 tipo: 2,
                                 fecha: fecha_emision,
+
                                 articulo: c.articulo,
                                 cantidad: c.cantidad * b.cantidad * a.cantidad,
-                                estado: 1,
+
                                 transaccion,
                                 transaccion_item: a.id1,
                                 comprobante: nuevo.id,
+
+                                sucursal: req.sucursal.id,
                                 empresa,
                                 createdBy: colaborador,
                             })
@@ -398,12 +409,15 @@ const create = async (req, res) => {
                         kardexItems.push({
                             tipo: 2,
                             fecha: fecha_emision,
+
                             articulo: b.articulo,
                             cantidad: b.cantidad * a.cantidad,
-                            estado: 1,
+
                             transaccion,
                             transaccion_item: a.id1,
                             comprobante: nuevo.id,
+
+                            sucursal: req.sucursal.id,
                             empresa,
                             createdBy: colaborador,
                         })
@@ -416,12 +430,15 @@ const create = async (req, res) => {
                         kardexItems.push({
                             tipo: 2,
                             fecha: fecha_emision,
+
                             articulo: b.articulo,
                             cantidad: b.cantidad * a.cantidad,
-                            estado: 1,
+
                             transaccion,
                             transaccion_item: a.id1,
                             comprobante: nuevo.id,
+
+                            sucursal: req.sucursal.id,
                             empresa,
                             createdBy: colaborador,
                         })
@@ -430,12 +447,15 @@ const create = async (req, res) => {
                     kardexItems.push({
                         tipo: 2,
                         fecha: fecha_emision,
+
                         articulo: a.articulo,
                         cantidad: a.cantidad,
-                        estado: 1,
+
                         transaccion,
                         transaccion_item: a.id1,
                         comprobante: nuevo.id,
+
+                        sucursal: req.sucursal.id,
                         empresa,
                         createdBy: colaborador,
                     })
@@ -444,37 +464,37 @@ const create = async (req, res) => {
         }
         await KardexRepository.createBulk(kardexItems, transaction)
 
-        // --- ACTUALIZAR STOCK --- //
-        if (kardexItems.length > 0) {
-            const transaccion_tiposMap = arrayMap('kardex_tipos')
-            const tipoInfo = transaccion_tiposMap[2]
-            const agrupado = {}
+        // // --- ACTUALIZAR STOCK --- //
+        // if (kardexItems.length > 0) {
+        //     const transaccion_tiposMap = arrayMap('kardex_tipos')
+        //     const tipoInfo = transaccion_tiposMap[2]
+        //     const agrupado = {}
 
-            for (const a of kardexItems) {
-                agrupado[a.articulo] =
-                    (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
-            }
+        //     for (const a of kardexItems) {
+        //         agrupado[a.articulo] =
+        //             (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
+        //     }
 
-            const cases = Object.entries(agrupado)
-                .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
-                .join(' ')
+        //     const cases = Object.entries(agrupado)
+        //         .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
+        //         .join(' ')
 
-            const ids = Object.keys(agrupado)
-                .map((id) => `'${id}'`)
-                .join(',')
+        //     const ids = Object.keys(agrupado)
+        //         .map((id) => `'${id}'`)
+        //         .join(',')
 
-            await sequelize.query(
-                `
-                    UPDATE articulos
-                    SET stock = COALESCE(stock, 0) + CASE id
-                        ${cases}
-                        ELSE 0
-                    END
-                    WHERE id IN (${ids})
-                `,
-                { transaction },
-            )
-        }
+        //     await sequelize.query(
+        //         `
+        //             UPDATE articulos
+        //             SET stock = COALESCE(stock, 0) + CASE id
+        //                 ${cases}
+        //                 ELSE 0
+        //             END
+        //             WHERE id IN (${ids})
+        //         `,
+        //         { transaction },
+        //     )
+        // }
 
         // --- ACTUALIZAR PEDIDO ITEMS --- //
         if (transaccion1.venta_canal != '4') {
@@ -515,10 +535,14 @@ const create = async (req, res) => {
                     tipo: 1,
                     operacion: 1,
                     detalle: null,
+
                     pago_metodo: a.id,
                     monto: a.monto,
+
                     comprobante: nuevo.id,
                     caja_apertura: caja_apertura.id,
+
+                    sucursal: req.sucursal.id,
                     empresa,
                     createdBy: colaborador,
                 }))
@@ -554,7 +578,6 @@ const create = async (req, res) => {
         const data_transaccion = await loadOneTransaccion(transaccion)
 
         res.json({ code: 0, data, facturacion: res_mifact, data_transaccion })
-        // res.json({ code: 0, data_transaccion })
     } catch (error) {
         await transaction.rollback()
 
@@ -657,10 +680,14 @@ const actualizarPago = async (req, res) => {
                 tipo: 1,
                 operacion: 1,
                 detalle: null,
+
                 pago_metodo: a.id,
                 monto: a.monto,
+
                 comprobante: id,
                 caja_apertura: modal_mode == 1 ? caja_apertura1.id : caja_apertura,
+
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             }))
@@ -770,14 +797,16 @@ const canjear = async (req, res) => {
             pago_condicion: comprobante.pago_condicion,
             transaccion: comprobante.transaccion,
             caja_apertura: comprobante.caja_apertura,
+            estado: 1,
+
             empresa_datos: comprobante.empresa_datos,
+
             cliente_datos: {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
                 doc_tipo: cliente.doc_tipo,
                 direccion: cliente.direccion,
             },
-            estado: 1,
 
             doc_tipo: doc_tipo1,
             serie: pago_comprobante.serie,
@@ -801,6 +830,7 @@ const canjear = async (req, res) => {
             nota: comprobante.nota,
             mifact: {},
 
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         }
@@ -810,10 +840,9 @@ const canjear = async (req, res) => {
         const items = []
         for (const a of comprobante.comprobante_items) {
             items.push({
-                codigo: a.codigo,
                 articulo: a.articulo,
                 descripcion: a.descripcion,
-                codigo: a.codigo_producto,
+                codigo: a.codigo,
                 codigo_sunat: a.codigo_sunat,
                 unidad: a.unidad,
                 cantidad: a.cantidad,
@@ -847,6 +876,7 @@ const canjear = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             })

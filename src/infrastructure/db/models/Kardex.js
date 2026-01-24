@@ -16,7 +16,6 @@ export const Kardex = sequelize.define('kardexes', {
     cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
     observacion: { type: DataTypes.STRING },
-    estado: { type: DataTypes.STRING },
 
     transaccion: { type: DataTypes.STRING },
     transaccion_item: { type: DataTypes.STRING },
@@ -25,7 +24,9 @@ export const Kardex = sequelize.define('kardexes', {
     sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING }
+    updatedBy: { type: DataTypes.STRING },
+
+    estado: { type: DataTypes.STRING }, //eliminar
 })
 
 Articulo.hasMany(Kardex, { foreignKey: 'articulo', as: 'kardexes', onDelete: 'RESTRICT' })

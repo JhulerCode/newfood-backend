@@ -46,18 +46,24 @@ const create = async (req, res) => {
             {
                 tipo,
                 fecha,
+
                 articulo,
                 cantidad,
+
                 observacion,
-                estado,
-                transaccion,
+
+                // transaccion,
+                // transaccion_item,
+                // comprobante,
+
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             },
             transaction,
         )
 
-        await actualizarStock(tipo, articulo, cantidad, transaction)
+        // await actualizarStock(tipo, articulo, cantidad, transaction)
 
         await transaction.commit()
 
@@ -79,7 +85,7 @@ const delet = async (req, res) => {
         // --- ELIMINAR --- //
         await repository.delete({ id }, transaction)
 
-        await actualizarStock(tipo, articulo, cantidad, transaction, -1)
+        // await actualizarStock(tipo, articulo, cantidad, transaction, -1)
 
         await transaction.commit()
 
@@ -92,18 +98,18 @@ const delet = async (req, res) => {
 }
 
 // --- Helpers --- //
-async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1) {
-    const kardex_tiposMap = arrayMap('kardex_tipos')
-    const operacion = kardex_tiposMap[tipo].operacion
+// async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1) {
+//     const kardex_tiposMap = arrayMap('kardex_tipos')
+//     const operacion = kardex_tiposMap[tipo].operacion
 
-    await ArticuloRepository.update(
-        { id: articulo },
-        {
-            stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
-        },
-        transaction,
-    )
-}
+//     await ArticuloRepository.update(
+//         { id: articulo },
+//         {
+//             stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
+//         },
+//         transaction,
+//     )
+// }
 
 export default {
     find,

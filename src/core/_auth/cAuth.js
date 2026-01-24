@@ -24,7 +24,7 @@ const signin = async (req, res) => {
                     subdominio: { op: 'Es', val: xEmpresa }
                 },
                 cols: { exclude: [] },
-                incl: ['sucursales']
+                incl: ['sucursales'],
             }
 
             const empresas = await EmpresaRepository.find(qry, true)

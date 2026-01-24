@@ -43,6 +43,8 @@ const create = async (req, res) => {
             fecha_apertura,
             monto_apertura,
             estado: 1,
+
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         })

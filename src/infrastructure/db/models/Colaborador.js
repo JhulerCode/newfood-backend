@@ -27,7 +27,7 @@ export const Colaborador = sequelize.define('colaboradores', {
     contrasena: { type: DataTypes.STRING },
     permisos: { type: DataTypes.JSON },
     vista_inicial: { type: DataTypes.STRING },
-    
+
     lastSignin: { type: DataTypes.DATE },
     lastUpdatePassword: { type: DataTypes.DATE },
 
@@ -39,7 +39,6 @@ export const Colaborador = sequelize.define('colaboradores', {
     tables: { type: DataTypes.JSON, defaultValue: {} },
     avances: { type: DataTypes.JSON, defaultValue: {} },
 
-    sucursal: { type: DataTypes.STRING },
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
@@ -50,12 +49,22 @@ export const Colaborador = sequelize.define('colaboradores', {
             const nombres = this.nombres || ''
             const apellidos = this.apellidos || ''
             return `${nombres} ${apellidos}`.trim()
-        }
-    }
+        },
+    },
+
+    sucursal: { type: DataTypes.STRING }, //eliminar
 })
 
 Empresa.hasMany(Colaborador, { foreignKey: 'empresa', as: 'colaboradores', onDelete: 'RESTRICT' })
 Colaborador.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
 
-Colaborador.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1', onDelete: 'RESTRICT' })
-Colaborador.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1', onDelete: 'RESTRICT' })
+Colaborador.belongsTo(Colaborador, {
+    foreignKey: 'createdBy',
+    as: 'createdBy1',
+    onDelete: 'RESTRICT',
+})
+Colaborador.belongsTo(Colaborador, {
+    foreignKey: 'updatedBy',
+    as: 'updatedBy1',
+    onDelete: 'RESTRICT',
+})

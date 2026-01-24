@@ -60,6 +60,7 @@ const create = async (req, res) => {
             comprobante,
             caja_apertura,
 
+            sucursal: req.sucursal.id,
             empresa,
             createdBy: colaborador,
         })

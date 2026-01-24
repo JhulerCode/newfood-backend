@@ -6,6 +6,7 @@ import { obtenerEmpresa } from "#store/empresas.js"
 async function verifyToken(req, res, next) {
     const authorization = req.headers['authorization']
     const xEmpresa = req.headers["x-empresa"]
+    const xSucursal = req.headers["x-sucursal"]
 
     if (!authorization) return res.status(401).json({ msg: 'Token faltante' })
 
@@ -29,6 +30,11 @@ async function verifyToken(req, res, next) {
         const empresa = obtenerEmpresa(xEmpresa)
         req.empresa = {
             ...empresa
+        }
+
+        const sucursal = empresa.sucursales.find(s => s.id == xSucursal)
+        req.sucursal = {
+            ...sucursal
         }
 
         next()
