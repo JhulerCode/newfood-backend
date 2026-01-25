@@ -23,8 +23,7 @@ const find = async (req, res) => {
                     const tKey = setTKey(a.comprobante1.doc_tipo)
                     a.comprobante1.doc_tipo1 = pago_comprobantesMap[tKey]
 
-                    a.comprobante_estado1 = comprobante_estadosMap[a.comprobante1.estado]
-                    a.comprobante_estado = a.comprobante_estado1.id
+                    a.comprobante1.estado1 = comprobante_estadosMap[a.comprobante1.estado]
                 }
 
                 if (qry?.cols?.includes('pu') && qry.cols.includes('cantidad')) {

@@ -820,7 +820,7 @@ const canjear = async (req, res) => {
             nota: comprobante.nota,
             mifact: {},
 
-            sucursal: req.sucursal.id,
+            sucursal: comprobante.sucursal,
             empresa,
             createdBy: colaborador,
         }
@@ -866,7 +866,7 @@ const canjear = async (req, res) => {
                 // IMPUESTO_BOLSAS_UNIT: a.IMPUESTO_BOLSAS_UNIT,
 
                 comprobante: nuevo.id,
-                sucursal: req.sucursal.id,
+                sucursal: a.sucursal,
                 empresa,
                 createdBy: colaborador,
             })
