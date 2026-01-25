@@ -2,6 +2,7 @@ import { Repository } from '#db/Repository.js'
 import { arrayMap } from '#store/system.js'
 import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
+import TransaccionControler from '#core/transacciones/cTransacciones.js'
 
 import PdfPrinter from 'pdfmake'
 import { numeroATexto } from '#shared/mine.js'
@@ -464,37 +465,26 @@ const create = async (req, res) => {
         }
         await KardexRepository.createBulk(kardexItems, transaction)
 
-        // // --- ACTUALIZAR STOCK --- //
-        // if (kardexItems.length > 0) {
-        //     const transaccion_tiposMap = arrayMap('kardex_tipos')
-        //     const tipoInfo = transaccion_tiposMap[2]
-        //     const agrupado = {}
+        // --- ACTUALIZAR STOCK --- //
+        if (kardexItems.length > 0) {
+            const toUpdateMap = {}
 
-        //     for (const a of kardexItems) {
-        //         agrupado[a.articulo] =
-        //             (agrupado[a.articulo] || 0) + Number(a.cantidad) * tipoInfo.operacion
-        //     }
+            for (const a of kardexItems) {
+                toUpdateMap[a.articulo] = (toUpdateMap[a.articulo] || 0) + Number(a.cantidad)
+            }
 
-        //     const cases = Object.entries(agrupado)
-        //         .map(([id, cantidad]) => `WHEN '${id}' THEN ${cantidad}`)
-        //         .join(' ')
+            const itemsToUpdate = Object.entries(toUpdateMap).map(([articulo, cantidad]) => ({
+                articulo,
+                cantidad,
+            }))
 
-        //     const ids = Object.keys(agrupado)
-        //         .map((id) => `'${id}'`)
-        //         .join(',')
-
-        //     await sequelize.query(
-        //         `
-        //             UPDATE articulos
-        //             SET stock = COALESCE(stock, 0) + CASE id
-        //                 ${cases}
-        //                 ELSE 0
-        //             END
-        //             WHERE id IN (${ids})
-        //         `,
-        //         { transaction },
-        //     )
-        // }
+            await TransaccionControler.actualizarStock(
+                req.sucursal.id,
+                itemsToUpdate,
+                2,
+                transaction,
+            )
+        }
 
         // --- ACTUALIZAR PEDIDO ITEMS --- //
         if (transaccion1.venta_canal != '4') {

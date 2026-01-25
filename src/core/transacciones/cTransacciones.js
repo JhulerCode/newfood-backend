@@ -189,28 +189,8 @@ const create = async (req, res) => {
 
             await KardexRepository.createBulk(kardexItems, transaction)
 
-            // // --- ACTUALIZAR STOCK --- //
-            // const transaccion_tiposMap = arrayMap('kardex_tipos')
-            // const tipoInfo = transaccion_tiposMap[tipo]
-            // const signo = tipoInfo.operacion === 1 ? 1 : -1
-
-            // const cases = transaccion_items
-            //     .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
-            //     .join(' ')
-
-            // const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
-
-            // await sequelize.query(
-            //     `
-            //     UPDATE articulos
-            //     SET stock = COALESCE(stock, 0) + CASE id
-            //         ${cases}
-            //         ELSE 0
-            //     END
-            //     WHERE id IN (${ids})
-            // `,
-            //     { transaction },
-            // )
+            // --- ACTUALIZAR STOCK --- //
+            await actualizarStock(req.sucursal.id, transaccion_items, tipo, transaction)
         }
 
         await transaction.commit()
@@ -339,27 +319,8 @@ const delet = async (req, res) => {
                 attributes: ['id', 'articulo', 'cantidad'],
             })
 
-            const transaccion_tiposMap = arrayMap('kardex_tipos')
-            const tipoInfo = transaccion_tiposMap[tipo]
-            const signo = tipoInfo.operacion === 1 ? -1 : 1
-
-            const cases = transaccion_items
-                .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * signo}`)
-                .join(' ')
-
-            const ids = transaccion_items.map((a) => `'${a.articulo}'`).join(',')
-
-            await sequelize.query(
-                `
-                    UPDATE articulos
-                    SET stock = COALESCE(stock, 0) + CASE id
-                        ${cases}
-                        ELSE 0
-                    END
-                    WHERE id IN (${ids})
-                `,
-                { transaction },
-            )
+            // --- ACTUALIZAR STOCK --- //
+            await actualizarStock(req.sucursal.id, transaccion_items, tipo, transaction, -1)
         }
 
         await transaction.commit()
@@ -554,6 +515,29 @@ async function loadOne(id) {
     return data
 }
 
+async function actualizarStock(sucursal, items, tipo, transaction, factor = 1) {
+    const kardex_tiposMap = arrayMap('kardex_operaciones')
+    const operacion = kardex_tiposMap[tipo].operacion
+
+    const cases = items
+        .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * operacion * factor}`)
+        .join(' ')
+
+    const ids = items.map((a) => `'${a.articulo}'`).join(',')
+
+    await sequelize.query(
+        `
+            UPDATE sucursal_articulos
+            SET stock = COALESCE(stock, 0) + CASE articulo
+                ${cases}
+                ELSE 0
+            END
+            WHERE articulo IN (${ids}) AND sucursal = '${sucursal}'
+        `,
+        { transaction },
+    )
+}
+
 export default {
     create,
     update,
@@ -566,4 +550,5 @@ export default {
     cambiarMesa,
     entregar,
     entregarBulk,
+    actualizarStock,
 }

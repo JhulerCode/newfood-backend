@@ -1,10 +1,10 @@
 import sequelize from '#db/sequelize.js'
+import {
+    TransaccionItemRepository,
+    KardexRepository,
+    SucursalArticuloRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-import { Repository } from '#db/Repository.js'
-
-const repository = new Repository('TransaccionItem')
-const KardexRepository = new Repository('Kardex')
-const ArticuloRepository = new Repository('Articulo')
 
 const find = async (req, res) => {
     try {
@@ -13,7 +13,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await TransaccionItemRepository.find(qry, true)
 
         if (data.length > 0) {
             for (const a of data) {
@@ -45,7 +45,7 @@ const create = async (req, res) => {
         } = req.body
 
         // --- CREAR --- //
-        const nuevo = await repository.create(
+        const nuevo = await TransaccionItemRepository.create(
             {
                 articulo,
                 cantidad,
@@ -77,7 +77,7 @@ const create = async (req, res) => {
         )
 
         // --- ACTUALIZAR STOCK --- //
-        // await actualizarStock(tipo, articulo, cantidad, transaction)s
+        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction)
 
         await transaction.commit()
 
@@ -110,7 +110,7 @@ const update = async (req, res) => {
             transaccion,
         } = req.body
 
-        const updated = await repository.update(
+        const updated = await TransaccionItemRepository.update(
             { id },
             {
                 articulo,
@@ -146,7 +146,13 @@ const update = async (req, res) => {
         if (cantidad_anterior != cantidad) {
             const cantidad1 = cantidad_anterior - cantidad
             const tipo1 = cantidad1 > 0 ? 2 : 1
-            await actualizarStock(tipo1, articulo, Math.abs(cantidad1), transaction)
+            await actualizarStock(
+                req.sucursal.id,
+                articulo,
+                tipo1,
+                Math.abs(cantidad1),
+                transaction,
+            )
         }
 
         await transaction.commit()
@@ -169,9 +175,9 @@ const delet = async (req, res) => {
 
         await KardexRepository.destroy({ transaccion_item: id }, transaction)
 
-        await repository.destroy({ id }, transaction)
+        await TransaccionItemRepository.destroy({ id }, transaction)
 
-        await actualizarStock(tipo1, articulo, cantidad, transaction, -1)
+        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction, -1)
 
         await transaction.commit()
 
@@ -184,12 +190,12 @@ const delet = async (req, res) => {
 }
 
 // --- Helpers --- //
-async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1) {
-    const kardex_tiposMap = arrayMap('kardex_tipos')
+async function actualizarStock(sucursal, articulo, tipo, cantidad, transaction, factor = 1) {
+    const kardex_tiposMap = arrayMap('kardex_operaciones')
     const operacion = kardex_tiposMap[tipo].operacion
 
-    await ArticuloRepository.update(
-        { id: articulo },
+    await SucursalArticuloRepository.update(
+        { sucursal, articulo },
         {
             stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
         },
@@ -198,7 +204,7 @@ async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1
 }
 
 async function loadOne(id) {
-    const data = await repository.find({ id }, true)
+    const data = await TransaccionItemRepository.find({ id }, true)
 
     if (data) {
         data.cantidad_anterior = data.cantidad

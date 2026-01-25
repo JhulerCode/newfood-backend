@@ -1,3 +1,4 @@
+import { Sequelize } from 'sequelize'
 import { Op, literal } from 'sequelize'
 import { Articulo } from '#db/models/Articulo.js'
 import { ArticuloCategoria } from '#db/models/ArticuloCategoria.js'
@@ -22,6 +23,7 @@ import { SucursalPagoMetodo } from '#db/models/SucursalPagoMetodo.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
 
 import { applyFilters } from '#db/helpers.js'
+import { sistemaData } from '#store/system.js'
 
 export const models = {
     Articulo,
@@ -176,7 +178,7 @@ const include1 = {
     sucursal_articulos: {
         model: SucursalArticulo,
         as: 'sucursal_articulos',
-        attributes: ['id', 'estado'],
+        attributes: ['id', 'estado', 'stock'],
     },
     transaccion1: {
         model: Transaccion,
@@ -219,6 +221,29 @@ const sqls1 = {
         ),
         'comprobante_pagos_monto',
     ],
+    // sucursal_stock: [
+    //     Sequelize.fn(
+    //         'COALESCE',
+    //         Sequelize.fn(
+    //             'SUM',
+    //             Sequelize.literal(`
+    //             CASE
+    //                 ${sistemaData.kardex_operaciones
+    //                 .map(
+    //                     (t) => `
+    //                     WHEN kardexes.tipo = ${t.id} AND kardexes.sucursal = '1'
+    //                     THEN kardexes.cantidad * ${t.operacion}
+    //                 `,
+    //                 )
+    //                 .join('')}
+    //             ELSE 0
+    //             END
+    //         `),
+    //         ),
+    //         0,
+    //     ),
+    //     'sucursal_stock',
+    // ],
 }
 
 export class Repository {

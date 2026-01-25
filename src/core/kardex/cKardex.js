@@ -1,9 +1,6 @@
 import sequelize from '#db/sequelize.js'
-import { Repository } from '#db/Repository.js'
+import { KardexRepository, SucursalArticuloRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-
-const repository = new Repository('Kardex')
-const ArticuloRepository = new Repository('Articulo')
 
 const find = async (req, res) => {
     try {
@@ -12,10 +9,10 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await KardexRepository.find(qry, true)
 
         if (data.length > 0) {
-            const kardex_tiposMap = arrayMap('kardex_tipos')
+            const kardex_tiposMap = arrayMap('kardex_operaciones')
 
             for (const a of data) {
                 // --- DATOS DE LOTE PADRE --- //
@@ -42,7 +39,7 @@ const create = async (req, res) => {
         const { tipo, fecha, articulo, cantidad, observacion, estado, transaccion } = req.body
 
         // --- CREAR --- //
-        await repository.create(
+        await KardexRepository.create(
             {
                 tipo,
                 fecha,
@@ -63,7 +60,7 @@ const create = async (req, res) => {
             transaction,
         )
 
-        // await actualizarStock(tipo, articulo, cantidad, transaction)
+        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction)
 
         await transaction.commit()
 
@@ -83,9 +80,9 @@ const delet = async (req, res) => {
         const { tipo, articulo, cantidad } = req.body
 
         // --- ELIMINAR --- //
-        await repository.delete({ id }, transaction)
+        await KardexRepository.delete({ id }, transaction)
 
-        // await actualizarStock(tipo, articulo, cantidad, transaction, -1)
+        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction, -1)
 
         await transaction.commit()
 
@@ -98,18 +95,18 @@ const delet = async (req, res) => {
 }
 
 // --- Helpers --- //
-// async function actualizarStock(tipo, articulo, cantidad, transaction, factor = 1) {
-//     const kardex_tiposMap = arrayMap('kardex_tipos')
-//     const operacion = kardex_tiposMap[tipo].operacion
+async function actualizarStock(sucursal, articulo, tipo, cantidad, transaction, factor = 1) {
+    const kardex_tiposMap = arrayMap('kardex_operaciones')
+    const operacion = kardex_tiposMap[tipo].operacion
 
-//     await ArticuloRepository.update(
-//         { id: articulo },
-//         {
-//             stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
-//         },
-//         transaction,
-//     )
-// }
+    await SucursalArticuloRepository.update(
+        { sucursal, articulo },
+        {
+            stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
+        },
+        transaction,
+    )
+}
 
 export default {
     find,
