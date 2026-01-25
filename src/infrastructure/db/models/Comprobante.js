@@ -11,7 +11,6 @@ import { Colaborador } from './Colaborador.js'
 
 export const Comprobante = sequelize.define('comprobantes', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    // empresa_telefono: { type: DataTypes.STRING },
     socio: { type: DataTypes.STRING },
     pago_condicion: { type: DataTypes.STRING },
     transaccion: { type: DataTypes.STRING },

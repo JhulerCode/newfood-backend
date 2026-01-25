@@ -13,7 +13,7 @@ import { comprobanteHtml } from '#shared/layouts.js'
 
 import { sendDoc, anularDoc, estadoDoc, xmlDoc } from '#shared/sunat/mifact.js'
 
-const repository = new Repository('Comprobante')
+const ComprobanteRepository = new Repository('Comprobante')
 const ComprobanteItemRepository = new Repository('ComprobanteItem')
 const CajaAperturaRepository = new Repository('CajaApertura')
 const TransaccionRepository = new Repository('Transaccion')
@@ -31,7 +31,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await ComprobanteRepository.find(qry, true)
 
         if (data.length > 0) {
             const pago_condicionesMap = arrayMap('pago_condiciones')
@@ -172,15 +172,15 @@ const create = async (req, res) => {
         }
 
         // --- CORRELATIVO COMPROBANTE --- //
-        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo }, true)
+        const comprobante_tipo = await ComprobanteTipoRepository.find({ id: doc_tipo }, true)
 
-        if (pago_comprobante == null) {
+        if (comprobante_tipo == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'No existe el tipo de comprobante' })
             return
         }
 
-        if (pago_comprobante.correlativo == null) {
+        if (comprobante_tipo.correlativo == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'El tipo de comprobante aún no está configurado' })
             return
@@ -228,8 +228,8 @@ const create = async (req, res) => {
             },
 
             doc_tipo,
-            serie: pago_comprobante.serie,
-            numero: pago_comprobante.correlativo,
+            serie: comprobante_tipo.serie,
+            numero: comprobante_tipo.correlativo,
             fecha_emision,
             hora_emision: dayjs().format('HH:mm:ss'),
             fecha_vencimiento: null,
@@ -264,7 +264,7 @@ const create = async (req, res) => {
             createdBy: colaborador,
         }
 
-        const nuevo = await repository.create(send, transaction)
+        const nuevo = await ComprobanteRepository.create(send, transaction)
 
         // --- GUARDAR ITEMS --- //
         const items = []
@@ -333,7 +333,7 @@ const create = async (req, res) => {
             }
 
             // --- ACTUALIZAR RESPUESTA SUNAT --- //
-            await repository.update(
+            await ComprobanteRepository.update(
                 { id: nuevo.id },
                 {
                     hash: res_mifact.codigo_hash,
@@ -345,7 +345,7 @@ const create = async (req, res) => {
                 transaction,
             )
         } else {
-            await repository.update(
+            await ComprobanteRepository.update(
                 { id: nuevo.id },
                 {
                     estado: 3,
@@ -357,7 +357,7 @@ const create = async (req, res) => {
         // --- ACTUALIZAR CORRELATIVO --- //
         await ComprobanteTipoRepository.update(
             { id: doc_tipo },
-            { correlativo: pago_comprobante.correlativo + 1 },
+            { correlativo: comprobante_tipo.correlativo + 1 },
             transaction,
         )
 
@@ -714,7 +714,7 @@ const anular = async (req, res) => {
         }
 
         // --- ANULAR --- //
-        await repository.update(
+        await ComprobanteRepository.update(
             { id },
             {
                 estado: 0,
@@ -750,7 +750,7 @@ const canjear = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const { fecha_emision, doc_tipo, doc_tipo1, socio } = req.body
+        const { fecha_emision, doc_tipo, doc_tipo_nuevo, socio } = req.body
 
         const qry = {
             fltr: { id: { op: 'Es', val: id } },
@@ -763,7 +763,7 @@ const canjear = async (req, res) => {
             },
         }
 
-        const comprobantes = await repository.find(qry, true)
+        const comprobantes = await ComprobanteRepository.find(qry, true)
         const comprobante = comprobantes[0]
 
         // --- ANULAR MIFACT --- //
@@ -780,7 +780,7 @@ const canjear = async (req, res) => {
 
         // --- CREAR NUEVO COMPROBANTE --- //
         const cliente = await SocioRepository.find({ id: socio }, true)
-        const pago_comprobante = await ComprobanteTipoRepository.find({ id: doc_tipo1 }, true)
+        const comprobante_tipo = await ComprobanteTipoRepository.find({ id: doc_tipo_nuevo }, true)
 
         const send = {
             socio,
@@ -798,9 +798,9 @@ const canjear = async (req, res) => {
                 direccion: cliente.direccion,
             },
 
-            doc_tipo: doc_tipo1,
-            serie: pago_comprobante.serie,
-            numero: pago_comprobante.correlativo,
+            doc_tipo: doc_tipo_nuevo,
+            serie: comprobante_tipo.serie,
+            numero: comprobante_tipo.correlativo,
             fecha_emision,
             hora_emision: dayjs().format('HH:mm:ss'),
             fecha_vencimiento: null,
@@ -824,7 +824,7 @@ const canjear = async (req, res) => {
             empresa,
             createdBy: colaborador,
         }
-        const nuevo = await repository.create(send, transaction)
+        const nuevo = await ComprobanteRepository.create(send, transaction)
 
         // --- GUARDAR ITEMS --- //
         const items = []
@@ -890,7 +890,7 @@ const canjear = async (req, res) => {
             }
 
             // --- ACTUALIZAR RESPUESTA SUNAT --- //
-            await repository.update(
+            await ComprobanteRepository.update(
                 { id: nuevo.id },
                 {
                     hash: res_mifact.codigo_hash,
@@ -902,24 +902,18 @@ const canjear = async (req, res) => {
                 transaction,
             )
         } else {
-            await repository.update(
-                { id: nuevo.id },
-                {
-                    estado: 3,
-                },
-                transaction,
-            )
+            await ComprobanteRepository.update({ id: nuevo.id }, { estado: 3 }, transaction)
         }
 
         // --- ACTUALIZAR CORRELATIVO --- //
         await ComprobanteTipoRepository.update(
-            { id: doc_tipo1 },
-            { correlativo: pago_comprobante.correlativo + 1 },
+            { id: doc_tipo_nuevo },
+            { correlativo: comprobante_tipo.correlativo + 1 },
             transaction,
         )
 
         // --- ACTUALIZAR ESTADO CANJEADO --- //
-        await repository.update(
+        await ComprobanteRepository.update(
             { id },
             {
                 estado: 4,
@@ -992,7 +986,7 @@ const resumen = async (req, res) => {
 
         if (qry) Object.assign(qry1.fltr, qry.fltr)
 
-        const comprobantes = await repository.find(qry1, true)
+        const comprobantes = await ComprobanteRepository.find(qry1, true)
 
         const ventas = {
             tiempo: {},
@@ -1160,7 +1154,7 @@ async function getComprobante(id) {
             },
         },
     }
-    const data = await repository.find(qry, true)
+    const data = await ComprobanteRepository.find(qry, true)
 
     const qry1 = {
         id: data.transaccion,

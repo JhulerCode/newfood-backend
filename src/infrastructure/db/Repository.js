@@ -129,6 +129,11 @@ const include1 = {
             attributes: ['id', 'nombre', 'color'],
         },
     },
+    doc_tipo1: {
+        model: ComprobanteTipo,
+        as: 'doc_tipo1',
+        attributes: ['id', 'tipo', 'serie'],
+    },
     kardexes: {
         model: Kardex,
         as: 'kardexes',
@@ -179,6 +184,16 @@ const include1 = {
         model: SucursalArticulo,
         as: 'sucursal_articulos',
         attributes: ['id', 'estado', 'stock'],
+    },
+    sucursal_comprobante_tipos: {
+        model: SucursalComprobanteTipo,
+        as: 'sucursal_comprobante_tipos',
+        attributes: ['id', 'estado'],
+    },
+    sucursal_pago_metodos: {
+        model: SucursalPagoMetodo,
+        as: 'sucursal_pago_metodos',
+        attributes: ['id', 'estado'],
     },
     transaccion1: {
         model: Transaccion,
