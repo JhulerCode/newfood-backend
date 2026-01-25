@@ -3,7 +3,8 @@ const sistemaData = {
         { id: '6', nombre: 'RUC' },
         { id: '1', nombre: 'DNI' },
         { id: '4', nombre: 'CARNET DE EXTRANJERÍA' },
-        { id: '7', nombre: 'PASAPORTE' }
+        { id: '7', nombre: 'PASAPORTE' },
+        { id: '0', nombre: 'SIN DOCUMENTO' },
     ],
     colaborador_cargos: [
         { id: 'ADMINISTRADOR' },
