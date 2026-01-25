@@ -132,7 +132,7 @@ const include1 = {
     doc_tipo1: {
         model: ComprobanteTipo,
         as: 'doc_tipo1',
-        attributes: ['id', 'tipo', 'serie', 'tipo_serie'],
+        attributes: ['id', 'tipo', 'serie', 'tipo_serie', 'tipo1'],
     },
     kardexes: {
         model: Kardex,

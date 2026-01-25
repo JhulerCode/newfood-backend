@@ -228,7 +228,7 @@ const findResumen = async (req, res) => {
             fltr: {
                 caja_apertura: { op: 'Es', val: id },
             },
-            incl: ['canjeado_por1', 'comprobante_items', 'transaccion1', 'dinero_movimientos'],
+            incl: ['doc_tipo1', 'canjeado_por1', 'comprobante_items', 'transaccion1', 'dinero_movimientos'],
             iccl: {
                 transaccion1: {
                     cols: ['venta_canal'],
@@ -239,64 +239,12 @@ const findResumen = async (req, res) => {
             },
         }
         const comprobantes = await ComprobanteRepository.find(qry1, true)
-        //     attributes: [
-        //         'id',
-        //         'doc_tipo',
-        //         'serie',
-        //         'numero',
-        //         'serie_correlativo',
-        //         'monto',
-        //         'pago_condicion',
-        //         'estado',
-        //     ],
-        //     order: [['createdAt', 'DESC']],
-        //     where: {
-        //         caja_apertura: id,
-        //     },
-        //     include: [
-        //         {
-        //             model: Comprobante,
-        //             as: 'canjeado_por1',
-        //             attributes: ['id', 'doc_tipo', 'serie', 'numero', 'serie_correlativo'],
-        //         },
-        //         {
-        //             model: ComprobanteItem,
-        //             as: 'comprobante_items',
-        //             attributes: [
-        //                 'id',
-        //                 'articulo',
-        //                 'descripcion',
-        //                 'pu',
-        //                 'descuento_tipo',
-        //                 'descuento_valor',
-        //                 'cantidad',
-        //             ],
-        //         },
-        //         {
-        //             model: Transaccion,
-        //             as: 'transaccion1',
-        //             attributes: ['venta_canal'],
-        //         },
-        //         {
-        //             model: DineroMovimiento,
-        //             as: 'dinero_movimientos',
-        //             attributes: ['id', 'pago_metodo', 'monto', 'caja_apertura'],
-        //             include: {
-        //                 model: PagoMetodo,
-        //                 as: 'pago_metodo1',
-        //                 attributes: ['id', 'nombre', 'color'],
-        //             },
-        //         },
-        //     ],
-        // })
 
-        const pago_comprobantesMap = arrayMap('comprobante_tipos')
+        const comprobante_tiposMap = arrayMap('comprobante_tipos')
         const venta_canalesMap = arrayMap('venta_canales')
 
         for (const a of comprobantes) {
-            // const tKey = a.doc_tipo.replace(`${empresa.subdominio}-`, '')
-            const tKey = setTipoComprobanteKey(a.doc_tipo)
-            const tipo_comprobante_nombre = pago_comprobantesMap[tKey].nombre
+            const tipo_comprobante_nombre = a.doc_tipo1.tipo1.nombre
 
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
@@ -326,11 +274,11 @@ const findResumen = async (req, res) => {
                 }
 
                 // --- TIPOS DE COMPROBANTES --- //
-                const i = send.venta_comprobantes.findIndex((b) => b.id == a.doc_tipo)
+                const i = send.venta_comprobantes.findIndex((b) => b.id == a.doc_tipo1.tipo)
                 if (i === -1) {
                     send.venta_comprobantes.push({
-                        id: a.doc_tipo,
-                        nombre: tipo_comprobante_nombre,
+                        id: a.doc_tipo1.tipo,
+                        nombre: a.doc_tipo1.tipo1.nombre,
                         monto: Number(a.monto),
                         cantidad: 1,
                     })
@@ -356,8 +304,9 @@ const findResumen = async (req, res) => {
                 send.comprobantes_aceptados_total += Number(a.monto)
 
                 send.comprobantes_aceptados.push({
-                    id: a.serie_correlativo,
-                    tipo: tipo_comprobante_nombre,
+                    id: a.doc_tipo,
+                    serie_correlativo: a.serie_correlativo,
+                    tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
                     pago_condicion: a.pago_condicion,
                 })
@@ -396,8 +345,9 @@ const findResumen = async (req, res) => {
                 send.comprobantes_anulados_total += Number(a.monto)
 
                 send.comprobantes_anulados.push({
-                    id: a.serie_correlativo,
-                    tipo: tipo_comprobante_nombre,
+                    id: a.doc_tipo,
+                    serie_correlativo: a.serie_correlativo,
+                    tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
                 })
 
@@ -434,8 +384,9 @@ const findResumen = async (req, res) => {
             if (a.estado == 4) {
                 // --- COMPROBANTES --- //
                 send.comprobantes_canjeados.push({
-                    id: a.serie_correlativo,
-                    tipo: tipo_comprobante_nombre,
+                    id: a.doc_tipo,
+                    serie_correlativo: a.serie_correlativo,
+                    tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
                     canjeado_por: a.canjeado_por1.serie_correlativo,
                 })
@@ -451,13 +402,6 @@ const findResumen = async (req, res) => {
             },
         }
         let pedidos = await TransaccionRepository.find(qry2, true)
-        //     attributes: ['id', 'venta_codigo', 'venta_canal', 'monto', 'estado'],
-        //     order: [['createdAt', 'DESC']],
-        //     where: {
-        //         tipo: 2,
-        //         caja_apertura: id,
-        //     },
-        // })
 
         for (let a of pedidos) {
             if (['1', '2'].includes(a.estado)) {
@@ -513,15 +457,6 @@ const findResumen = async (req, res) => {
                 },
             }
             const caja_aperturas = await repository.find(qry3, true)
-            //     attributes: ['id', 'fecha_apertura'],
-            //     order: [['createdAt', 'DESC']],
-            //     where: {
-            //         empresa: empresa.id,
-            //         fecha_apertura: {
-            //             [Op.between]: [mesInicio, mesFin],
-            //         },
-            //     },
-            // })
 
             const qry4 = {
                 cols: [[fn('SUM', col('monto')), 'total']],
@@ -532,13 +467,6 @@ const findResumen = async (req, res) => {
                 },
             }
             send.ventas_mes = await DineroMovimientoRepository.find(qry4, true)
-            //     attributes: [[fn('SUM', col('monto')), 'total']],
-            //     where: {
-            //         caja_apertura: caja_aperturas.map((a) => a.id),
-            //         estado: '2',
-            //         operacion: '1',
-            //     },
-            // })
 
             // --- Ventas ayer --- //
             const qry5 = {}

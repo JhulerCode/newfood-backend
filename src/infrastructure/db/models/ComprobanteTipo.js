@@ -26,6 +26,14 @@ export const ComprobanteTipo = sequelize.define('pago_comprobantes', {
             return `${comprobante_tiposMap[tipo]?.nombre} (${serie})`.trim()
         },
     },
+    tipo1: {
+        type: DataTypes.VIRTUAL,
+        get() {
+            const tipo = this.tipo || ''
+            const comprobante_tiposMap = arrayMap('comprobante_tipos')
+            return comprobante_tiposMap[tipo]
+        },
+    },
 
     nombre: { type: DataTypes.STRING }, //eliminar
 })

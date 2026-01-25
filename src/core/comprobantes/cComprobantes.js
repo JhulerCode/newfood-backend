@@ -35,12 +35,10 @@ const find = async (req, res) => {
 
         if (data.length > 0) {
             const pago_condicionesMap = arrayMap('pago_condiciones')
-            const pago_comprobantesMap = arrayMap('comprobante_tipos')
+            const comprobante_tiposMap = arrayMap('comprobante_tipos')
             const comprobante_estadosMap = arrayMap('comprobante_estados')
 
             for (const a of data) {
-                const tKey = setTKey(a.doc_tipo)
-                if (qry?.cols?.includes('doc_tipo')) a.doc_tipo1 = pago_comprobantesMap[tKey]
                 if (qry?.cols?.includes('pago_condicion'))
                     a.pago_condicion1 = pago_condicionesMap[a.pago_condicion]
                 if (qry?.cols?.includes('estado')) a.estado1 = comprobante_estadosMap[a.estado]
@@ -55,7 +53,6 @@ const find = async (req, res) => {
 
 const findById = async (req, res) => {
     try {
-        const { empresa } = req.user
         const { id } = req.params
         const data = await getComprobante(id)
 
@@ -961,7 +958,7 @@ const resumen = async (req, res) => {
                 'estado',
             ],
             ordr: [['createdAt', 'ASC']],
-            incl: ['comprobante_items', 'transaccion1', 'dinero_movimientos'],
+            incl: ['doc_tipo1', 'comprobante_items', 'transaccion1', 'dinero_movimientos'],
             iccl: {
                 componente_items: {
                     cols: [
@@ -1003,7 +1000,7 @@ const resumen = async (req, res) => {
             descuentos: 0,
         }
 
-        const pago_comprobantesMap = arrayMap('comprobante_tipos')
+        const comprobante_tiposMap = arrayMap('comprobante_tipos')
         const venta_canalesMap = arrayMap('venta_canales')
 
         // --- INDICES AUXILIARES --- //
@@ -1037,17 +1034,17 @@ const resumen = async (req, res) => {
                 }
 
                 // --- TIPOS DE COMPROBANTES --- //
-                const tKey = setTKey(a.doc_tipo)
-                if (!comprobanteTiposMap[tKey]) {
+                const comp_tipo = comprobante_tiposMap[a.doc_tipo1.tipo]
+                if (!comprobanteTiposMap[comp_tipo.id]) {
                     const item = {
-                        id: tKey,
-                        name: pago_comprobantesMap[tKey].nombre,
+                        id: comp_tipo.id,
+                        name: comp_tipo.nombre,
                         value: Number(a.monto),
                     }
                     ventas.comprobante_tipos.push(item)
-                    comprobanteTiposMap[tKey] = item
+                    comprobanteTiposMap[comp_tipo.id] = item
                 } else {
-                    comprobanteTiposMap[tKey].value += Number(a.monto)
+                    comprobanteTiposMap[comp_tipo.id].value += Number(a.monto)
                 }
 
                 // --- CANALES --- //
@@ -1144,7 +1141,7 @@ const resumen = async (req, res) => {
 async function getComprobante(id) {
     const qry = {
         id,
-        incl: ['comprobante_items', 'dinero_movimientos'],
+        incl: ['doc_tipo1', 'comprobante_items', 'dinero_movimientos'],
         iccl: {
             dinero_movimientos: {
                 incl: ['pago_metodo1'],
@@ -1169,22 +1166,18 @@ async function getComprobante(id) {
     data.transaccion1 = await TransaccionRepository.find(qry1, true)
 
     if (data) {
-        const tKey = setTKey(data.doc_tipo)
-        const pago_comprobantesMap = arrayMap('comprobante_tipos')
         const documentos_identidadMap = arrayMap('documentos_identidad')
         const pago_condicionesMap = arrayMap('pago_condiciones')
         const venta_canalesMap = arrayMap('venta_canales')
         const comprobante_estadosMap = arrayMap('comprobante_estados')
 
-        data.doc_tipo1 = pago_comprobantesMap[tKey]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
         data.estado1 = comprobante_estadosMap[data.estado]
 
         data.total_letras = numeroATexto(data.monto)
-        // data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}|${data.hash}`
-        data.qr_string = `${data.empresa_datos.ruc}|${tKey}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`
+        data.qr_string = `${data.empresa_datos.ruc}|${data.doc_tipo1.tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`
 
         data.moneda1 = {
             plural: 'SOLES',
@@ -1209,7 +1202,6 @@ async function getImageBase64(url) {
 async function makePdf(doc, empresa) {
     // --- LOGO --- //
     const logoBase64 = await getImageBase64(empresa.foto.url)
-    const tKey = setTKey(doc.doc_tipo)
 
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
@@ -1266,7 +1258,7 @@ async function makePdf(doc, empresa) {
     // --- QR --- //
     // "20100100100|01|F009|00000001|180.00|1180.00|2025-09-20|6|20601847834|IZVMmltTcKneNX1RyLO0zjlSqrk="
     const qrStack =
-        tKey == 'NV'
+        doc.doc_tipo1.tipo == 'NV'
             ? null
             : {
                   qr: doc.qr_string,
@@ -1277,7 +1269,7 @@ async function makePdf(doc, empresa) {
 
     // --- SUNAT --- //
     let sunatStack = null
-    if (tKey == '01') {
+    if (doc.doc_tipo1.tipo == '01') {
         sunatStack = {
             stack: [
                 {
@@ -1294,7 +1286,7 @@ async function makePdf(doc, empresa) {
                 // },
             ],
         }
-    } else if (tKey == '03') {
+    } else if (doc.doc_tipo1.tipo == '03') {
         sunatStack = {
             stack: [
                 {
@@ -1343,7 +1335,7 @@ async function makePdf(doc, empresa) {
         // --- TIPO DE DOCUMENTO --- //
         {
             stack: [
-                `${doc.doc_tipo1.nombre}${tKey == 'NV' ? '' : ' ELECTRÓNICA'}`,
+                `${doc.doc_tipo1.tipo1.nombre}${doc.doc_tipo1.tipo == 'NV' ? '' : ' ELECTRÓNICA'}`,
                 `${doc.serie}-${doc.numero}`,
             ],
             style: 'tipo_doc',
@@ -1584,22 +1576,9 @@ async function makePdf(doc, empresa) {
     })
 }
 
-function setTKey(doc_tipo) {
-    let tKey = 'NV'
-
-    if (doc_tipo.includes('01')) {
-        tKey = '01'
-    } else if (doc_tipo.includes('03')) {
-        tKey = '03'
-    }
-
-    return tKey
-}
-
 async function loadOneTransaccion(id) {
     try {
         const qry = {
-            // fltr: { id: { op: 'Es', val: id } },
             id,
             sqls: ['comprobantes_monto'],
             incl: ['socio1', 'createdBy1', 'venta_mesa1'],
@@ -1610,39 +1589,6 @@ async function loadOneTransaccion(id) {
             },
         }
         const data = await TransaccionRepository.find(qry, true)
-        //     attributes: {
-        //         include: [
-        //             [
-        //                 literal(
-        //                     `(SELECT COALESCE(SUM(c.monto), 0) FROM comprobantes AS c WHERE c.transaccion = "transacciones"."id")`,
-        //                 ),
-        //                 'comprobantes_monto',
-        //             ],
-        //         ],
-        //     },
-        //     include: [
-        //         {
-        //             model: Socio,
-        //             as: 'socio1',
-        //             attributes: ['id', 'nombres'],
-        //         },
-        //         {
-        //             model: Colaborador,
-        //             as: 'createdBy1',
-        //             attributes: ['id', 'nombres', 'apellidos', 'nombres_apellidos'],
-        //         },
-        //         {
-        //             model: Mesa,
-        //             as: 'venta_mesa1',
-        //             attributes: ['id', 'nombre'],
-        //             include: {
-        //                 model: Salon,
-        //                 as: 'salon1',
-        //                 attributes: ['id', 'nombre'],
-        //             },
-        //         },
-        //     ],
-        // })
 
         if (data) {
             const pago_condicionesMap = arrayMap('pago_condiciones')

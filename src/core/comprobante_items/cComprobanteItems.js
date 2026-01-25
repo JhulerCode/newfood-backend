@@ -19,10 +19,6 @@ const find = async (req, res) => {
 
             for (const a of data) {
                 if (a.comprobante1) {
-                    // const tKey = a.comprobante1.doc_tipo.replace(`${empresa.subdominio}-`, '')
-                    const tKey = setTKey(a.comprobante1.doc_tipo)
-                    a.comprobante1.doc_tipo1 = pago_comprobantesMap[tKey]
-
                     a.comprobante1.estado1 = comprobante_estadosMap[a.comprobante1.estado]
                 }
 
@@ -76,18 +72,6 @@ function calcularUno(item) {
     item.total = (item.cantidad * item.pu) - item.descuento
 
     return item
-}
-
-function setTKey(doc_tipo) {
-    let tKey = 'NV'
-
-    if (doc_tipo.includes('01')) {
-        tKey = '01'
-    } else if (doc_tipo.includes('03')) {
-        tKey = '03'
-    }
-
-    return tKey
 }
 
 export default {
