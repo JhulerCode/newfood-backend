@@ -29,8 +29,9 @@ const find = async (req, res) => {
                     a.igv_afectacion1 = igv_afectacionesMap[a.igv_afectacion]
                 if (qry?.cols?.includes('has_receta')) a.has_receta1 = estadosMap[a.has_receta]
 
-                if (qry?.cols?.includes('sucursal_stock'))
-                    a.sucursal_stock = a.sucursal_articulos[0]?.stock
+                if (qry?.incl?.includes('sucursal_articulos')) {
+                    a.sucursal1 = a.sucursal_articulos[0]
+                }
             }
         }
 

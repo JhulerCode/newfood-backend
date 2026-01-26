@@ -139,6 +139,11 @@ const include1 = {
         as: 'impresion_areas',
         attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
     },
+    impresion_area1: {
+        model: ImpresionArea,
+        as: 'impresion_area1',
+        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
+    },
     kardexes: {
         model: Kardex,
         as: 'kardexes',
@@ -188,7 +193,7 @@ const include1 = {
     sucursal_articulos: {
         model: SucursalArticulo,
         as: 'sucursal_articulos',
-        attributes: ['id', 'estado', 'stock'],
+        attributes: ['id', 'estado', 'stock', 'impresion_area'],
     },
     sucursal_comprobante_tipos: {
         model: SucursalComprobanteTipo,

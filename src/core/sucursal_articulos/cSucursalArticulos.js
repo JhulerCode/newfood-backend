@@ -29,12 +29,12 @@ const update = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const { estado } = req.body
+        const { estado, impresion_area } = req.body
 
         // --- ACTUALIZAR --- //
         const updated = await SucursalArticuloRepository.update(
             { id },
-            { estado, updatedBy: colaborador },
+            { estado, impresion_area, updatedBy: colaborador },
         )
 
         if (updated == false) return resUpdateFalse(res)

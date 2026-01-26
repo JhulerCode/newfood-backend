@@ -27,7 +27,6 @@ export const Articulo = sequelize.define('articulos', {
     tipo: { type: DataTypes.STRING },
     categoria: { type: DataTypes.STRING },
 
-    produccion_area: { type: DataTypes.STRING },
     has_receta: { type: DataTypes.BOOLEAN, defaultValue: false },
     is_combo: { type: DataTypes.BOOLEAN, defaultValue: false },
 
@@ -39,6 +38,8 @@ export const Articulo = sequelize.define('articulos', {
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
+
+    produccion_area: { type: DataTypes.STRING }, //eliminar
 })
 
 ArticuloCategoria.hasMany(Articulo, { foreignKey: 'categoria', as: 'articulos', onDelete: 'RESTRICT' })

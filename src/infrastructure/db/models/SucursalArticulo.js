@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
+import { ImpresionArea } from './ImpresionArea.js'
 import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
@@ -11,6 +12,7 @@ export const SucursalArticulo = sequelize.define('sucursal_articulos', {
     articulo: { type: DataTypes.STRING },
     estado: { type: DataTypes.BOOLEAN, defaultValue: true },
     stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+    impresion_area: { type: DataTypes.STRING },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
@@ -19,6 +21,9 @@ export const SucursalArticulo = sequelize.define('sucursal_articulos', {
 
 Articulo.hasMany(SucursalArticulo, { foreignKey: 'articulo', as: 'sucursal_articulos', onDelete: 'RESTRICT' })
 SucursalArticulo.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+ImpresionArea.hasMany(SucursalArticulo, { foreignKey: 'impresion_area', as: 'sucursal_articulos', onDelete: 'RESTRICT' })
+SucursalArticulo.belongsTo(ImpresionArea, { foreignKey: 'impresion_area', as: 'impresion_area1' })
 
 Sucursal.hasMany(SucursalArticulo, { foreignKey: 'sucursal', as: 'sucursal_articulos', onDelete: 'RESTRICT' })
 SucursalArticulo.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
