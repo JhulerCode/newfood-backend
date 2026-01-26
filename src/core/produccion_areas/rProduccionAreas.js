@@ -7,32 +7,32 @@ const router = Router()
 router.get(
     '/',
     verifyPermiso([
-        'vProduccionAreas:listar',
+        'vImpresionAreas:listar',
     ]),
     controller.find
 )
 
 router.get(
     '/uno/:id',
-    verifyPermiso(['vProduccionAreas:editar']),
+    verifyPermiso(['vImpresionAreas:editar']),
     controller.findById
 )
 
 router.post(
     '/',
-    verifyPermiso(['vProduccionAreas:crear']),
+    verifyPermiso(['vImpresionAreas:crear']),
     controller.create
 )
 
 router.patch(
     '/:id',
-    verifyPermiso(['vProduccionAreas:editar']),
+    verifyPermiso(['vImpresionAreas:editar']),
     controller.update
 )
 
 router.delete(
     '/:id',
-    verifyPermiso(['vProduccionAreas:eliminar']),
+    verifyPermiso(['vImpresionAreas:eliminar']),
     controller.delet
 )
 

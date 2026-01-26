@@ -1,9 +1,23 @@
 import { getIO } from '#infrastructure/socket.js'
+import { EmpresaRepository } from '#db/repositories.js'
 
 const empresasStore = new Map()
 
-function obtenerEmpresa(id) {
-    return empresasStore.get(id)
+async function obtenerEmpresa(id) {
+    let empresa = empresasStore.get(id)
+
+    if (!empresa) {
+        const qry = {
+            id,
+            incl: ['sucursales'],
+        }
+
+        empresa = await EmpresaRepository.find(qry, true)
+
+        guardarEmpresa(empresa.id, empresa)
+    }
+
+    return empresa
 }
 
 function guardarEmpresa(id, values) {
@@ -14,18 +28,18 @@ function borrarEmpresa(id) {
     empresasStore.delete(id)
 }
 
-function actualizarEmpresa(id, values) {
-    const sesion = obtenerEmpresa(id)
-    if (!sesion || !values) return
+async function actualizarEmpresa(id, values) {
+    const empresa = await obtenerEmpresa(id)
+    if (!empresa || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
         if (value !== undefined) {
-            sesion[key] = value
+            empresa[key] = value
         }
     })
 
     console.log(`📡 Empresa: ${values.razon_social} | Action: empresa updated`)
-    getIO().to(values.id).emit('empresa-updated', obtenerEmpresa(id))
+    getIO().to(id).emit('empresa-updated', await obtenerEmpresa(id))
 }
 
 export { empresasStore, obtenerEmpresa, guardarEmpresa, borrarEmpresa, actualizarEmpresa }

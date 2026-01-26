@@ -1,13 +1,10 @@
 import bcrypt from 'bcrypt'
-import config from "../../config.js"
+import config from '../../config.js'
 import jat from '#shared/jat.js'
+import { guardarEmpresa, empresasStore } from '#store/empresas.js'
 import { guardarSesion, borrarSesion, sessionStore } from '#store/sessions.js'
-import { obtenerEmpresa, guardarEmpresa, empresasStore } from '#store/empresas.js'
+import { EmpresaRepository, ColaboradorRepository } from '#db/repositories.js'
 
-import { Repository } from '#db/Repository.js'
-
-const EmpresaRepository = new Repository('Empresa')
-const ColaboradorRepository = new Repository('Colaborador')
 import { ImpresionArea } from '#db/models/ImpresionArea.js'
 
 const signin = async (req, res) => {
@@ -15,13 +12,19 @@ const signin = async (req, res) => {
         const { usuario, contrasena } = req.body
 
         // --- VERIFICAR EMPRESA --- //
-        const xEmpresa = req.headers["x-empresa"]
+        const xEmpresa = req.headers['x-empresa']
+        let empresa
+        for (const a of empresasStore.values()) {
+            if (a.subdominio === xEmpresa) {
+                empresa = a
+                break
+            }
+        }
 
-        let empresa = obtenerEmpresa(xEmpresa)
         if (!empresa) {
             const qry = {
                 fltr: {
-                    subdominio: { op: 'Es', val: xEmpresa }
+                    subdominio: { op: 'Es', val: xEmpresa },
                 },
                 cols: { exclude: [] },
                 incl: ['sucursales'],
@@ -31,20 +34,21 @@ const signin = async (req, res) => {
             if (empresas.length == 0) return res.json({ code: 1, msg: 'Empresa no encontrada' })
 
             empresa = empresas[0]
-            guardarEmpresa(xEmpresa, empresa)
+            guardarEmpresa(empresa.id, empresa)
         }
 
         // --- VERIFICAR COLABORADOR --- //
         const qry1 = {
             fltr: {
                 usuario: { op: 'Es', val: usuario },
-                empresa: { op: 'Es', val: empresa.id }
+                empresa: { op: 'Es', val: empresa.id },
             },
-            cols: { exclude: [] }
+            cols: { exclude: [] },
         }
 
         const colaboradores = await ColaboradorRepository.find(qry1, true)
-        if (colaboradores.length == 0) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
+        if (colaboradores.length == 0)
+            return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
 
         const colaborador = colaboradores[0]
 
@@ -58,7 +62,7 @@ const signin = async (req, res) => {
             where: {
                 nombre: 'CAJA',
                 empresa: empresa.id,
-            }
+            },
         })
 
         delete colaborador.contrasena
@@ -69,8 +73,7 @@ const signin = async (req, res) => {
         })
 
         res.json({ code: 0, token })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).send({ code: -1, msg: error.message, error })
     }
 }
@@ -81,8 +84,7 @@ const logout = async (req, res) => {
         borrarSesion(id)
 
         res.json({ code: 0 })
-    }
-    catch (error) {
+    } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
