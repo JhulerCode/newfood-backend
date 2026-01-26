@@ -7,8 +7,10 @@ import {
     ArticuloRepository,
     ComprobanteTipoRepository,
     PagoMetodoRepository,
+    ImpresionAreaRepository,
 } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
+import { guardarSucursal } from '#store/sucursales.js'
 
 const find = async (req, res) => {
     try {
@@ -55,9 +57,12 @@ const create = async (req, res) => {
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await SucursalRepository.existe({ codigo, empresa }, res)) == true) return
 
+        const id = '9d75968f-8cc4-4e1d-b253-0746524b8f73'
+
         // --- CREAR --- //
         const nuevo = await SucursalRepository.create(
             {
+                id,
                 codigo,
                 direccion,
                 telefono,
@@ -72,16 +77,6 @@ const create = async (req, res) => {
         const qry = {
             fltr: { empresa: { op: 'Es', val: empresa } },
         }
-        // --- CREAR ARTICULOS --- //
-        const articulos = await ArticuloRepository.find(qry, true)
-        const articulos_new = articulos.map((a) => ({
-            sucursal: nuevo.id,
-            articulo: a.id,
-            estado: true,
-            empresa,
-            createdBy: colaborador,
-        }))
-        await SucursalArticuloRepository.createBulk(articulos_new, transaction)
 
         // --- CREAR TIPOS DE COMPROBANTE --- //
         const produccion_areas = await ComprobanteTipoRepository.find(qry, true)
@@ -105,9 +100,36 @@ const create = async (req, res) => {
         }))
         await SucursalPagoMetodoRepository.createBulk(pago_metodos_new, transaction)
 
+        // --- CREAR ARTICULOS --- //
+        const articulos = await ArticuloRepository.find(qry, true)
+        const articulos_new = articulos.map((a) => ({
+            sucursal: nuevo.id,
+            articulo: a.id,
+            estado: true,
+            empresa,
+            createdBy: colaborador,
+        }))
+        await SucursalArticuloRepository.createBulk(articulos_new, transaction)
+
+        // --- CREAR IMPRESORA CAJA --- //
+        await ImpresionAreaRepository.create(
+            {
+                nombre: 'CAJA',
+                impresora_tipo: '1',
+                impresora: 'CAJA',
+
+                sucursal: nuevo.id,
+                empresa,
+                createdBy: colaborador,
+            },
+            transaction,
+        )
+
         await transaction.commit()
 
         const data = await loadOne(nuevo.id)
+
+        guardarSucursal(nuevo.id, data)
 
         res.json({ code: 0, data })
     } catch (error) {

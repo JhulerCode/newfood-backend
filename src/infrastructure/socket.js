@@ -82,7 +82,6 @@ export function initSocket(server) {
                 socketUsers[socket.id] = to_save
 
                 // --- GUARDAR IMPRESORA CAJA EN LA SUCURSAL --- //
-                console.log(sucursalesStore)
                 let sucursal = obtenerSucursal(colaborador.sucursal)
 
                 if (!sucursal) {
@@ -90,14 +89,10 @@ export function initSocket(server) {
                     sucursal = guardarSucursal(colaborador.sucursal, sucursal)
                 }
 
-                console.log(sucursalesStore)
-
                 if (!sucursal.impresora_caja) {
                     const impresora_caja = await loadSucursalImpresoraCaja(colaborador.sucursal)
                     actualizarSucursal(colaborador.sucursal, { impresora_caja })
                 }
-
-                console.log(sucursalesStore)
             } else {
                 console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
             }
@@ -205,7 +200,7 @@ export function initSocket(server) {
                 const url = `http://localhost/imprimir/${localPath}.php`
                 const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
                 data.impresora = sucursal_impresora_caja
-                console.log(data)
+
                 io.to(targetSocketId).emit('vComanda:imprimirPrecuenta', {
                     colaborador: socket_user,
                     url,

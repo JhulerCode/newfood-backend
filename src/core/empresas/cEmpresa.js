@@ -71,7 +71,7 @@ const update = async (req, res) => {
         //--- Eliminar archivo de minio ---//
         if (req.file) await minioRemoveObject(foto.id)
 
-        actualizarEmpresa(subdominio, {id, razon_social, ...send})
+        actualizarEmpresa(id, { razon_social, ...send })
 
         res.json({ code: 0 })
     } catch (error) {

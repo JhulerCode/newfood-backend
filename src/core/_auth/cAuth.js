@@ -41,6 +41,7 @@ const signin = async (req, res) => {
         const qry1 = {
             fltr: {
                 usuario: { op: 'Es', val: usuario },
+                activo: { op: 'Es', val: true },
                 empresa: { op: 'Es', val: empresa.id },
             },
             cols: { exclude: [] },
