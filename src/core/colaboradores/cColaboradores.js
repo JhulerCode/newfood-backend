@@ -1,10 +1,8 @@
-import { Repository } from '#db/Repository.js'
+import { ColaboradorRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import bcrypt from 'bcrypt'
 import { borrarSesion, actualizarSesion } from '#store/sessions.js'
 import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
-
-const repository = new Repository('Colaborador')
 
 const find = async (req, res) => {
     try {
@@ -13,7 +11,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await ColaboradorRepository.find(qry, true)
 
         if (data.length > 0) {
             const generosMap = arrayMap('generos')
@@ -40,7 +38,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await repository.find({ id }, true)
+        const data = await ColaboradorRepository.find({ id }, true)
 
         if (data == null) {
             res.json({ code: 1, msg: 'No encontrado' })
@@ -71,10 +69,10 @@ const create = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // ----- VERIFY SI EXISTE NOMBRE ----- //
-        if (await repository.existe({ nombres, apellidos, empresa }, res) == true) return
+        if (await ColaboradorRepository.existe({ nombres, apellidos, empresa }, res) == true) return
 
         if (has_signin) {
-            if (await repository.existe({ usuario }, res) == true) return
+            if (await ColaboradorRepository.existe({ usuario }, res) == true) return
             contrasena = await bcrypt.hash(contrasena, 10)
         }
         else {
@@ -83,7 +81,7 @@ const create = async (req, res) => {
         }
 
         // ----- CREAR ----- //
-        const nuevo = await repository.create({
+        const nuevo = await ColaboradorRepository.create({
             nombres, apellidos,
             doc_tipo, doc_numero,
             fecha_nacimiento, sexo,
@@ -119,10 +117,10 @@ const update = async (req, res) => {
         let { usuario, contrasena } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if (await repository.existe({ nombres, apellidos, id, empresa }, res) == true) return
+        if (await ColaboradorRepository.existe({ nombres, apellidos, id, empresa }, res) == true) return
 
         if (has_signin) {
-            if (await repository.existe({ usuario, id, empresa }, res, 'El usuario ya existe') == true) return
+            if (await ColaboradorRepository.existe({ usuario, id, empresa }, res, 'El usuario ya existe') == true) return
             contrasena = contrasena != '*****' ? await bcrypt.hash(contrasena, 10) : undefined
         }
         else {
@@ -133,7 +131,7 @@ const update = async (req, res) => {
         }
 
         //--- ACTUALIZAR ---//
-        const updated = await repository.update({ id }, {
+        const updated = await ColaboradorRepository.update({ id }, {
             nombres, apellidos,
             doc_tipo, doc_numero,
             fecha_nacimiento, sexo,
@@ -159,7 +157,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        if (await repository.delete({ id }) == false) return resDeleteFalse(res)
+        if (await ColaboradorRepository.delete({ id }) == false) return resDeleteFalse(res)
 
         borrarSesion(id)
 
@@ -198,7 +196,7 @@ const preferencias = async (req, res) => {
         const { id } = req.params
         const { theme, color, format_date, menu_visible } = req.body
 
-        const updated = await repository.update({ id }, { theme, color, format_date, menu_visible })
+        const updated = await ColaboradorRepository.update({ id }, { theme, color, format_date, menu_visible })
 
         if (updated == false) return resUpdateFalse(res)
 
@@ -216,7 +214,7 @@ const tables = async (req, res) => {
         const { id } = req.params
         const { tables } = req.body
 
-        const updated = await repository.update({ id }, { tables })
+        const updated = await ColaboradorRepository.update({ id }, { tables })
         if (updated == false) return resUpdateFalse(res)
         actualizarSesion(id, { tables })
 
@@ -232,7 +230,7 @@ const avances = async (req, res) => {
         const { id } = req.params
         const { avances } = req.body
 
-        const updated = await repository.update({ id }, { avances })
+        const updated = await ColaboradorRepository.update({ id }, { avances })
 
         if (updated == false) return resUpdateFalse(res)
 
@@ -248,7 +246,7 @@ const avances = async (req, res) => {
 
 //--- Helpers ---//
 async function loadOne(id) {
-    let data = await repository.find({ id }, true)
+    let data = await ColaboradorRepository.find({ id }, true)
 
     if (data) {
         const generosMap = arrayMap('generos')

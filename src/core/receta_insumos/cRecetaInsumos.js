@@ -1,7 +1,5 @@
-import { Repository } from '#db/Repository.js'
+import { RecetaInsumoRepository } from '#db/repositories.js'
 import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
-
-const repository = new Repository('RecetaInsumo')
 
 const find = async (req, res) => {
     try {
@@ -10,7 +8,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await RecetaInsumoRepository.find(qry, true)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -24,7 +22,7 @@ const create = async (req, res) => {
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
+        const nuevo = await RecetaInsumoRepository.create({
             articulo_principal,
             articulo,
             cantidad,
@@ -48,7 +46,7 @@ const update = async (req, res) => {
         const { articulo_principal, articulo, cantidad, orden } = req.body
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update(
+        const updated = await RecetaInsumoRepository.update(
             { id },
             {
                 cantidad,
@@ -72,7 +70,7 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ELIMINAR --- //
-        if ((await repository.delete({ id })) == false) return resDeleteFalse(res)
+        if ((await RecetaInsumoRepository.delete({ id })) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
     } catch (error) {
@@ -82,7 +80,7 @@ const delet = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id, incl: ['articulo1'] })
+    const data = await RecetaInsumoRepository.find({ id, incl: ['articulo1'] })
 
     return data
 }

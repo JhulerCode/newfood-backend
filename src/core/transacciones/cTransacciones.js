@@ -1,13 +1,13 @@
-import { Repository } from '#db/Repository.js'
+import {
+    TransaccionRepository,
+    CajaAperturaRepository,
+    TransaccionItemRepository,
+    KardexRepository,
+    ComprobanteRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import { resUpdateFalse } from '#http/helpers.js'
 import sequelize from '#db/sequelize.js'
-
-const repository = new Repository('Transaccion')
-const CajaAperturaRepository = new Repository('CajaApertura')
-const TransaccionItemRepository = new Repository('TransaccionItem')
-const KardexRepository = new Repository('Kardex')
-const ComprobanteRepository = new Repository('Comprobante')
 
 const find = async (req, res) => {
     try {
@@ -16,7 +16,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await TransaccionRepository.find(qry, true)
 
         if (data.length > 0) {
             const venta_canalesMap = arrayMap('venta_canales')
@@ -48,7 +48,7 @@ const findById = async (req, res) => {
         const { id } = req.params
 
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-        const data = await repository.find({ id, ...qry }, true)
+        const data = await TransaccionRepository.find({ id, ...qry }, true)
 
         if (data) {
             const pago_condicionesMap = arrayMap('pago_condiciones')
@@ -115,7 +115,7 @@ const create = async (req, res) => {
         }
 
         // --- CREAR --- //
-        const nuevo = await repository.create(
+        const nuevo = await TransaccionRepository.create(
             {
                 tipo,
                 fecha,
@@ -234,7 +234,7 @@ const update = async (req, res) => {
             edit_type,
         } = req.body
 
-        const updated = await repository.update(
+        const updated = await TransaccionRepository.update(
             { id },
             {
                 tipo,
@@ -311,7 +311,7 @@ const delet = async (req, res) => {
 
         await TransaccionItemRepository.delete({ transaccion: id }, transaction)
 
-        await repository.delete({ id }, transaction)
+        await TransaccionRepository.delete({ id }, transaction)
 
         if (estado != 0 && tipo == 1) {
             const transaccion_items = await TransaccionItemRepository.findAll({
@@ -350,7 +350,7 @@ const anular = async (req, res) => {
             return
         }
 
-        await repository.update(
+        await TransaccionRepository.update(
             { id },
             {
                 estado: 0,
@@ -398,7 +398,7 @@ const addProductos = async (req, res) => {
 
         await TransaccionItemRepository.createBulk(items, transaction)
 
-        await repository.update(
+        await TransaccionRepository.update(
             { id },
             {
                 monto: sequelize.literal(`COALESCE(monto, 0) + ${monto}`),
@@ -425,7 +425,7 @@ const cambiarMesa = async (req, res) => {
         const { id } = req.params
         const { venta_mesa } = req.body
 
-        await repository.update(
+        await TransaccionRepository.update(
             { id },
             {
                 venta_mesa,
@@ -447,7 +447,7 @@ const entregar = async (req, res) => {
         const { id } = req.params
 
         // --- ENTREGAR Y FINALIZAR --- //
-        await repository.update(
+        await TransaccionRepository.update(
             { id },
             {
                 venta_entregado: true,
@@ -470,7 +470,7 @@ const entregarBulk = async (req, res) => {
         const { ids } = req.body
 
         // --- ENTREGAR Y FINALIZAR --- //
-        await repository.update(
+        await TransaccionRepository.update(
             { id: ids },
             {
                 venta_entregado: true,
@@ -487,7 +487,7 @@ const entregarBulk = async (req, res) => {
 
 // --- Helpers --- //
 async function loadOne(id) {
-    let data = await repository.find(
+    let data = await TransaccionRepository.find(
         {
             id,
             sqls: ['comprobantes_monto'],

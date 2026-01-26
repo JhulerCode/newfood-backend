@@ -28,7 +28,7 @@ async function verifyToken(req, res, next) {
             ...session,
         }
 
-        const empresa = await obtenerEmpresa(session.empresa)
+        const empresa = obtenerEmpresa(session.empresa)
         req.empresa = {
             ...empresa,
         }

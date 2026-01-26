@@ -1,8 +1,6 @@
-import { Repository } from '#db/Repository.js'
+import { DineroMovimientoRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import { resDeleteFalse } from '#http/helpers.js'
-
-const repository = new Repository('DineroMovimiento')
 
 const find = async (req, res) => {
     try {
@@ -11,7 +9,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await DineroMovimientoRepository.find(qry, true)
 
         if (data.length > 0) {
             const caja_operacion_tiposMap = arrayMap('caja_operacion_tipos')
@@ -48,7 +46,7 @@ const create = async (req, res) => {
         } = req.body
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
+        const nuevo = await DineroMovimientoRepository.create({
             fecha,
             tipo,
             operacion,
@@ -77,7 +75,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        if ((await repository.delete({ id })) == false) return resDeleteFalse(res)
+        if ((await DineroMovimientoRepository.delete({ id })) == false) return resDeleteFalse(res)
 
                 res.json({ code: 0 })
     } catch (error) {
@@ -87,7 +85,7 @@ const delet = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id, incl: ['pago_metodo1'] }, true)
+    const data = await DineroMovimientoRepository.find({ id, incl: ['pago_metodo1'] }, true)
 
     if (data) {
         const caja_operacion_tiposMap = arrayMap('caja_operacion_tipos')

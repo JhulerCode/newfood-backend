@@ -1,9 +1,7 @@
-import { Repository } from '#db/Repository.js'
+import { EmpresaRepository } from '#db/repositories.js'
 import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
 import { resUpdateFalse } from '#http/helpers.js'
 import { actualizarEmpresa } from '#store/empresas.js'
-
-const repository = new Repository('Empresa')
 
 const findById = async (req, res) => {
     try {
@@ -66,7 +64,7 @@ const update = async (req, res) => {
         }
 
         // ----- ACTUALIZAR ----- //
-        const updated = await repository.update({ id }, send)
+        const updated = await EmpresaRepository.update({ id }, send)
 
         if (updated == false) return resUpdateFalse(res)
 

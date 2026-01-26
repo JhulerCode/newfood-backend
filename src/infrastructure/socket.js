@@ -1,7 +1,7 @@
 import { Server } from 'socket.io'
 import { obtenerEmpresa } from '#store/empresas.js'
 import { obtenerSucursal, actualizarSucursal } from '#store/sucursales.js'
-import { ImpresionAreaRepository } from '#db/repositories.js'
+import { ImpresionAreaRepository, EmpresaRepository } from '#db/repositories.js'
 
 let io = null
 const socketUsers = {}
@@ -30,7 +30,18 @@ export function initSocket(server) {
 
     io.on('connection', (socket) => {
         socket.on('joinPcPrincipal', async (colaborador) => {
-            const empresa = await obtenerEmpresa(colaborador.empresa)
+            let empresa = obtenerEmpresa(colaborador.empresa)
+
+            if (!empresa) {
+                const qry = {
+                    id,
+                    incl: ['sucursales'],
+                }
+
+                empresa = await EmpresaRepository.find(qry, true)
+
+                guardarEmpresa(empresa.id, empresa)
+            }
 
             if (empresa) {
                 const to_save = {
@@ -50,7 +61,7 @@ export function initSocket(server) {
         })
 
         socket.on('joinUser', async (colaborador) => {
-            const empresa = await obtenerEmpresa(colaborador.empresa)
+            const empresa = obtenerEmpresa(colaborador.empresa)
 
             if (empresa) {
                 const to_save = {

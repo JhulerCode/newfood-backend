@@ -1,7 +1,5 @@
-import { Repository } from '#db/Repository.js'
+import { SocioRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-
-const repository = new Repository('Socio')
 
 const find = async (req, res) => {
     try {
@@ -10,7 +8,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        let data = await repository.find(qry, true)
+        let data = await SocioRepository.find(qry, true)
 
         if (data.length > 0) {
             const documentos_identidadMap = arrayMap('documentos_identidad')
@@ -33,7 +31,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await repository.find({ id })
+        const data = await SocioRepository.find({ id })
 
         res.json({ code: 0, data })
     }
@@ -53,10 +51,10 @@ const create = async (req, res) => {
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         const msg = tipo == 2 ? 'El cliente ya existe' : 'El proveedor ya existe'
-        if (await repository.existe({ tipo, doc_numero, empresa }, res, msg) == true) return
+        if (await SocioRepository.existe({ tipo, doc_numero, empresa }, res, msg) == true) return
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
+        const nuevo = await SocioRepository.create({
             tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
@@ -85,10 +83,10 @@ const update = async (req, res) => {
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         const msg = tipo == 2 ? 'El cliente ya existe' : 'El proveedor ya existe'
-        if (await repository.existe({ tipo, doc_numero, id, empresa }, res, msg) == true) return
+        if (await SocioRepository.existe({ tipo, doc_numero, id, empresa }, res, msg) == true) return
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update({ id }, {
+        const updated = await SocioRepository.update({ id }, {
             tipo, doc_tipo, doc_numero, nombres,
             telefono, correo, direccion, referencia,
             activo,
@@ -110,7 +108,7 @@ const delet = async (req, res) => {
     try {
         const { id } = req.params
 
-        if (await repository.delete({ id }) == false) return resDeleteFalse(res)
+        if (await SocioRepository.delete({ id }) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
     }
@@ -123,7 +121,7 @@ const deleteBulk = async (req, res) => {
     try {
         const { ids } = req.body
 
-        if (await repository.delete(ids) == false) return resDeleteFalse(res)
+        if (await SocioRepository.delete(ids) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
     }
@@ -138,7 +136,7 @@ const updateBulk = async (req, res) => {
         const { ids, prop, val } = req.body
 
         //--- ACTUALIZAR ---//
-        const updated = await repository.update({ id: ids }, {
+        const updated = await SocioRepository.update({ id: ids }, {
             [prop]: val,
             updatedBy: colaborador
         })
@@ -155,7 +153,7 @@ const updateBulk = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id }, true)
+    const data = await SocioRepository.find({ id }, true)
 
     if (data) {
         const documentos_identidadMap = arrayMap('documentos_identidad')

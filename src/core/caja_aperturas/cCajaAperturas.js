@@ -1,14 +1,14 @@
 import { CajaApertura } from '#db/models/CajaApertura.js'
-import { Repository } from '#db/Repository.js'
+import { Op, fn, col } from 'sequelize'
+import {
+    CajaAperturaRepository,
+    TransaccionRepository,
+    DineroMovimientoRepository,
+    ComprobanteRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import { resUpdateFalse } from '#http/helpers.js'
 import dayjs from 'dayjs'
-import { Op, fn, col } from 'sequelize'
-
-const repository = new Repository('CajaApertura')
-const TransaccionRepository = new Repository('Transaccion')
-const DineroMovimientoRepository = new Repository('DineroMovimiento')
-const ComprobanteRepository = new Repository('Comprobante')
 
 const find = async (req, res) => {
     try {
@@ -17,7 +17,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await CajaAperturaRepository.find(qry, true)
 
         if (data.length > 0) {
             const caja_apertura_estadosMap = arrayMap('caja_apertura_estados')
@@ -39,7 +39,7 @@ const create = async (req, res) => {
         const { fecha_apertura, fecha_cierre, monto_apertura, monto_cierre } = req.body
 
         // --- CREAR --- //
-        const nuevo = await repository.create({
+        const nuevo = await CajaAperturaRepository.create({
             fecha_apertura,
             monto_apertura,
             estado: 1,
@@ -77,7 +77,7 @@ const cerrar = async (req, res) => {
         }
 
         // --- ACTUALIZAR --- //
-        const updated = await repository.update(
+        const updated = await CajaAperturaRepository.update(
             { id },
             {
                 fecha_cierre,
@@ -228,7 +228,13 @@ const findResumen = async (req, res) => {
             fltr: {
                 caja_apertura: { op: 'Es', val: id },
             },
-            incl: ['doc_tipo1', 'canjeado_por1', 'comprobante_items', 'transaccion1', 'dinero_movimientos'],
+            incl: [
+                'doc_tipo1',
+                'canjeado_por1',
+                'comprobante_items',
+                'transaccion1',
+                'dinero_movimientos',
+            ],
             iccl: {
                 transaccion1: {
                     cols: ['venta_canal'],
@@ -456,7 +462,7 @@ const findResumen = async (req, res) => {
                     fecha_apertura: { op: 'Está dentro de', val: mesInicio, val1: mesFin },
                 },
             }
-            const caja_aperturas = await repository.find(qry3, true)
+            const caja_aperturas = await CajaAperturaRepository.find(qry3, true)
 
             const qry4 = {
                 cols: [[fn('SUM', col('monto')), 'total']],
@@ -511,7 +517,7 @@ const findResumen = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await repository.find({ id, incl: ['createdBy1'] }, true)
+    const data = await CajaAperturaRepository.find({ id, incl: ['createdBy1'] }, true)
 
     if (data) {
         const estadosMap = arrayMap('transaccion_estados')

@@ -1,4 +1,15 @@
-import { Repository } from '#db/Repository.js'
+import {
+    ComprobanteRepository,
+    ComprobanteItemRepository,
+    CajaAperturaRepository,
+    TransaccionRepository,
+    TransaccionItemRepository,
+    ComprobanteTipoRepository,
+    SocioRepository,
+    KardexRepository,
+    ArticuloRepository,
+    DineroMovimientoRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
@@ -12,17 +23,6 @@ import { Resend } from 'resend'
 import { comprobanteHtml } from '#shared/layouts.js'
 
 import { sendDoc, anularDoc, estadoDoc, xmlDoc } from '#shared/sunat/mifact.js'
-
-const ComprobanteRepository = new Repository('Comprobante')
-const ComprobanteItemRepository = new Repository('ComprobanteItem')
-const CajaAperturaRepository = new Repository('CajaApertura')
-const TransaccionRepository = new Repository('Transaccion')
-const TransaccionItemRepository = new Repository('TransaccionItem')
-const ComprobanteTipoRepository = new Repository('ComprobanteTipo')
-const SocioRepository = new Repository('Socio')
-const KardexRepository = new Repository('Kardex')
-const ArticuloRepository = new Repository('Articulo')
-const DineroMovimientoRepository = new Repository('DineroMovimiento')
 
 const find = async (req, res) => {
     try {

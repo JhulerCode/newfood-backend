@@ -1,8 +1,6 @@
-import { Repository } from '#db/Repository.js'
+import { ComprobanteItemRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import { redondear } from '#shared/mine.js'
-
-const repository = new Repository('ComprobanteItem')
 
 const find = async (req, res) => {
     try {
@@ -11,7 +9,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        const data = await repository.find(qry, true)
+        const data = await ComprobanteItemRepository.find(qry, true)
 
         if (data.length > 0) {
             const pago_comprobantesMap = arrayMap('comprobante_tipos')
