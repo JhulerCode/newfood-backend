@@ -2,20 +2,22 @@ import { getIO } from '#infrastructure/socket.js'
 
 const sucursalesStore = new Map()
 
-async function obtenerSucursal(id) {
+function obtenerSucursal(id) {
     return sucursalesStore.get(id)
 }
 
 function guardarSucursal(id, values) {
     sucursalesStore.set(id, values)
+
+    return obtenerSucursal(id)
 }
 
 function borrarSucursal(id) {
     sucursalesStore.delete(id)
 }
 
-async function actualizarSucursal(id, values) {
-    const sucursal = await obtenerSucursal(id)
+function actualizarSucursal(id, values) {
+    const sucursal = obtenerSucursal(id)
     if (!sucursal || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
@@ -25,9 +27,9 @@ async function actualizarSucursal(id, values) {
     })
 
     console.log(`📡 Empresa: ${values.empresa} | Action: sucursal updated`)
-    getIO()
-        .to(id)
-        .emit('sucursal-updated', await obtenerSucursal(id))
+    getIO().to(id).emit('sucursal-updated', obtenerSucursal(id))
+
+    return obtenerSucursal(id)
 }
 
 export { sucursalesStore, obtenerSucursal, guardarSucursal, borrarSucursal, actualizarSucursal }

@@ -134,6 +134,11 @@ const include1 = {
         as: 'doc_tipo1',
         attributes: ['id', 'tipo', 'serie', 'tipo_serie', 'tipo1'],
     },
+    impresion_areas: {
+        model: ImpresionArea,
+        as: 'impresion_areas',
+        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
+    },
     kardexes: {
         model: Kardex,
         as: 'kardexes',
