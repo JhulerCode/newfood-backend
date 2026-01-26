@@ -1,0 +1,27 @@
+import { DataTypes } from 'sequelize'
+import sequelize from '../sequelize.js'
+import { Sucursal } from './Sucursal.js'
+import { Empresa } from './Empresa.js'
+import { Colaborador } from './Colaborador.js'
+
+export const Salon = sequelize.define('salones', {
+    id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+    nombre: { type: DataTypes.STRING },
+    activo: { type: DataTypes.BOOLEAN },
+
+    sucursal: { type: DataTypes.STRING },
+    empresa: { type: DataTypes.STRING },
+    createdBy: { type: DataTypes.STRING },
+    updatedBy: { type: DataTypes.STRING }
+})
+
+Sucursal.hasMany(Salon, { foreignKey: 'sucursal', as: 'salones', onDelete: 'RESTRICT' })
+Salon.belongsTo(Sucursal, { foreignKey: 'sucursal', as: 'sucursal1' })
+
+Empresa.hasMany(Salon, { foreignKey: 'empresa', as: 'salones', onDelete: 'RESTRICT' })
+Salon.belongsTo(Empresa, { foreignKey: 'empresa', as: 'empresa1' })
+
+Colaborador.hasMany(Salon, { foreignKey: 'createdBy', onDelete: 'RESTRICT' })
+Salon.belongsTo(Colaborador, { foreignKey: 'createdBy', as: 'createdBy1' })
+Colaborador.hasMany(Salon, { foreignKey: 'updatedBy', onDelete: 'RESTRICT' })
+Salon.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' })

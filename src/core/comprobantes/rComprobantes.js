@@ -1,0 +1,93 @@
+import { Router } from "express"
+import controller from "./cComprobantes.js"
+import verifyPermiso from '#http/middlewares/verifyPermiso.js'
+
+const router = Router()
+
+router.get(
+    '/',
+    verifyPermiso([
+        'vReporteComprobantes:listar',
+    ]),
+    controller.find
+)
+
+router.get(
+    '/uno/:id',
+    verifyPermiso(['vReporteComprobantes:imprimir']),
+    controller.findById
+)
+
+router.get(
+    '/pdf/:id',
+    verifyPermiso([
+        'vReporteComprobantes:descargarPdf',
+    ]),
+    controller.getPdf
+)
+
+router.post(
+    '/send-mail',
+    verifyPermiso([
+        'vReporteComprobantes:enviarCorreo',
+    ]),
+    controller.sendMail
+)
+
+router.post(
+    '/',
+    verifyPermiso([
+        'vPedidos:generarComprobante',
+    ]),
+    controller.create
+)
+
+router.patch(
+    '/actualizar-pagos/:id',
+    verifyPermiso([
+        'vReporteComprobantes:agregarPagos', 'vReporteComprobantes:editarPagos',
+    ]),
+    controller.actualizarPago
+)
+
+router.patch(
+    '/anular/:id',
+    verifyPermiso([
+        'vReporteComprobantes:anular',
+    ]),
+    controller.anular
+)
+
+router.patch(
+    '/canjear/:id',
+    verifyPermiso([
+        'vReporteComprobantes:canjear',
+    ]),
+    controller.canjear
+)
+
+router.get(
+    '/dashboard',
+    verifyPermiso([
+        'vDashboard:ver',
+    ]),
+    controller.resumen
+)
+
+
+// --- Mifact --- //
+router.get(
+    '/estado/uno',
+    verifyPermiso(['vReporteComprobantes:consultarEstado']),
+    controller.consultarEstado
+)
+
+router.get(
+    '/xml',
+    verifyPermiso([
+        'vReporteComprobantes:descargarXml', 'vReporteComprobantes:descargarCdr',
+    ]),
+    controller.downloadXml
+)
+
+export default router
