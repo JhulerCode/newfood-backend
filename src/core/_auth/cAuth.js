@@ -2,10 +2,9 @@ import bcrypt from 'bcrypt'
 import config from '../../config.js'
 import jat from '#shared/jat.js'
 import { guardarEmpresa, empresasStore } from '#store/empresas.js'
-import { guardarSesion, borrarSesion, sessionStore } from '#store/sessions.js'
+import { guardarSucursal } from '#store/sucursales.js'
+import { guardarSesion, borrarSesion } from '#store/sessions.js'
 import { EmpresaRepository, ColaboradorRepository } from '#db/repositories.js'
-
-import { ImpresionArea } from '#db/models/ImpresionArea.js'
 
 const signin = async (req, res) => {
     try {
@@ -35,6 +34,7 @@ const signin = async (req, res) => {
 
             empresa = empresas[0]
             guardarEmpresa(empresa.id, empresa)
+            for (const a of empresa.sucursales) guardarSucursal(a.id, a)
         }
 
         // --- VERIFICAR COLABORADOR --- //
@@ -58,18 +58,10 @@ const signin = async (req, res) => {
         // -- GUARDAR SESSION --- //
         const token = jat.encrypt({ id: colaborador.id }, config.tokenMyApi)
 
-        const impresora_caja = await ImpresionArea.findOne({
-            where: {
-                nombre: 'CAJA',
-                empresa: empresa.id,
-            },
-        })
-
         delete colaborador.contrasena
         guardarSesion(colaborador.id, {
             token,
             ...colaborador,
-            impresora_caja,
         })
 
         res.json({ code: 0, token })

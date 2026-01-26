@@ -133,7 +133,7 @@ const create = async (req, res) => {
 
                 venta_codigo,
                 venta_canal,
-                // venta_mesa,
+                venta_mesa,
                 venta_pago_metodo,
                 venta_pago_con,
                 venta_socio_datos,

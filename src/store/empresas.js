@@ -39,7 +39,7 @@ async function actualizarEmpresa(id, values) {
     })
 
     console.log(`📡 Empresa: ${values.razon_social} | Action: empresa updated`)
-    getIO().to(id).emit('empresa-updated', await obtenerEmpresa(id))
+    getIO().to(id).emit('empresa-updated', await obtenerEmpresa(id)) // QUE emita a todas las sucursales
 }
 
 export { empresasStore, obtenerEmpresa, guardarEmpresa, borrarEmpresa, actualizarEmpresa }

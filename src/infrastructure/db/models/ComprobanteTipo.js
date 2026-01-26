@@ -10,8 +10,6 @@ export const ComprobanteTipo = sequelize.define('pago_comprobantes', {
     serie: { type: DataTypes.STRING },
     numero: { type: DataTypes.INTEGER },
     correlativo: { type: DataTypes.INTEGER },
-    activo: { type: DataTypes.BOOLEAN, defaultValue: false },
-    estandar: { type: DataTypes.BOOLEAN, defaultValue: false },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
@@ -36,6 +34,8 @@ export const ComprobanteTipo = sequelize.define('pago_comprobantes', {
     },
 
     nombre: { type: DataTypes.STRING }, //eliminar
+    activo: { type: DataTypes.BOOLEAN, defaultValue: false }, //eliminar
+    estandar: { type: DataTypes.BOOLEAN, defaultValue: false }, //eliminar
 })
 
 Empresa.hasMany(ComprobanteTipo, {

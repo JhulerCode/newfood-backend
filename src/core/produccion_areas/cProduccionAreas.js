@@ -1,4 +1,4 @@
-import { ProduccionAreaRepository } from '#db/repositories.js'
+import { ImpresionAreaRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 
 const find = async (req, res) => {
@@ -8,7 +8,7 @@ const find = async (req, res) => {
 
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
-        let data = await ProduccionAreaRepository.find(qry, true)
+        let data = await ImpresionAreaRepository.find(qry, true)
 
         if (data.length > 0) {
             const activo_estadosMap = arrayMap('activo_estados')
@@ -31,7 +31,7 @@ const findById = async (req, res) => {
     try {
         const { id } = req.params
 
-        const data = await ProduccionAreaRepository.find({ id })
+        const data = await ImpresionAreaRepository.find({ id })
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -45,11 +45,11 @@ const create = async (req, res) => {
         const { nombre, impresora_tipo, impresora, activo, sucursal } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if ((await ProduccionAreaRepository.existe({ nombre, sucursal, empresa }, res)) == true)
+        if ((await ImpresionAreaRepository.existe({ nombre, sucursal, empresa }, res)) == true)
             return
 
         // --- CREAR --- //
-        const nuevo = await ProduccionAreaRepository.create({
+        const nuevo = await ImpresionAreaRepository.create({
             nombre,
             impresora_tipo,
             impresora,
@@ -74,11 +74,11 @@ const update = async (req, res) => {
         const { nombre, impresora_tipo, impresora, activo, sucursal } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if ((await ProduccionAreaRepository.existe({ nombre, sucursal, empresa, id }, res)) == true)
+        if ((await ImpresionAreaRepository.existe({ nombre, sucursal, empresa, id }, res)) == true)
             return
 
         // --- ACTUALIZAR --- //
-        const updated = await ProduccionAreaRepository.update(
+        const updated = await ImpresionAreaRepository.update(
             { id },
             {
                 nombre,
@@ -104,7 +104,7 @@ const delet = async (req, res) => {
         const { id } = req.params
 
         // --- ACTUALIZAR --- //
-        if ((await ProduccionAreaRepository.delete({ id })) == false) return resDeleteFalse(res)
+        if ((await ImpresionAreaRepository.delete({ id })) == false) return resDeleteFalse(res)
 
         res.json({ code: 0 })
     } catch (error) {
@@ -114,7 +114,7 @@ const delet = async (req, res) => {
 
 // --- Funciones --- //
 async function loadOne(id) {
-    const data = await ProduccionAreaRepository.find({ id, incl: ['sucursal1'] }, true)
+    const data = await ImpresionAreaRepository.find({ id, incl: ['sucursal1'] }, true)
 
     if (data) {
         const activo_estadosMap = arrayMap('activo_estados')

@@ -1,8 +1,22 @@
 import { Server } from 'socket.io'
 import { obtenerEmpresa } from '#store/empresas.js'
+import { obtenerSucursal, actualizarSucursal } from '#store/sucursales.js'
+import { ImpresionAreaRepository } from '#db/repositories.js'
 
 let io = null
 const socketUsers = {}
+
+async function loadSucursalImpresoraCaja(sucursal) {
+    const qry = {
+        fltr: {
+            nombre: { op: 'Es', val: 'CAJA' },
+            sucursal: { op: 'Es', val: sucursal },
+        },
+        cols: ['tipo', 'nombre'],
+    }
+    const impresion_areas = await ImpresionAreaRepository.find(qry)
+    return impresion_areas[0]
+}
 
 export function initSocket(server) {
     io = new Server(server, {
@@ -15,6 +29,26 @@ export function initSocket(server) {
     })
 
     io.on('connection', (socket) => {
+        socket.on('joinPcPrincipal', async (colaborador) => {
+            const empresa = await obtenerEmpresa(colaborador.empresa)
+
+            if (empresa) {
+                const to_save = {
+                    ...colaborador,
+                    empresa_nombre: empresa.razon_social,
+                    sucursal_codigo: empresa.sucursales.find((s) => s.id == colaborador.sucursal)
+                        ?.codigo,
+                    socket_id: socket.id,
+                }
+                consoleLogSocket(to_save, '🟢 Usuario conectado')
+
+                socket.join(colaborador.sucursal)
+                socketUsers[socket.id] = to_save
+            } else {
+                console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
+            }
+        })
+
         socket.on('joinUser', async (colaborador) => {
             const empresa = await obtenerEmpresa(colaborador.empresa)
 
@@ -26,9 +60,19 @@ export function initSocket(server) {
                         ?.codigo,
                     socket_id: socket.id,
                 }
-                console.log(`🟢 Usuario conectado`, to_save)
+                consoleLogSocket(to_save, '🟢 Usuario conectado')
+
                 socket.join(colaborador.sucursal)
                 socketUsers[socket.id] = to_save
+
+                // --- GUARDAR IMPRESORA CAJA EN LA SUCURSAL --- //
+                const sucursal = obtenerSucursal(colaborador.sucursal)
+                if (!sucursal.impresora_caja) {
+                    const sucursal_impresora_caja = await loadSucursalImpresoraCaja(
+                        colaborador.sucursal,
+                    )
+                    actualizarSucursal(colaborador.sucursal, sucursal_impresora_caja)
+                }
             } else {
                 console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
             }
@@ -36,95 +80,87 @@ export function initSocket(server) {
 
         // --- Pedidos --- //
         socket.on('vComanda:crear', (data) => {
-            consoleLogSocket(socket.id, 'vComanda:crear')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vComanda:crear', data)
+            consoleLogSocket(socket_user, 'vComanda:crear')
+            io.to(socket_user.sucursal).emit('vComanda:crear', data)
         })
 
         socket.on('vComanda:editar', (data) => {
-            consoleLogSocket(socket.id, 'vComanda:editar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vComanda:editar', data)
+            consoleLogSocket(socket_user, 'vComanda:editar')
+            io.to(socket_user.sucursal).emit('vComanda:editar', data)
         })
 
         socket.on('vComanda:addProductos', (data) => {
-            consoleLogSocket(socket.id, 'vComanda:addProductos')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vComanda:addProductos', data)
+            consoleLogSocket(socket_user, 'vComanda:addProductos')
+            io.to(socket_user.sucursal).emit('vComanda:addProductos', data)
         })
 
         socket.on('mPedidoDetalles:modificar', (data) => {
-            consoleLogSocket(socket.id, 'mPedidoDetalles:modificar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mPedidoDetalles:modificar', data)
+            consoleLogSocket(socket_user, 'mPedidoDetalles:modificar')
+            io.to(socket_user.sucursal).emit('mPedidoDetalles:modificar', data)
         })
 
         socket.on('vPedidos:eliminar', (data) => {
-            consoleLogSocket(socket.id, 'vPedidos:eliminar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vPedidos:eliminar', data)
+            consoleLogSocket(socket_user, 'vPedidos:eliminar')
+            io.to(socket_user.sucursal).emit('vPedidos:eliminar', data)
         })
 
         socket.on('vPedidos:anular', (data) => {
-            consoleLogSocket(socket.id, 'vPedidos:anular')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vPedidos:anular', data)
+            consoleLogSocket(socket_user, 'vPedidos:anular')
+            io.to(socket_user.sucursal).emit('vPedidos:anular', data)
         })
 
         socket.on('vPedidos:entregar', (data) => {
-            consoleLogSocket(socket.id, 'vPedidos:entregar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vPedidos:entregar', data)
+            consoleLogSocket(socket_user, 'vPedidos:entregar')
+            io.to(socket_user.sucursal).emit('vPedidos:entregar', data)
         })
 
         socket.on('vPedidos:entregarBulk', (data) => {
-            consoleLogSocket(socket.id, 'vPedidos:entregarBulk')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vPedidos:entregarBulk', data)
+            consoleLogSocket(socket_user, 'vPedidos:entregarBulk')
+            io.to(socket_user.sucursal).emit('vPedidos:entregarBulk', data)
         })
 
         socket.on('mCambiarMesa:cambiar', (data) => {
-            consoleLogSocket(socket.id, 'mCambiarMesa:cambiar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mCambiarMesa:cambiar', data)
+            consoleLogSocket(socket_user, 'mCambiarMesa:cambiar')
+            io.to(socket_user.sucursal).emit('mCambiarMesa:cambiar', data)
         })
 
         socket.on('mMesasUnir:unir', () => {
-            consoleLogSocket(socket.id, 'mMesasUnir:unir')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mMesasUnir:unir')
+            consoleLogSocket(socket_user, 'mMesasUnir:unir')
+            io.to(socket_user.sucursal).emit('mMesasUnir:unir')
         })
 
         socket.on('vEmitirComprobante:grabar', (data) => {
-            consoleLogSocket(socket.id, 'vEmitirComprobante:grabar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('vEmitirComprobante:grabar', data)
+            consoleLogSocket(socket_user, 'vEmitirComprobante:grabar')
+            io.to(socket_user.sucursal).emit('vEmitirComprobante:grabar', data)
         })
 
         socket.on('vComanda:imprimir', (data) => {
-            consoleLogSocket(socket.id, 'vComanda:imprimir')
-
             const socket_user = socketUsers[socket.id]
-            const { colaborador } = socket_user
+            consoleLogSocket(socket_user, 'vComanda:imprimir')
+
             const targetSocketId = Object.entries(socketUsers).find(
-                ([key, value]) => value.colaborador.id == `${data.sucursal}_pc_principal`,
+                ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
             )?.[0]
 
             if (targetSocketId) {
                 const localPath = 'comanda'
                 const url = `http://localhost/imprimir/${localPath}.php`
-                io.to(targetSocketId).emit('vComanda:imprimir', { colaborador, url, data })
+                io.to(targetSocketId).emit('vComanda:imprimir', {
+                    colaborador: socket_user,
+                    url,
+                    data,
+                })
             } else {
                 socket.emit('pc_principal_socket_not_found')
                 console.log(`${data.sucursal}_pc_principal Socket user not fount.`)
@@ -132,18 +168,23 @@ export function initSocket(server) {
         })
 
         socket.on('vComanda:imprimirPrecuenta', (data) => {
-            consoleLogSocket(socket.id, 'vComanda:imprimirPrecuenta')
-
             const socket_user = socketUsers[socket.id]
-            const { colaborador } = socket_user
+            consoleLogSocket(socket_user, 'vComanda:imprimirPrecuenta')
+
             const targetSocketId = Object.entries(socketUsers).find(
-                ([key, value]) => value.colaborador.id == `${data.sucursal}_pc_principal`,
+                ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
             )?.[0]
 
             if (targetSocketId) {
                 const localPath = 'precuenta'
                 const url = `http://localhost/imprimir/${localPath}.php`
-                io.to(targetSocketId).emit('vComanda:imprimirPrecuenta', { colaborador, url, data })
+                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+                data.impresora = sucursal_impresora_caja
+                io.to(targetSocketId).emit('vComanda:imprimirPrecuenta', {
+                    colaborador: socket_user,
+                    url,
+                    data,
+                })
             } else {
                 socket.emit('pc_principal_socket_not_found')
                 console.log(`${data.sucursal}_pc_principal Socket user not fount.`)
@@ -151,19 +192,20 @@ export function initSocket(server) {
         })
 
         socket.on('vEmitirComprobante:imprimir', (data) => {
-            consoleLogSocket(socket.id, 'vEmitirComprobante:imprimir')
-
             const socket_user = socketUsers[socket.id]
-            const { colaborador } = socket_user
+            consoleLogSocket(socket_user, 'vEmitirComprobante:imprimir')
+
             const targetSocketId = Object.entries(socketUsers).find(
-                ([key, value]) => value.colaborador.id == `${data.sucursal}_pc_principal`,
+                ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
             )?.[0]
 
             if (targetSocketId) {
                 const localPath = 'comprobante'
                 const url = `http://localhost/imprimir/${localPath}.php`
+                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+                data.impresora = sucursal_impresora_caja
                 io.to(targetSocketId).emit('vEmitirComprobante:imprimir', {
-                    colaborador,
+                    colaborador: socket_user,
                     url,
                     data,
                 })
@@ -174,19 +216,20 @@ export function initSocket(server) {
         })
 
         socket.on('vCajaAperturas:imprimirResumen', (data) => {
-            consoleLogSocket(socket.id, 'vCajaAperturas:imprimirResumen')
-
             const socket_user = socketUsers[socket.id]
-            const { colaborador } = socket_user
+            consoleLogSocket(socket_user, 'vCajaAperturas:imprimirResumen')
+
             const targetSocketId = Object.entries(socketUsers).find(
-                ([key, value]) => value.colaborador.id == `${data.subdominio}_pc_principal`,
+                ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
             )?.[0]
 
             if (targetSocketId) {
                 const localPath = 'caja_resumen'
                 const url = `http://localhost/imprimir/${localPath}.php`
+                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+                data.impresora = sucursal_impresora_caja
                 io.to(targetSocketId).emit('vCajaAperturas:imprimirResumen', {
-                    colaborador,
+                    colaborador: socket_user,
                     url,
                     data,
                 })
@@ -198,42 +241,33 @@ export function initSocket(server) {
 
         // --- Articulos --- //
         socket.on('mArticulo:crear', () => {
-            consoleLogSocket(socket.id, 'mArticulo:crear')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mArticulo:crear')
+            consoleLogSocket(socket_user, 'mArticulo:crear')
+            io.to(socket_user.sucursal).emit('mArticulo:crear')
         })
 
         socket.on('mArticulo:modificar', () => {
-            consoleLogSocket(socket.id, 'mArticulo:modificar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mArticulo:modificar')
+            consoleLogSocket(socket_user, 'mArticulo:modificar')
+            io.to(socket_user.sucursal).emit('mArticulo:modificar')
         })
 
         // --- Categorias --- //
         socket.on('mArticuloCategoria:crear', () => {
-            consoleLogSocket(socket.id, 'mArticuloCategoria:crear')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mArticuloCategoria:crear')
+            consoleLogSocket(socket_user, 'mArticuloCategoria:crear')
+            io.to(socket_user.sucursal).emit('mArticuloCategoria:crear')
         })
 
         socket.on('mArticuloCategoria:modificar', () => {
-            consoleLogSocket(socket.id, 'mArticuloCategoria:modificar')
             const socket_user = socketUsers[socket.id]
-            const { empresa } = socket_user
-            io.to(empresa.id).emit('mArticuloCategoria:modificar')
+            consoleLogSocket(socket_user, 'mArticuloCategoria:modificar')
+            io.to(socket_user.sucursal).emit('mArticuloCategoria:modificar')
         })
 
         socket.on('disconnect', () => {
             const socket_user = socketUsers[socket.id]
-            // const { empresa, colaborador } = socket_user
-            console.log(
-                // `🔴 Usuario desconectado | Empresa: ${empresa.razon_social} | User: ${colaborador.nombres} ${colaborador.apellidos} | SoketId: ${socket.id}`,
-                '🔴 Usuario desconectado',
-                socket_user,
-            )
+            consoleLogSocket(socket_user, '🔴 Usuario desconectado')
             delete socketUsers[socket.id]
         })
     })
@@ -246,14 +280,10 @@ export function getIO() {
     return io
 }
 
-function consoleLogSocket(socketId, action) {
-    const socket_user = socketUsers[socketId]
-    const { empresa, colaborador } = socket_user
-    console.log(
-        `📡 Empresa: ${empresa.razon_social} | User: ${colaborador.nombres} ${colaborador.apellidos} | Action: ${action}`,
-    )
+function consoleLogSocket(socket_user, action) {
+    console.log(`SocketIO: ${action}`, socket_user)
 }
 
-// io.to(empresa.id).emit("vComanda:crear", data) // A todos del room
+// io.to(socket_user.sucursal).emit("vComanda:crear", data) // A todos del room
 // socket.to(empresa).emit("vComanda:crear", data) // A todos del room menos yo
 // socket.emit("vComanda:crear", data) // Solo a mi
