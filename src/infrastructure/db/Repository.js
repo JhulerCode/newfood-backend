@@ -112,6 +112,7 @@ const include1 = {
             'descuento_tipo',
             'descuento_valor',
             'cantidad',
+            'igv_porcentaje',
         ],
     },
     createdBy1: {
