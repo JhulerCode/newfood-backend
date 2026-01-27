@@ -6,15 +6,12 @@ const router = Router()
 
 router.get(
     '/',
-    verifyPermiso([
-        'vPagoMetodos:listar',
-    ]),
     controller.find
 )
 
 router.patch(
     '/:id',
-    verifyPermiso(['vPagoMetodos:editar']),
+    verifyPermiso(['vSucursales:editar']),
     controller.update
 )
 
