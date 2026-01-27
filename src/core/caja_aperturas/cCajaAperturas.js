@@ -67,6 +67,7 @@ const cerrar = async (req, res) => {
             fltr: {
                 tipo: { op: 'Es', val: 2 },
                 estado: { op: 'Es', val: '1' },
+                sucursal: { op: 'Es', val: req.sucursal.id },
                 empresa: { op: 'Es', val: empresa },
             },
         }
