@@ -3,6 +3,29 @@ import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.j
 import { resUpdateFalse } from '#http/helpers.js'
 import { actualizarEmpresa } from '#store/empresas.js'
 
+const find = async (req, res) => {
+    try {
+        const { empresa } = req.user
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        // qry.fltr.empresa = { op: 'Es', val: empresa }
+
+        let data = await EmpresaRepository.find(qry, true)
+
+        // if (data.length > 0) {
+        //     const activo_estadosMap = arrayMap('activo_estados')
+
+        //     for (const a of data) {
+        //         if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+        //     }
+        // }
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const findById = async (req, res) => {
     try {
         const data = req.empresa
@@ -164,6 +187,7 @@ const update = async (req, res) => {
 // }
 
 export default {
+    find,
     findById,
     update,
     // updateCdt

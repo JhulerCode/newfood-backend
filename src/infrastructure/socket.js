@@ -85,11 +85,13 @@ export function initSocket(server) {
                 let sucursal = obtenerSucursal(colaborador.sucursal)
 
                 if (!sucursal) {
-                    sucursal = await SucursalRepository.find({ id: colaborador.sucursal }, true)
-                    sucursal = guardarSucursal(colaborador.sucursal, sucursal)
+                    if (colaborador.sucursal) {
+                        sucursal = await SucursalRepository.find({ id: colaborador.sucursal }, true)
+                        sucursal = guardarSucursal(colaborador.sucursal, sucursal)
+                    }
                 }
 
-                if (!sucursal.impresora_caja) {
+                if (sucursal && !sucursal.impresora_caja) {
                     const impresora_caja = await loadSucursalImpresoraCaja(colaborador.sucursal)
                     actualizarSucursal(colaborador.sucursal, { impresora_caja })
                 }

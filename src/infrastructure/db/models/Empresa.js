@@ -17,19 +17,20 @@ export const Empresa = sequelize.define('empresas', {
     correo: { type: DataTypes.STRING },
     foto: { type: DataTypes.JSON, defaultValue: {} },
 
-    comprobante_tipos: { type: DataTypes.JSON },
     subdominio: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },
 
-    logo: { type: DataTypes.STRING }, //QUITAR
-    logo_url: { type: DataTypes.STRING }, //QUITAR
-    distrito: { type: DataTypes.STRING }, //QUITAR
-    provincia: { type: DataTypes.STRING }, //QUITAR
-    departamento: { type: DataTypes.STRING }, //QUITAR
-    sol_usuario: { type: DataTypes.STRING }, //quitar
-    sol_clave: { type: DataTypes.STRING }, //quitar
-    cdt_clave: { type: DataTypes.STRING }, //quitar
-    cdt: { type: DataTypes.STRING }, //quitar
-    pc_principal_ip: { type: DataTypes.STRING }, //quitar
-    pc_principal_colaborador: { type: DataTypes.STRING }, //quitar
+    //--- ELIMINAR ---//
+    comprobante_tipos: { type: DataTypes.JSON },
+    logo: { type: DataTypes.STRING },
+    logo_url: { type: DataTypes.STRING },
+    distrito: { type: DataTypes.STRING },
+    provincia: { type: DataTypes.STRING },
+    departamento: { type: DataTypes.STRING },
+    sol_usuario: { type: DataTypes.STRING },
+    sol_clave: { type: DataTypes.STRING },
+    cdt_clave: { type: DataTypes.STRING },
+    cdt: { type: DataTypes.STRING },
+    pc_principal_ip: { type: DataTypes.STRING },
+    pc_principal_colaborador: { type: DataTypes.STRING },
 })

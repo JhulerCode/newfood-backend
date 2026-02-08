@@ -15,7 +15,7 @@ import colaboradores from '#core/colaboradores/rColaboradores.js'
 import comprobante_items from '#core/comprobante_items/rComprobanteItems.js'
 import comprobantes from '#core/comprobantes/rComprobantes.js'
 import combo_articulos from '#core/combo_articulos/rComboArticulo.js'
-import empresa from '#core/empresas/rEmpresa.js'
+import empresas from '#core/empresas/rEmpresa.js'
 import dinero_movimientos from '#core/dinero_movimientos/rDineroMovimientos.js'
 import kardex from '#core/kardex/rKardex.js'
 import mesas from '#core/mesas/rMesas.js'
@@ -52,7 +52,7 @@ router.use('/api/colaboradores', colaboradores)
 router.use('/api/comprobante_items', comprobante_items)
 router.use('/api/comprobantes', comprobantes)
 router.use('/api/combo_articulos', combo_articulos)
-router.use('/api/empresa', empresa)
+router.use('/api/empresas', empresas)
 router.use('/api/dinero_movimientos', dinero_movimientos)
 router.use('/api/kardex', kardex)
 router.use('/api/mesas', mesas)

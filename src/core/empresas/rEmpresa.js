@@ -6,6 +6,11 @@ import { uploadMem } from '#http/middlewares/uploadFiles.js'
 const router = Router()
 
 router.get(
+    '/',
+    controller.find
+)
+
+router.get(
     '/uno/:id',
     controller.findById
 )
