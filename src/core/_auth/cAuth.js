@@ -4,7 +4,7 @@ import jat from '#shared/jat.js'
 import { guardarEmpresa, empresasStore } from '#store/empresas.js'
 import { guardarSucursal, obtenerSucursal, sucursalesStore } from '#store/sucursales.js'
 import { guardarSesion, borrarSesion } from '#store/sessions.js'
-import { EmpresaRepository, ColaboradorRepository } from '#db/repositories.js'
+import { EmpresaRepository, ColaboradorRepository, SocioRepository } from '#db/repositories.js'
 
 const signin = async (req, res) => {
     try {
@@ -33,7 +33,9 @@ const signin = async (req, res) => {
             if (empresas.length == 0) return res.json({ code: 1, msg: 'Empresa no encontrada' })
 
             empresa = empresas[0]
+            empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
             guardarEmpresa(empresa.id, empresa)
+
             for (const a of empresa.sucursales) guardarSucursal(a.id, a)
         }
 
@@ -80,6 +82,18 @@ const logout = async (req, res) => {
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
+}
+
+async function loadEmpresaClienteVarios(empresa_id) {
+    const qry = {
+        fltr: {
+            nombre: { op: 'Es', val: 'CLIENTES VARIOS' },
+            empresa: { op: 'Es', val: empresa_id },
+        },
+        cols: ['doc_tipo', 'doc_numero', 'doc_nombres', 'nombres'],
+    }
+    const clientes = await SocioRepository.find(qry, true)
+    return clientes[0]
 }
 
 export default {

@@ -57,12 +57,9 @@ const create = async (req, res) => {
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await SucursalRepository.existe({ codigo, empresa }, res)) == true) return
 
-        const id = '9d75968f-8cc4-4e1d-b253-0746524b8f73'
-
         // --- CREAR --- //
         const nuevo = await SucursalRepository.create(
             {
-                id,
                 codigo,
                 direccion,
                 telefono,
@@ -87,7 +84,9 @@ const create = async (req, res) => {
             empresa,
             createdBy: colaborador,
         }))
-        await SucursalComprobanteTipoRepository.createBulk(produccion_areas_new, transaction)
+        if (produccion_areas_new.length > 0) {
+            await SucursalComprobanteTipoRepository.createBulk(produccion_areas_new, transaction)
+        }
 
         // --- CREAR MÉTODOS DE PAGO --- //
         const pago_metodos = await PagoMetodoRepository.find(qry, true)
@@ -98,7 +97,9 @@ const create = async (req, res) => {
             empresa,
             createdBy: colaborador,
         }))
-        await SucursalPagoMetodoRepository.createBulk(pago_metodos_new, transaction)
+        if (pago_metodos_new.length > 0) {
+            await SucursalPagoMetodoRepository.createBulk(pago_metodos_new, transaction)
+        }
 
         // --- CREAR ARTICULOS --- //
         const articulos = await ArticuloRepository.find(qry, true)
@@ -109,7 +110,9 @@ const create = async (req, res) => {
             empresa,
             createdBy: colaborador,
         }))
-        await SucursalArticuloRepository.createBulk(articulos_new, transaction)
+        if (articulos_new.length > 0) {
+            await SucursalArticuloRepository.createBulk(articulos_new, transaction)
+        }
 
         // --- CREAR IMPRESORA CAJA --- //
         await ImpresionAreaRepository.create(

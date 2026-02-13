@@ -185,13 +185,8 @@ const create = async (req, res) => {
 
         // --- CLIENTE DATOS --- //
         let cliente = {}
-        if (socio == `${req.empresa.subdominio}-CLIENTES-VARIOS`) {
-            cliente = {
-                doc_tipo: '0',
-                doc_numero: '00000000',
-                doc_nombres: '00000000 - CLIENTES VARIOS',
-                nombres: 'CLIENTES VARIOS',
-            }
+        if (socio == req.empresa.clientes_varios.id) {
+            cliente = { ...req.empresa.clientes_varios }
         } else {
             cliente = await SocioRepository.find({ id: socio }, true)
         }

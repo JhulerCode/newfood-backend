@@ -298,11 +298,11 @@ const createBulk = async (req, res) => {
             tipo,
             categoria: a.categoria,
 
-            produccion_area: a.produccion_area,
+            // produccion_area: a.produccion_area,
             has_receta: a.has_receta,
             is_combo: a.is_combo,
 
-            igv_afectacion: a.Tributo,
+            igv_afectacion: a.igv_afectacion,
             precio_venta: a.precio_venta,
 
             empresa,
