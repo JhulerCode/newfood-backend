@@ -16,7 +16,7 @@ export const Socio = sequelize.define('socios', {
     direccion: { type: DataTypes.STRING },
     referencia: { type: DataTypes.STRING },
 
-    activo: { type: DataTypes.BOOLEAN },
+    activo: { type: DataTypes.BOOLEAN, defaultValue: true },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },
@@ -26,7 +26,7 @@ export const Socio = sequelize.define('socios', {
         type: DataTypes.VIRTUAL,
         get() {
             return `${this.doc_numero} - ${this.nombres}`
-        }
+        },
     },
 })
 

@@ -87,7 +87,7 @@ const logout = async (req, res) => {
 async function loadEmpresaClienteVarios(empresa_id) {
     const qry = {
         fltr: {
-            nombre: { op: 'Es', val: 'CLIENTES VARIOS' },
+            nombres: { op: 'Es', val: 'CLIENTES VARIOS' },
             empresa: { op: 'Es', val: empresa_id },
         },
         cols: ['doc_tipo', 'doc_numero', 'doc_nombres', 'nombres'],

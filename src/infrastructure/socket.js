@@ -6,7 +6,12 @@ import {
     guardarSucursal,
     actualizarSucursal,
 } from '#store/sucursales.js'
-import { ImpresionAreaRepository, EmpresaRepository, SucursalRepository } from '#db/repositories.js'
+import {
+    ImpresionAreaRepository,
+    EmpresaRepository,
+    SucursalRepository,
+    SocioRepository,
+} from '#db/repositories.js'
 
 let io = null
 const socketUsers = {}
@@ -44,8 +49,10 @@ export function initSocket(server) {
                 }
 
                 empresa = await EmpresaRepository.find(qry, true)
-
+                empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
                 guardarEmpresa(colaborador.empresa, empresa)
+
+                for (const a of empresa.sucursales) guardarSucursal(a.id, a)
             }
 
             if (empresa) {
@@ -305,6 +312,18 @@ export function getIO() {
 
 function consoleLogSocket(socket_user, action) {
     console.log(`SocketIO: ${action}`, socket_user)
+}
+
+async function loadEmpresaClienteVarios(empresa_id) {
+    const qry = {
+        fltr: {
+            nombres: { op: 'Es', val: 'CLIENTES VARIOS' },
+            empresa: { op: 'Es', val: empresa_id },
+        },
+        cols: ['doc_tipo', 'doc_numero', 'doc_nombres', 'nombres'],
+    }
+    const clientes = await SocioRepository.find(qry, true)
+    return clientes[0]
 }
 
 // io.to(socket_user.sucursal).emit("vComanda:crear", data) // A todos del room
