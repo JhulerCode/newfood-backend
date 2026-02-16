@@ -168,7 +168,7 @@ const findResumen = async (req, res) => {
                     }
 
                     if (a.operacion == 1) {
-                        if (a.pago_metodo == `${req.empresa.subdominio}-EFECTIVO`) {
+                        if (a.pago_metodo1.nombre == 'EFECTIVO') {
                             send.efectivo_ingresos_total += Number(a.monto)
                         }
 
@@ -198,6 +198,7 @@ const findResumen = async (req, res) => {
                         }
                     }
                 }
+                // throw error
 
                 if (a.tipo == 2) {
                     send.efectivo_egresos_total += Number(a.monto)
@@ -544,19 +545,6 @@ function calcularUno(item) {
     item.total = item.cantidad * item.pu - item.descuento
 
     return item
-}
-
-function setTipoComprobanteKey(doc_tipo) {
-    let key = 'NV'
-    if (doc_tipo.includes('01')) {
-        key = '01'
-    } else if (doc_tipo.includes('03')) {
-        key = '03'
-    }
-
-    // const comprobante_tipos = arrayMap('comprobante_tipos')
-    // return comprobante_tipos[key]
-    return key
 }
 
 export default {
