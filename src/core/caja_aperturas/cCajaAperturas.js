@@ -1,4 +1,4 @@
-import { CajaApertura } from '#db/models/CajaApertura.js'
+import { DineroMovimiento } from '#db/models/DineroMovimiento.js'
 import { Op, fn, col } from 'sequelize'
 import {
     CajaAperturaRepository,
@@ -458,53 +458,51 @@ const findResumen = async (req, res) => {
             const mesFin = hoy.endOf('month').format('YYYY-MM-DD')
 
             const qry3 = {
-                cols: ['id', 'fecha_apertura'],
+                cols: ['fecha_apertura'],
                 fltr: {
                     empresa: { op: 'Es', val: empresa },
+                    sucursal: { op: 'Es', val: req.sucursal.id },
                     fecha_apertura: { op: 'Está dentro de', val: mesInicio, val1: mesFin },
                 },
             }
             const caja_aperturas = await CajaAperturaRepository.find(qry3, true)
 
-            const qry4 = {
-                cols: [[fn('SUM', col('monto')), 'total']],
-                fltr: {
-                    caja_apertura: { op: 'Es', val: caja_aperturas.map((a) => a.id) },
-                    estado: { op: 'Es', val: '2' },
-                    operacion: { op: 'Es', val: '1' },
-                },
-            }
-            send.ventas_mes = await DineroMovimientoRepository.find(qry4, true)
-
-            // --- Ventas ayer --- //
-            const qry5 = {}
-            const caja_aperturas_ayer = await CajaApertura.findAll({
-                attributes: ['id', 'fecha_apertura'],
-                order: [['createdAt', 'DESC']],
+            send.ventas_mes = await DineroMovimiento.findOne({
+                attributes: [[fn('SUM', col('monto')), 'total']],
                 where: {
-                    empresa,
+                    caja_apertura: caja_aperturas.map((a) => a.id),
+                    estado: '2',
+                    operacion: '1',
                 },
-                limit: 2,
             })
 
-            if (caja_aperturas_ayer.length > 1) {
-                const qry6 = {
-                    cols: [[fn('SUM', col('monto')), 'total']],
-                    fltr: {
-                        caja_apertura: { op: 'Es', val: caja_aperturas_ayer[1].id },
-                        estado: { op: 'Es', val: '2' },
-                        operacion: { op: 'Es', val: '1' },
+            // --- Ventas ayer --- //
+            const ayer = hoy.subtract(1, 'day')
+            const qry = {
+                cols: ['fecha_apertura'],
+                fltr: {
+                    empresa: { op: 'Es', val: empresa },
+                    sucursal: { op: 'Es', val: req.sucursal.id },
+                    fecha_apertura: {
+                        op: 'Está dentro de',
+                        val: ayer.startOf('day').format('YYYY-MM-DD'),
+                        val1: hoy.startOf('day').format('YYYY-MM-DD'),
                     },
-                }
-                const asd = await DineroMovimientoRepository.find(qry6, true)
-                send.ventas_ayer = asd[0]
-                //     attributes: [[fn('SUM', col('monto')), 'total']],
-                //     where: {
-                //         caja_apertura: caja_aperturas_ayer[1].id,
-                //         estado: '2',
-                //         operacion: '1',
-                //     },
-                // })
+                },
+                order: [['createdAt', 'DESC']],
+            }
+
+            const caja_aperturas_ayer = await CajaAperturaRepository.find(qry, true)
+
+            if (caja_aperturas_ayer.length > 0) {
+                send.ventas_ayer = await DineroMovimiento.findOne({
+                    attributes: [[fn('SUM', col('monto')), 'total']],
+                    where: {
+                        caja_apertura: caja_aperturas_ayer[0].id,
+                        estado: '2',
+                        operacion: '1',
+                    },
+                })
             }
         }
 
