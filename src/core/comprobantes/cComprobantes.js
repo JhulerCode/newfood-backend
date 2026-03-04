@@ -14,6 +14,7 @@ import { arrayMap } from '#store/system.js'
 import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
 import TransaccionControler from '#core/transacciones/cTransacciones.js'
+import axios from 'axios'
 
 import PdfPrinter from 'pdfmake'
 import { numeroATexto } from '#shared/mine.js'
@@ -615,6 +616,52 @@ const sendMail = async (req, res) => {
                 .json({ code: 1, msg: 'No se pudo enviar el correo', error: result.error })
         } else {
             res.json({ code: 0 })
+        }
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const sendWhatsapp = async (req, res) => {
+    try {
+        const { id, phone_to_send } = req.body
+
+        const whatsapp_api_key = 'inst_ins-VA13BI_2026'
+        const data = await getComprobante(id)
+        const comprobante_numero = `${data.serie}-${data.numero}`
+        const empresa_nombre = data.empresa_datos.razon_social
+        const buffer = await makePdf(data, req.empresa)
+        const media = buffer.toString('base64')
+        const caption = `Estimado cliente,
+
+Enviamos el comprobante de pago *${comprobante_numero}* correspondiente a su reciente consumo en *${empresa_nombre}*.
+
+Agradecemos mucho su preferencia. Esperamos haber sido parte de un buen momento 😊.
+
+${'```Una solución de DivergeRest.```'}`
+        const file_name = `${comprobante_numero}.pdf`
+
+        const response = await axios.post(
+            `https://whatsapp.divergerest.com/messages/media`,
+            {
+                to: `51${phone_to_send}`,
+                media,
+                file_name,
+                caption,
+            },
+            {
+                headers: {
+                    Authorization: `Bearer ${whatsapp_api_key}`,
+                    'Content-Type': 'application/json',
+                },
+            },
+        )
+
+        console.log(response.data)
+        if (response.data.success) {
+            res.json({ code: 0 })
+        } else {
+            res.json({ code: 1, msg: response.data.message })
         }
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -1658,6 +1705,7 @@ export default {
     findById,
     getPdf,
     sendMail,
+    sendWhatsapp,
     downloadXml,
     actualizarPago,
     anular,
