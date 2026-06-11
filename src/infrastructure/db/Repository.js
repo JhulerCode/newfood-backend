@@ -137,6 +137,11 @@ const include1 = {
         as: 'doc_tipo1',
         attributes: ['id', 'tipo', 'serie', 'tipo_serie', 'tipo1'],
     },
+    empresa1: {
+        model: Empresa,
+        as: 'empresa1',
+        attributes: ['id', 'nombre'],
+    },
     impresion_areas: {
         model: ImpresionArea,
         as: 'impresion_areas',

@@ -152,7 +152,8 @@ export async function updateJobStatus(sucursal, id, body) {
         error_message: body.errorMessage || body.error_message || null,
     }
 
-    if (status === 'received' || status === 'printing') patch.received_at = job.received_at || new Date()
+    if (status === 'received' || status === 'printing')
+        patch.received_at = job.received_at || new Date()
     if (status === 'printed') patch.printed_at = new Date()
     if (status === 'failed') {
         patch.failed_at = new Date()
@@ -210,7 +211,13 @@ export async function retryJobForUser({ empresa, id }) {
     return await PrinterJobRepository.find({ id }, true)
 }
 
-export async function createSocketPrintJob({ event, type, data, colaborador, printerArea = 'CAJA' }) {
+export async function createSocketPrintJob({
+    event,
+    type,
+    data,
+    colaborador,
+    printerArea = 'CAJA',
+}) {
     const sucursalId = data?.sucursal
     if (!sucursalId) return { enabled: false, useLegacy: true, job: null }
 

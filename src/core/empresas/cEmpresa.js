@@ -83,7 +83,7 @@ const update = async (req, res) => {
             correo,
             foto: newFile || foto,
 
-            createdBy: colaborador,
+            updatedBy: colaborador,
         }
 
         // ----- ACTUALIZAR ----- //
