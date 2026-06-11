@@ -12,9 +12,18 @@ import {
     SucursalRepository,
     SocioRepository,
 } from '#db/repositories.js'
+import {
+    createSocketPrintJob,
+    getAgentConfig,
+    markSucursalPrinterOffline,
+    markSucursalPrinterOnline,
+    markJobLegacyFallback,
+    verifyPrinterToken,
+} from '#core/printer/sPrinter.js'
 
 let io = null
 const socketUsers = {}
+const printerSockets = {}
 
 async function loadSucursalImpresoraCaja(sucursal) {
     const qry = {
@@ -39,6 +48,41 @@ export function initSocket(server) {
     })
 
     io.on('connection', (socket) => {
+        socket.on('printer:join', async (data = {}) => {
+            try {
+                const sucursal = await verifyPrinterToken(data.token)
+                if (!sucursal) {
+                    socket.emit('printer:auth_failed')
+                    return
+                }
+
+                await markSucursalPrinterOnline(sucursal, data.appVersion)
+                socket.join(`printer:${sucursal.id}`)
+                socket.data.printerSucursal = sucursal.id
+                printerSockets[sucursal.id] = socket.id
+
+                socket.emit('printer:ready', await getAgentConfig(sucursal))
+                socket.emit('printer:heartbeat', { at: new Date().toISOString() })
+                console.log('SocketIO: printer online', {
+                    sucursal: sucursal.id,
+                    socket_id: socket.id,
+                })
+            } catch (error) {
+                socket.emit('printer:auth_failed')
+                console.log('SocketIO: printer join error', error.message)
+            }
+        })
+
+        socket.on('printer:heartbeat', async () => {
+            if (!socket.data.printerSucursal) return
+            await markSucursalPrinterOnline(
+                {
+                    id: socket.data.printerSucursal,
+                },
+                null,
+            )
+        })
+
         socket.on('joinPcPrincipal', async (colaborador) => {
             let empresa = obtenerEmpresa(colaborador.empresa)
 
@@ -174,9 +218,18 @@ export function initSocket(server) {
             io.to(socket_user.sucursal).emit('vEmitirComprobante:grabar', data)
         })
 
-        socket.on('vComanda:imprimir', (data) => {
+        socket.on('vComanda:imprimir', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vComanda:imprimir')
+
+            const handledBySucursalPrinter = await handleSucursalPrinterJob({
+                event: 'vComanda:imprimir',
+                type: 'comanda',
+                data,
+                colaborador: socket_user,
+                printerArea: data?.impresora?.nombre || data?.impresion_area?.nombre || 'COMANDA',
+            })
+            if (handledBySucursalPrinter) return
 
             const targetSocketId = Object.entries(socketUsers).find(
                 ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
@@ -196,9 +249,20 @@ export function initSocket(server) {
             }
         })
 
-        socket.on('vComanda:imprimirPrecuenta', (data) => {
+        socket.on('vComanda:imprimirPrecuenta', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vComanda:imprimirPrecuenta')
+            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+            data.impresora = sucursal_impresora_caja
+
+            const handledBySucursalPrinter = await handleSucursalPrinterJob({
+                event: 'vComanda:imprimirPrecuenta',
+                type: 'precuenta',
+                data,
+                colaborador: socket_user,
+                printerArea: 'CAJA',
+            })
+            if (handledBySucursalPrinter) return
 
             const targetSocketId = Object.entries(socketUsers).find(
                 ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
@@ -207,8 +271,6 @@ export function initSocket(server) {
             if (targetSocketId) {
                 const localPath = 'precuenta'
                 const url = `http://localhost/imprimir/${localPath}.php`
-                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-                data.impresora = sucursal_impresora_caja
 
                 io.to(targetSocketId).emit('vComanda:imprimirPrecuenta', {
                     colaborador: socket_user,
@@ -221,9 +283,20 @@ export function initSocket(server) {
             }
         })
 
-        socket.on('vEmitirComprobante:imprimir', (data) => {
+        socket.on('vEmitirComprobante:imprimir', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vEmitirComprobante:imprimir')
+            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+            data.impresora = sucursal_impresora_caja
+
+            const handledBySucursalPrinter = await handleSucursalPrinterJob({
+                event: 'vEmitirComprobante:imprimir',
+                type: 'comprobante',
+                data,
+                colaborador: socket_user,
+                printerArea: 'CAJA',
+            })
+            if (handledBySucursalPrinter) return
 
             const targetSocketId = Object.entries(socketUsers).find(
                 ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
@@ -232,8 +305,6 @@ export function initSocket(server) {
             if (targetSocketId) {
                 const localPath = 'comprobante'
                 const url = `http://localhost/imprimir/${localPath}.php`
-                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-                data.impresora = sucursal_impresora_caja
                 io.to(targetSocketId).emit('vEmitirComprobante:imprimir', {
                     colaborador: socket_user,
                     url,
@@ -245,9 +316,20 @@ export function initSocket(server) {
             }
         })
 
-        socket.on('vCajaAperturas:imprimirResumen', (data) => {
+        socket.on('vCajaAperturas:imprimirResumen', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vCajaAperturas:imprimirResumen')
+            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
+            data.impresora = sucursal_impresora_caja
+
+            const handledBySucursalPrinter = await handleSucursalPrinterJob({
+                event: 'vCajaAperturas:imprimirResumen',
+                type: 'caja_resumen',
+                data,
+                colaborador: socket_user,
+                printerArea: 'CAJA',
+            })
+            if (handledBySucursalPrinter) return
 
             const targetSocketId = Object.entries(socketUsers).find(
                 ([key, value]) => value.id == `${data.sucursal}_pc_principal`,
@@ -256,8 +338,6 @@ export function initSocket(server) {
             if (targetSocketId) {
                 const localPath = 'caja_resumen'
                 const url = `http://localhost/imprimir/${localPath}.php`
-                const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-                data.impresora = sucursal_impresora_caja
                 io.to(targetSocketId).emit('vCajaAperturas:imprimirResumen', {
                     colaborador: socket_user,
                     url,
@@ -296,6 +376,16 @@ export function initSocket(server) {
         })
 
         socket.on('disconnect', () => {
+            if (socket.data.printerSucursal) {
+                markSucursalPrinterOffline(socket.data.printerSucursal)
+                if (printerSockets[socket.data.printerSucursal] === socket.id) {
+                    delete printerSockets[socket.data.printerSucursal]
+                }
+                console.log('SocketIO: printer offline', {
+                    sucursal: socket.data.printerSucursal,
+                })
+            }
+
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, '🔴 Usuario desconectado')
             delete socketUsers[socket.id]
@@ -308,6 +398,24 @@ export function getIO() {
         throw new Error('Socket.io no inicializado')
     }
     return io
+}
+
+export async function requestSucursalPrinters(sucursal) {
+    const targetSocketId = printerSockets[sucursal]
+    if (!targetSocketId) throw new Error('La PC principal de impresion no esta conectada')
+
+    return await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Tiempo de espera agotado')), 10000)
+
+        io.to(targetSocketId).timeout(10000).emit('printer:list_printers', {}, (error, responses) => {
+            clearTimeout(timeout)
+            if (error) {
+                reject(new Error('No se pudo obtener la lista de impresoras'))
+                return
+            }
+            resolve(responses?.[0]?.printers || [])
+        })
+    })
 }
 
 function consoleLogSocket(socket_user, action) {
@@ -324,6 +432,24 @@ async function loadEmpresaClienteVarios(empresa_id) {
     }
     const clientes = await SocioRepository.find(qry, true)
     return clientes[0]
+}
+
+async function handleSucursalPrinterJob({ event, type, data, colaborador, printerArea }) {
+    const routing = await createSocketPrintJob({ event, type, data, colaborador, printerArea })
+    if (!routing.enabled || !routing.job) return false
+
+    const targetSocketId = printerSockets[data.sucursal]
+    if (targetSocketId) {
+        io.to(targetSocketId).emit('print_job:created', { jobId: routing.job.id })
+        return true
+    }
+
+    if (routing.useLegacy) {
+        await markJobLegacyFallback(routing.job.id)
+        return false
+    }
+
+    return true
 }
 
 // io.to(socket_user.sucursal).emit("vComanda:crear", data) // A todos del room

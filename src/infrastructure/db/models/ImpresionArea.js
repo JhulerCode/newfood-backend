@@ -9,6 +9,8 @@ export const ImpresionArea = sequelize.define('produccion_areas', {
     nombre: { type: DataTypes.STRING },
     impresora_tipo: { type: DataTypes.STRING },
     impresora: { type: DataTypes.STRING },
+    impresora_display_name: { type: DataTypes.STRING },
+    impresora_config: { type: DataTypes.JSONB, defaultValue: {} },
     activo: { type: DataTypes.BOOLEAN, defaultValue: true },
 
     sucursal: { type: DataTypes.STRING },

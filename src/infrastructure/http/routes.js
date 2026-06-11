@@ -5,6 +5,7 @@ import verifyToken from '#http/middlewares/verifyToken.js'
 
 import auth from '#core/_auth/rAuth.js'
 import sistema from '#core/_sistema/rSistema.js'
+import printer from '#core/printer/rPrinter.js'
 
 import decolecta from '#core/decolecta/rDecolecta.js'
 
@@ -37,6 +38,8 @@ const router = Router()
 router.get('/', (req, res) => {
     res.send(`Newfood's server is running`)
 })
+
+router.use('/api/printer', printer)
 
 router.use('/api', verifyVersion)
 router.use('/api/auth', auth)

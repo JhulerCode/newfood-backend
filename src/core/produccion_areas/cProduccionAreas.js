@@ -42,7 +42,15 @@ const findById = async (req, res) => {
 const create = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
-        const { nombre, impresora_tipo, impresora, activo, sucursal } = req.body
+        const {
+            nombre,
+            impresora_tipo,
+            impresora,
+            impresora_display_name,
+            impresora_config,
+            activo,
+            sucursal,
+        } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await ImpresionAreaRepository.existe({ nombre, sucursal, empresa }, res)) == true)
@@ -53,6 +61,8 @@ const create = async (req, res) => {
             nombre,
             impresora_tipo,
             impresora,
+            impresora_display_name,
+            impresora_config,
             activo,
             sucursal,
             empresa,
@@ -71,7 +81,15 @@ const update = async (req, res) => {
     try {
         const { colaborador, empresa } = req.user
         const { id } = req.params
-        const { nombre, impresora_tipo, impresora, activo, sucursal } = req.body
+        const {
+            nombre,
+            impresora_tipo,
+            impresora,
+            impresora_display_name,
+            impresora_config,
+            activo,
+            sucursal,
+        } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await ImpresionAreaRepository.existe({ nombre, sucursal, empresa, id }, res)) == true)
@@ -84,6 +102,8 @@ const update = async (req, res) => {
                 nombre,
                 impresora_tipo,
                 impresora,
+                impresora_display_name,
+                impresora_config,
                 activo,
                 updatedBy: colaborador,
             },

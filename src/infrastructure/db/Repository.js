@@ -12,6 +12,7 @@ import { Empresa } from '#db/models/Empresa.js'
 import { Kardex } from '#db/models/Kardex.js'
 import { Mesa } from '#db/models/Mesa.js'
 import { PagoMetodo } from '#db/models/PagoMetodo.js'
+import { PrinterJob } from '#db/models/PrinterJob.js'
 import { ImpresionArea } from '#db/models/ImpresionArea.js'
 import { RecetaInsumo } from '#db/models/RecetaInsumo.js'
 import { Salon } from '#db/models/Salon.js'
@@ -39,6 +40,7 @@ export const models = {
     Mesa,
     ComprobanteTipo,
     PagoMetodo,
+    PrinterJob,
     ImpresionArea,
     RecetaInsumo,
     Salon,
@@ -138,12 +140,12 @@ const include1 = {
     impresion_areas: {
         model: ImpresionArea,
         as: 'impresion_areas',
-        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
+        attributes: ['id', 'impresora_tipo', 'impresora', 'impresora_display_name', 'nombre'],
     },
     impresion_area1: {
         model: ImpresionArea,
         as: 'impresion_area1',
-        attributes: ['id', 'impresora_tipo', 'impresora', 'nombre'],
+        attributes: ['id', 'impresora_tipo', 'impresora', 'impresora_display_name', 'nombre'],
     },
     kardexes: {
         model: Kardex,
