@@ -14,7 +14,6 @@ import {
 } from '#db/repositories.js'
 import {
     createSocketPrintJob,
-    getAgentConfig,
     markSucursalPrinterOffline,
     markSucursalPrinterOnline,
     markJobLegacyFallback,
@@ -61,7 +60,7 @@ export function initSocket(server) {
                 socket.data.printerSucursal = sucursal.id
                 printerSockets[sucursal.id] = socket.id
 
-                socket.emit('printer:ready', await getAgentConfig(sucursal))
+                socket.emit('printer:ready')
                 socket.emit('printer:heartbeat', { at: new Date().toISOString() })
                 console.log('SocketIO: printer online', {
                     sucursal: sucursal.id,

@@ -6,7 +6,45 @@ import {
 } from '#db/repositories.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
-const ENGINE = 'sumatra-pdf'
+
+export async function markSucursalPrinterOnline(sucursal, appVersion) {
+    const patch = {
+        printer_status: 'online',
+        printer_last_seen_at: new Date(),
+    }
+    if (appVersion) patch.printer_app_version = appVersion
+
+    await SucursalRepository.update({ id: sucursal.id }, patch)
+}
+
+export async function getSanitizedSucursal(id) {
+    const sucursal = await SucursalRepository.find({ id, incl: ['empresa1'] }, true)
+    if (!sucursal) return null
+    const { printer_token_hash, ...safeSucursal } = sucursal
+    return safeSucursal
+}
+
+export async function listPendingJobs(sucursal) {
+    return await PrinterJobRepository.find(
+        {
+            fltr: {
+                sucursal: { op: 'Es', val: sucursal.id },
+                status: { op: 'Es', val: 'pending' },
+            },
+            cols: [
+                'type',
+                'source_event',
+                'printer_area',
+                'printer_name',
+                'engine',
+                'status',
+                'attempts',
+                'createdAt',
+            ],
+        },
+        true,
+    )
+}
 
 export function hashPrinterToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex')
@@ -34,7 +72,7 @@ export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
         },
     )
 
-    return { sucursal: await sanitizeSucursal(sucursalId), token }
+    return { sucursal: await getSanitizedSucursal(sucursalId), token }
 }
 
 export async function updateSucursalPrinterConfig({ empresa, sucursalId, body }) {
@@ -55,7 +93,7 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
         },
     )
 
-    return await sanitizeSucursal(sucursalId)
+    return await getSanitizedSucursal(sucursalId)
 }
 
 export async function verifyPrinterToken(token) {
@@ -81,59 +119,9 @@ export async function verifyPrinterToken(token) {
     return sucursales[0] || null
 }
 
-export async function getAgentConfig(sucursal) {
-    const areas = await getSucursalAreas(sucursal.id)
-
-    return {
-        sucursal: await sanitizeSucursal(sucursal.id),
-        engine: ENGINE,
-        fallback_enabled: sucursal.printer_fallback_enabled !== false,
-        areas: areas.map((area) => ({
-            id: area.id,
-            nombre: area.nombre,
-            impresora_tipo: area.impresora_tipo,
-            impresora: area.impresora,
-            impresora_display_name: area.impresora_display_name,
-        })),
-        min_agent_version: null,
-    }
-}
-
-export async function markSucursalPrinterOnline(sucursal, appVersion) {
-    const patch = {
-        printer_status: 'online',
-        printer_last_seen_at: new Date(),
-    }
-    if (appVersion) patch.printer_app_version = appVersion
-
-    await SucursalRepository.update({ id: sucursal.id }, patch)
-}
-
 export async function markSucursalPrinterOffline(sucursalId) {
     if (!sucursalId) return
     await SucursalRepository.update({ id: sucursalId }, { printer_status: 'offline' })
-}
-
-export async function listPendingJobs(sucursal) {
-    return await PrinterJobRepository.find(
-        {
-            fltr: {
-                sucursal: { op: 'Es', val: sucursal.id },
-                status: { op: 'Es', val: 'pending' },
-            },
-            cols: [
-                'type',
-                'source_event',
-                'printer_area',
-                'printer_name',
-                'engine',
-                'status',
-                'attempts',
-                'createdAt',
-            ],
-        },
-        true,
-    )
 }
 
 export async function getJobForSucursal(sucursal, id) {
@@ -273,12 +261,7 @@ export async function getSucursalAreas(sucursal) {
     )
 }
 
-async function sanitizeSucursal(id) {
-    const sucursal = await SucursalRepository.find({ id }, true)
-    if (!sucursal) return null
-    const { printer_token_hash, ...safeSucursal } = sucursal
-    return safeSucursal
-}
+
 
 function normalizeJobStatus(status) {
     const allowed = ['pending', 'received', 'printing', 'printed', 'failed', 'legacy_fallback']

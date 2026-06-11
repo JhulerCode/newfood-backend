@@ -140,7 +140,7 @@ const include1 = {
     empresa1: {
         model: Empresa,
         as: 'empresa1',
-        attributes: ['id', 'nombre'],
+        attributes: ['id', 'razon_social'],
     },
     impresion_areas: {
         model: ImpresionArea,
