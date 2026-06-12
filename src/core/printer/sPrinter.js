@@ -6,6 +6,54 @@ import {
 } from '#db/repositories.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
+const ENGINE = 'sumatra-pdf'
+
+function hashPrinterToken(token) {
+    return crypto.createHash('sha256').update(token).digest('hex')
+}
+
+function createPlainPrinterToken() {
+    return `${TOKEN_PREFIX}_${crypto.randomBytes(32).toString('hex')}`
+}
+
+export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
+    const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
+    if (!sucursal || sucursal.empresa !== empresa) return null
+
+    const token = createPlainPrinterToken()
+    await SucursalRepository.update(
+        { id: sucursalId },
+        {
+            printer_token_hash: hashPrinterToken(token),
+            printer_agent_enabled: true,
+            printer_status: 'offline',
+        },
+    )
+
+    return { sucursal: await getSanitizedSucursal(sucursalId), token }
+}
+
+export async function verifyPrinterToken(token) {
+    if (!token) return null
+
+    const sucursales = await SucursalRepository.find(
+        {
+            fltr: { printer_token_hash: { op: 'Es', val: hashPrinterToken(token) } },
+            cols: [
+                'codigo',
+                'direccion',
+                'printer_agent_enabled',
+                'printer_status',
+                'printer_app_version',
+                'printer_last_seen_at',
+                'empresa',
+            ],
+        },
+        true,
+    )
+
+    return sucursales[0] || null
+}
 
 export async function markSucursalPrinterOnline(sucursal, appVersion) {
     const patch = {
@@ -46,34 +94,64 @@ export async function listPendingJobs(sucursal) {
     )
 }
 
-export function hashPrinterToken(token) {
-    return crypto.createHash('sha256').update(token).digest('hex')
-}
+export async function createSocketPrintJob({
+    event,
+    type,
+    data,
+    colaborador,
+    printerArea = 'CAJA',
+}) {
+    const sucursalId = data?.sucursal
+    if (!sucursalId) {
+        return {
+            enabled: false,
+            reason: 'missing_sucursal',
+            job: null,
+        }
+    }
 
-export function createPlainPrinterToken() {
-    return `${TOKEN_PREFIX}_${crypto.randomBytes(32).toString('hex')}`
-}
-
-export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
     const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
-    if (!sucursal || sucursal.empresa !== empresa) return null
+    if (!sucursal) {
+        return {
+            enabled: false,
+            reason: 'sucursal_not_found',
+            job: null,
+        }
+    }
 
-    const token = createPlainPrinterToken()
-    await SucursalRepository.update(
-        { id: sucursalId },
-        {
-            printer_token_hash: hashPrinterToken(token),
-            printer_agent_enabled: true,
-            printer_fallback_enabled:
-                typeof sucursal.printer_fallback_enabled === 'boolean'
-                    ? sucursal.printer_fallback_enabled
-                    : true,
-            printer_status: 'offline',
-        },
-    )
+    if (!sucursal.printer_agent_enabled) {
+        return {
+            enabled: false,
+            reason: 'printer_agent_disabled',
+            job: null,
+            sucursal,
+        }
+    }
 
-    return { sucursal: await getSanitizedSucursal(sucursalId), token }
+    const area = await findArea(sucursalId, printerArea)
+    const job = await PrinterJobRepository.create({
+        type,
+        source_event: event,
+        payload: data || {},
+        colaborador: colaborador || {},
+        printer_area: printerArea,
+        printer_name: data?.impresora?.impresora || area?.impresora || null,
+        engine: ENGINE,
+        status: 'pending',
+        attempts: 0,
+        empresa: sucursal.empresa,
+        sucursal: sucursalId,
+    })
+
+    return {
+        enabled: true,
+        job: job.toJSON(),
+        sucursal,
+    }
 }
+
+
+
 
 export async function updateSucursalPrinterConfig({ empresa, sucursalId, body }) {
     const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
@@ -86,37 +164,10 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
                 typeof body.printer_agent_enabled === 'boolean'
                     ? body.printer_agent_enabled
                     : sucursal.printer_agent_enabled,
-            printer_fallback_enabled:
-                typeof body.printer_fallback_enabled === 'boolean'
-                    ? body.printer_fallback_enabled
-                    : sucursal.printer_fallback_enabled,
         },
     )
 
     return await getSanitizedSucursal(sucursalId)
-}
-
-export async function verifyPrinterToken(token) {
-    if (!token) return null
-
-    const sucursales = await SucursalRepository.find(
-        {
-            fltr: { printer_token_hash: { op: 'Es', val: hashPrinterToken(token) } },
-            cols: [
-                'codigo',
-                'direccion',
-                'printer_agent_enabled',
-                'printer_fallback_enabled',
-                'printer_status',
-                'printer_app_version',
-                'printer_last_seen_at',
-                'empresa',
-            ],
-        },
-        true,
-    )
-
-    return sucursales[0] || null
 }
 
 export async function markSucursalPrinterOffline(sucursalId) {
@@ -199,47 +250,6 @@ export async function retryJobForUser({ empresa, id }) {
     return await PrinterJobRepository.find({ id }, true)
 }
 
-export async function createSocketPrintJob({
-    event,
-    type,
-    data,
-    colaborador,
-    printerArea = 'CAJA',
-}) {
-    const sucursalId = data?.sucursal
-    if (!sucursalId) return { enabled: false, useLegacy: true, job: null }
-
-    const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
-    if (!sucursal?.printer_agent_enabled) return { enabled: false, useLegacy: true, job: null }
-
-    const area = await findArea(sucursalId, printerArea)
-    const job = await PrinterJobRepository.create({
-        type,
-        source_event: event,
-        payload: data || {},
-        colaborador: colaborador || {},
-        printer_area: printerArea,
-        printer_name: data?.impresora?.impresora || area?.impresora || null,
-        engine: ENGINE,
-        status: 'pending',
-        attempts: 0,
-        empresa: sucursal.empresa,
-        sucursal: sucursalId,
-    })
-
-    return {
-        enabled: true,
-        useLegacy: sucursal.printer_fallback_enabled !== false,
-        job: job.toJSON(),
-        sucursal,
-    }
-}
-
-export async function markJobLegacyFallback(jobId) {
-    if (!jobId) return
-    await PrinterJobRepository.update({ id: jobId }, { status: 'legacy_fallback' })
-}
-
 export async function getSucursalAreas(sucursal) {
     return await ImpresionAreaRepository.find(
         {
@@ -261,10 +271,8 @@ export async function getSucursalAreas(sucursal) {
     )
 }
 
-
-
 function normalizeJobStatus(status) {
-    const allowed = ['pending', 'received', 'printing', 'printed', 'failed', 'legacy_fallback']
+    const allowed = ['pending', 'received', 'printing', 'printed', 'failed']
     return allowed.includes(status) ? status : 'failed'
 }
 

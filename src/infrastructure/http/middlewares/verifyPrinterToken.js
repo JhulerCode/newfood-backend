@@ -13,6 +13,9 @@ async function verifyPrinterToken(req, res, next) {
         const sucursal = await verifyToken(token)
 
         if (!sucursal) return res.status(401).json({ msg: 'Token de impresora no valido' })
+        if (!sucursal.printer_agent_enabled) {
+            return res.status(403).json({ msg: 'Agente de impresora desactivado' })
+        }
 
         req.printerSucursal = sucursal
         next()

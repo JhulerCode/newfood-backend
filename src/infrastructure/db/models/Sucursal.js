@@ -14,7 +14,6 @@ export const Sucursal = sequelize.define('sucursales', {
     activo: { type: DataTypes.BOOLEAN },
     printer_token_hash: { type: DataTypes.STRING },
     printer_agent_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
-    printer_fallback_enabled: { type: DataTypes.BOOLEAN, defaultValue: true },
     printer_status: { type: DataTypes.STRING, defaultValue: 'offline' },
     printer_app_version: { type: DataTypes.STRING },
     printer_last_seen_at: { type: DataTypes.DATE },

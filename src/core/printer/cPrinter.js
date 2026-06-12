@@ -11,12 +11,35 @@ import {
 } from './sPrinter.js'
 import { requestSucursalPrinters } from '#infrastructure/socket.js'
 
+const generateToken = async (req, res) => {
+    try {
+        const data = await generateSucursalPrinterToken({
+            empresa: req.user.empresa,
+            sucursalId: req.params.id,
+        })
+        if (!data) return res.status(404).json({ code: 1, msg: 'Sucursal no encontrada' })
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const activate = async (req, res) => {
     try {
         const sucursal = req.printerSucursal
         await markSucursalPrinterOnline(sucursal, req.body?.app_version)
         const data = await getSanitizedSucursal(sucursal.id)
 
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const listSucursalPrinters = async (req, res) => {
+    try {
+        const data = await requestSucursalPrinters(req.params.id)
         res.json({ code: 0, data })
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -31,6 +54,9 @@ const pendingJobs = async (req, res) => {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
+
+
+
 
 const findJob = async (req, res) => {
     try {
@@ -54,20 +80,6 @@ const patchJobStatus = async (req, res) => {
     }
 }
 
-const generateToken = async (req, res) => {
-    try {
-        const data = await generateSucursalPrinterToken({
-            empresa: req.user.empresa,
-            sucursalId: req.params.id,
-        })
-        if (!data) return res.status(404).json({ code: 1, msg: 'Sucursal no encontrada' })
-
-        res.json({ code: 0, data })
-    } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
 const updateSucursalConfig = async (req, res) => {
     try {
         const data = await updateSucursalPrinterConfig({
@@ -77,15 +89,6 @@ const updateSucursalConfig = async (req, res) => {
         })
         if (!data) return res.status(404).json({ code: 1, msg: 'Sucursal no encontrada' })
 
-        res.json({ code: 0, data })
-    } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const listSucursalPrinters = async (req, res) => {
-    try {
-        const data = await requestSucursalPrinters(req.params.id)
         res.json({ code: 0, data })
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
