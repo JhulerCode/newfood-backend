@@ -1,4 +1,9 @@
 import { getIO } from '#infrastructure/socket.js'
+import {
+    actualizarSucursalEnEmpresa,
+    borrarSucursalEnEmpresa,
+    buscarSucursalEnEmpresas,
+} from './empresas.js'
 
 const sucursalesStore = new Map()
 
@@ -8,17 +13,27 @@ function obtenerSucursal(id) {
 
 function guardarSucursal(id, values) {
     sucursalesStore.set(id, values)
+    actualizarSucursalEnEmpresa(values)
 
     return obtenerSucursal(id)
 }
 
 function borrarSucursal(id) {
+    borrarSucursalEnEmpresa(obtenerSucursal(id))
     sucursalesStore.delete(id)
 }
 
 function actualizarSucursal(id, values) {
-    const sucursal = obtenerSucursal(id)
-    if (!sucursal || !values) return
+    let sucursal = obtenerSucursal(id)
+    if (!values) return
+
+    if (!sucursal) {
+        const empresa_sucursal = buscarSucursalEnEmpresas(id)
+        if (!empresa_sucursal) return
+
+        sucursal = empresa_sucursal
+        sucursalesStore.set(id, sucursal)
+    }
 
     Object.entries(values).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -27,6 +42,7 @@ function actualizarSucursal(id, values) {
     })
 
     console.log(`📡 Empresa: ${values.empresa} | Action: sucursal updated`)
+    actualizarSucursalEnEmpresa(sucursal)
     getIO().to(id).emit('sucursal-updated', obtenerSucursal(id))
 
     return obtenerSucursal(id)

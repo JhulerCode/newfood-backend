@@ -4,6 +4,7 @@ const sessionStore = new Map()
 
 function guardarSesion(userId, sessionData) {
     sessionStore.set(userId, sessionData)
+    return obtenerSesion(userId)
 }
 
 function obtenerSesion(userId) {
@@ -25,7 +26,9 @@ function actualizarSesion(id, values) {
     })
 
     console.log(`📡 Empresa: ${values.empresa} | Action: colaborador updated`)
-    getIO().to(values.empresa).emit('colaborador-updated', obtenerSesion(id))
+    getIO().to(sesion.empresa).emit('colaborador-updated', obtenerSesion(id))
+
+    return obtenerSesion(id)
 }
 
 export { sessionStore, guardarSesion, obtenerSesion, borrarSesion, actualizarSesion }

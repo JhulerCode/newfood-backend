@@ -1,7 +1,6 @@
 import { Server } from 'socket.io'
 import { obtenerEmpresa, guardarEmpresa } from '#store/empresas.js'
 import {
-    sucursalesStore,
     obtenerSucursal,
     guardarSucursal,
     actualizarSucursal,
@@ -24,6 +23,11 @@ const socketUsers = {}
 const printerSockets = {}
 
 async function loadSucursalImpresoraCaja(sucursal) {
+    const cached_sucursal = obtenerSucursal(sucursal)
+    if (cached_sucursal && Object.hasOwn(cached_sucursal, 'impresora_caja')) {
+        return cached_sucursal.impresora_caja
+    }
+
     const qry = {
         fltr: {
             nombre: { op: 'Es', val: 'CAJA' },
@@ -32,7 +36,15 @@ async function loadSucursalImpresoraCaja(sucursal) {
         cols: ['impresora_tipo', 'impresora'],
     }
     const impresion_areas = await ImpresionAreaRepository.find(qry, true)
-    return impresion_areas[0]
+    const impresora_caja = impresion_areas[0] || null
+
+    actualizarSucursal(sucursal, { impresora_caja })
+
+    return impresora_caja
+}
+
+function getSucursalImpresoraCaja(sucursal) {
+    return obtenerSucursal(sucursal)?.impresora_caja || null
 }
 
 export function initSocket(server) {
@@ -148,10 +160,7 @@ export function initSocket(server) {
                     }
                 }
 
-                if (sucursal && !sucursal.impresora_caja) {
-                    const impresora_caja = await loadSucursalImpresoraCaja(colaborador.sucursal)
-                    actualizarSucursal(colaborador.sucursal, { impresora_caja })
-                }
+                if (sucursal) await loadSucursalImpresoraCaja(colaborador.sucursal)
             } else {
                 console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
             }
@@ -258,8 +267,7 @@ export function initSocket(server) {
         socket.on('vComanda:imprimirPrecuenta', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vComanda:imprimirPrecuenta')
-            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-            data.impresora = sucursal_impresora_caja
+            data.impresora = getSucursalImpresoraCaja(data.sucursal)
 
             const handledBySucursalPrinter = await handleSucursalPrinterJob({
                 event: 'vComanda:imprimirPrecuenta',
@@ -292,8 +300,7 @@ export function initSocket(server) {
         socket.on('vEmitirComprobante:imprimir', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vEmitirComprobante:imprimir')
-            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-            data.impresora = sucursal_impresora_caja
+            data.impresora = getSucursalImpresoraCaja(data.sucursal)
 
             const handledBySucursalPrinter = await handleSucursalPrinterJob({
                 event: 'vEmitirComprobante:imprimir',
@@ -325,8 +332,7 @@ export function initSocket(server) {
         socket.on('vCajaAperturas:imprimirResumen', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vCajaAperturas:imprimirResumen')
-            const sucursal_impresora_caja = obtenerSucursal(data.sucursal).impresora_caja
-            data.impresora = sucursal_impresora_caja
+            data.impresora = getSucursalImpresoraCaja(data.sucursal)
 
             const handledBySucursalPrinter = await handleSucursalPrinterJob({
                 event: 'vCajaAperturas:imprimirResumen',

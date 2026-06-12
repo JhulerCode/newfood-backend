@@ -10,7 +10,7 @@ import {
     ImpresionAreaRepository,
 } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-import { guardarSucursal } from '#store/sucursales.js'
+import { borrarSucursal, guardarSucursal, actualizarSucursal } from '#store/sucursales.js'
 
 const find = async (req, res) => {
     try {
@@ -131,6 +131,10 @@ const create = async (req, res) => {
         await transaction.commit()
 
         const data = await loadOne(nuevo.id)
+        data.impresora_caja = {
+            impresora_tipo: '1',
+            impresora: 'CAJA',
+        }
 
         guardarSucursal(nuevo.id, data)
 
@@ -167,6 +171,7 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
+        actualizarSucursal(id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -180,6 +185,8 @@ const delet = async (req, res) => {
 
         // --- ACTUALIZAR --- //
         if ((await SucursalRepository.delete({ id })) == false) return resDeleteFalse(res)
+
+        borrarSucursal(id)
 
         res.json({ code: 0 })
     } catch (error) {

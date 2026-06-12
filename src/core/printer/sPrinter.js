@@ -4,6 +4,7 @@ import {
     PrinterJobRepository,
     SucursalRepository,
 } from '#db/repositories.js'
+import { actualizarSucursal } from '#store/sucursales.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
 const ENGINE = 'sumatra-pdf'
@@ -29,6 +30,10 @@ export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
             printer_status: 'offline',
         },
     )
+    actualizarSucursal(sucursalId, {
+        printer_agent_enabled: true,
+        printer_status: 'offline',
+    })
 
     return { sucursal: await getSanitizedSucursal(sucursalId), token }
 }
@@ -63,6 +68,7 @@ export async function markSucursalPrinterOnline(sucursal, appVersion) {
     if (appVersion) patch.printer_app_version = appVersion
 
     await SucursalRepository.update({ id: sucursal.id }, patch)
+    actualizarSucursal(sucursal.id, patch)
 }
 
 export async function getSanitizedSucursal(id) {
@@ -128,14 +134,15 @@ export async function createSocketPrintJob({
         }
     }
 
-    const area = await findArea(sucursalId, printerArea)
+    const payload_printer_name = data?.impresora?.impresora || data?.impresion_area?.impresora
+    const area = payload_printer_name ? null : await findArea(sucursalId, printerArea)
     const job = await PrinterJobRepository.create({
         type,
         source_event: event,
         payload: data || {},
         colaborador: colaborador || {},
         printer_area: printerArea,
-        printer_name: data?.impresora?.impresora || area?.impresora || null,
+        printer_name: payload_printer_name || area?.impresora || null,
         engine: ENGINE,
         status: 'pending',
         attempts: 0,
@@ -166,6 +173,12 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
                     : sucursal.printer_agent_enabled,
         },
     )
+    actualizarSucursal(sucursalId, {
+        printer_agent_enabled:
+            typeof body.printer_agent_enabled === 'boolean'
+                ? body.printer_agent_enabled
+                : sucursal.printer_agent_enabled,
+    })
 
     return await getSanitizedSucursal(sucursalId)
 }
@@ -173,6 +186,7 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
 export async function markSucursalPrinterOffline(sucursalId) {
     if (!sucursalId) return
     await SucursalRepository.update({ id: sucursalId }, { printer_status: 'offline' })
+    actualizarSucursal(sucursalId, { printer_status: 'offline' })
 }
 
 export async function getJobForSucursal(sucursal, id) {

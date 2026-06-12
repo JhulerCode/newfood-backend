@@ -1,5 +1,7 @@
 import { ImpresionAreaRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
+import { actualizarSucursal } from '#store/sucursales.js'
+import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
 
 const find = async (req, res) => {
     try {
@@ -70,6 +72,7 @@ const create = async (req, res) => {
         })
 
         const data = await loadOne(nuevo.id)
+        await refreshSucursalPrinterArea(sucursal)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -112,6 +115,7 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
+        await refreshSucursalPrinterArea(sucursal)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -122,9 +126,12 @@ const update = async (req, res) => {
 const delet = async (req, res) => {
     try {
         const { id } = req.params
+        const data = await ImpresionAreaRepository.find({ id }, true)
 
         // --- ACTUALIZAR --- //
         if ((await ImpresionAreaRepository.delete({ id })) == false) return resDeleteFalse(res)
+
+        await refreshSucursalPrinterArea(data?.sucursal)
 
         res.json({ code: 0 })
     } catch (error) {
@@ -145,6 +152,25 @@ async function loadOne(id) {
     }
 
     return data
+}
+
+async function refreshSucursalPrinterArea(sucursal) {
+    if (!sucursal) return
+
+    const areas = await ImpresionAreaRepository.find(
+        {
+            fltr: {
+                nombre: { op: 'Es', val: 'CAJA' },
+                sucursal: { op: 'Es', val: sucursal },
+            },
+            cols: ['impresora_tipo', 'impresora'],
+        },
+        true,
+    )
+
+    actualizarSucursal(sucursal, {
+        impresora_caja: areas[0] || null,
+    })
 }
 
 export default {
