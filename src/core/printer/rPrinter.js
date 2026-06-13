@@ -8,6 +8,7 @@ const router = Router()
 router.post('/activate', verifyPrinterToken, controller.activate)
 router.get('/jobs/pending', verifyPrinterToken, controller.pendingJobs)
 router.get('/jobs/:id', verifyPrinterToken, controller.findJob)
+router.post('/jobs/failed', verifyPrinterToken, controller.createFailedJob)
 router.patch('/jobs/:id/status', verifyPrinterToken, controller.patchJobStatus)
 
 router.post('/sucursales/:id/token', verifyToken, controller.generateToken)

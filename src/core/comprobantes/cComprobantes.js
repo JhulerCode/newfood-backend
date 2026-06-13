@@ -1352,7 +1352,7 @@ async function makePdf(doc, empresa) {
     // --- DEFINICIÓN DEL PDF --- //
     const docDefinition = {
         pageSize: {
-            width: 80 * 2.83465,
+            width: 226.77,
             height: 'auto',
         },
         pageMargins: [5, 5, 5, 5],

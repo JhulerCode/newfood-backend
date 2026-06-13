@@ -12,8 +12,13 @@ function obtenerSucursal(id) {
 }
 
 function guardarSucursal(id, values) {
-    sucursalesStore.set(id, values)
-    actualizarSucursalEnEmpresa(values)
+    if (!values) return obtenerSucursal(id)
+
+    const current = obtenerSucursal(id) || buscarSucursalEnEmpresas(id) || {}
+    const sucursal = { ...current, ...values, id: values.id || id }
+
+    sucursalesStore.set(id, sucursal)
+    actualizarSucursalEnEmpresa(sucursal)
 
     return obtenerSucursal(id)
 }

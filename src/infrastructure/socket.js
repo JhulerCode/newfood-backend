@@ -43,6 +43,23 @@ async function loadSucursalImpresoraCaja(sucursal) {
     return impresora_caja
 }
 
+async function ensureSucursalStore(sucursal) {
+    if (!sucursal?.id) return null
+
+    const cached_sucursal = obtenerSucursal(sucursal.id)
+    if (cached_sucursal?.empresa && Object.hasOwn(cached_sucursal, 'printer_agent_enabled')) {
+        return cached_sucursal
+    }
+
+    const data = await SucursalRepository.find({ id: sucursal.id }, true)
+    if (!data) return null
+
+    return guardarSucursal(sucursal.id, {
+        ...data,
+        impresora_caja: cached_sucursal?.impresora_caja,
+    })
+}
+
 function getSucursalImpresoraCaja(sucursal) {
     return obtenerSucursal(sucursal)?.impresora_caja || null
 }
@@ -74,7 +91,10 @@ export function initSocket(server) {
                     return
                 }
 
-                await markSucursalPrinterOnline(sucursal, data.appVersion)
+                const stored_sucursal = await ensureSucursalStore(sucursal)
+                if (stored_sucursal) await loadSucursalImpresoraCaja(stored_sucursal.id)
+
+                await markSucursalPrinterOnline(stored_sucursal || sucursal, data.appVersion)
                 socket.join(`printer:${sucursal.id}`)
                 socket.data.printerSucursal = sucursal.id
                 printerSockets[sucursal.id] = socket.id
@@ -459,7 +479,7 @@ async function handleSucursalPrinterJob({ event, type, data, colaborador, printe
         return false
     }
 
-    console.log('SocketIO: printer job created', {
+    console.log('SocketIO: printer job prepared', {
         event,
         job_id: routing.job.id,
         sucursal: data?.sucursal,
@@ -467,17 +487,18 @@ async function handleSucursalPrinterJob({ event, type, data, colaborador, printe
     })
     const targetSocketId = printerSockets[data.sucursal]
     if (targetSocketId) {
-        io.to(targetSocketId).emit('print_job:created', { jobId: routing.job.id })
+        io.to(targetSocketId).emit('print_job:created', { job: routing.job })
         console.log('SocketIO: printer job sent to agent', {
             job_id: routing.job.id,
             sucursal: data?.sucursal,
             socket_id: targetSocketId,
         })
     } else {
-        console.log('SocketIO: printer job saved as pending; agent offline', {
+        console.log('SocketIO: printer job not sent; agent offline', {
             job_id: routing.job.id,
             sucursal: data?.sucursal,
         })
+        return false
     }
 
     return true

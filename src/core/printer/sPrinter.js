@@ -4,7 +4,7 @@ import {
     PrinterJobRepository,
     SucursalRepository,
 } from '#db/repositories.js'
-import { actualizarSucursal } from '#store/sucursales.js'
+import { actualizarSucursal, obtenerSucursal } from '#store/sucursales.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
 const ENGINE = 'sumatra-pdf'
@@ -68,7 +68,7 @@ export async function markSucursalPrinterOnline(sucursal, appVersion) {
     if (appVersion) patch.printer_app_version = appVersion
 
     await SucursalRepository.update({ id: sucursal.id }, patch)
-    actualizarSucursal(sucursal.id, patch)
+    actualizarSucursal(sucursal.id, { ...patch, empresa: sucursal.empresa })
 }
 
 export async function getSanitizedSucursal(id) {
@@ -79,7 +79,7 @@ export async function getSanitizedSucursal(id) {
 }
 
 export async function listPendingJobs(sucursal) {
-    return await PrinterJobRepository.find(
+    const jobs = await PrinterJobRepository.find(
         {
             fltr: {
                 sucursal: { op: 'Es', val: sucursal.id },
@@ -98,6 +98,8 @@ export async function listPendingJobs(sucursal) {
         },
         true,
     )
+
+    return jobs.map((job) => ({ ...job, persisted: true }))
 }
 
 export async function createSocketPrintJob({
@@ -116,7 +118,7 @@ export async function createSocketPrintJob({
         }
     }
 
-    const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
+    const sucursal = obtenerSucursal(sucursalId)
     if (!sucursal) {
         return {
             enabled: false,
@@ -135,8 +137,9 @@ export async function createSocketPrintJob({
     }
 
     const payload_printer_name = data?.impresora?.impresora || data?.impresion_area?.impresora
-    const area = payload_printer_name ? null : await findArea(sucursalId, printerArea)
-    const job = await PrinterJobRepository.create({
+    const area = payload_printer_name ? null : getCachedPrinterArea(sucursal, printerArea)
+    const job = {
+        id: crypto.randomUUID(),
         type,
         source_event: event,
         payload: data || {},
@@ -148,13 +151,48 @@ export async function createSocketPrintJob({
         attempts: 0,
         empresa: sucursal.empresa,
         sucursal: sucursalId,
-    })
+        persisted: false,
+    }
 
     return {
         enabled: true,
-        job: job.toJSON(),
+        job,
         sucursal,
     }
+}
+
+export async function createFailedJobForSucursal(sucursal, body) {
+    const job = body?.job || {}
+    if (!job.id || job.sucursal !== sucursal.id || job.empresa !== sucursal.empresa) return null
+
+    const matches = await PrinterJobRepository.find(
+        {
+            fltr: { id: { op: 'Es', val: job.id } },
+            cols: ['status'],
+        },
+        true,
+    )
+    const exists = matches[0]
+    if (exists) return await updateJobStatus(sucursal, job.id, body)
+
+    const data = await PrinterJobRepository.create({
+        id: job.id,
+        type: job.type,
+        source_event: job.source_event,
+        payload: job.payload || {},
+        colaborador: job.colaborador || {},
+        printer_area: job.printer_area,
+        printer_name: job.printer_name,
+        engine: job.engine || ENGINE,
+        status: 'failed',
+        attempts: Number(job.attempts || 0) + 1,
+        error_message: body.errorMessage || body.error_message || null,
+        failed_at: new Date(),
+        empresa: job.empresa,
+        sucursal: job.sucursal,
+    })
+
+    return data.toJSON()
 }
 
 
@@ -205,8 +243,7 @@ export async function updateJobStatus(sucursal, id, body) {
         error_message: body.errorMessage || body.error_message || null,
     }
 
-    if (status === 'received' || status === 'printing')
-        patch.received_at = job.received_at || new Date()
+    if (status === 'printing') patch.received_at = job.received_at || new Date()
     if (status === 'printed') patch.printed_at = new Date()
     if (status === 'failed') {
         patch.failed_at = new Date()
@@ -286,7 +323,7 @@ export async function getSucursalAreas(sucursal) {
 }
 
 function normalizeJobStatus(status) {
-    const allowed = ['pending', 'received', 'printing', 'printed', 'failed']
+    const allowed = ['pending', 'printing', 'printed', 'failed']
     return allowed.includes(status) ? status : 'failed'
 }
 
@@ -302,4 +339,10 @@ async function findArea(sucursal, nombre) {
         true,
     )
     return areas[0]
+}
+
+function getCachedPrinterArea(sucursal, nombre) {
+    if (nombre === 'CAJA' && sucursal.impresora_caja) return sucursal.impresora_caja
+
+    return sucursal.impresion_areas?.find((area) => area.nombre === nombre)
 }

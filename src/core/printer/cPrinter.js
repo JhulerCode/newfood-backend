@@ -1,5 +1,6 @@
 import {
     generateSucursalPrinterToken,
+    createFailedJobForSucursal,
     getSanitizedSucursal,
     getJobForSucursal,
     listJobsForUser,
@@ -80,6 +81,17 @@ const patchJobStatus = async (req, res) => {
     }
 }
 
+const createFailedJob = async (req, res) => {
+    try {
+        const data = await createFailedJobForSucursal(req.printerSucursal, req.body || {})
+        if (!data) return res.status(404).json({ code: 1, msg: 'Trabajo no encontrado' })
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const updateSucursalConfig = async (req, res) => {
     try {
         const data = await updateSucursalPrinterConfig({
@@ -116,7 +128,9 @@ const retryJob = async (req, res) => {
 
         try {
             const { getIO } = await import('#infrastructure/socket.js')
-            getIO().to(`printer:${data.sucursal}`).emit('print_job:created', { jobId: data.id })
+            getIO().to(`printer:${data.sucursal}`).emit('print_job:created', {
+                job: { ...data, persisted: true },
+            })
         } catch (error) {
             console.log('No se pudo notificar el reintento al agente de impresion', error.message)
         }
@@ -137,4 +151,5 @@ export default {
     listSucursalPrinters,
     listJobs,
     retryJob,
+    createFailedJob,
 }
