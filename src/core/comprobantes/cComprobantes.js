@@ -1231,6 +1231,8 @@ async function getComprobante(id) {
 }
 
 async function getImageBase64(url) {
+    if (!url) return null
+
     const response = await fetch(url)
     if (!response.ok) throw new Error(`No se pudo obtener la imagen: ${response.status}`)
 
@@ -1243,7 +1245,7 @@ async function getImageBase64(url) {
 
 async function makePdf(doc, empresa) {
     // --- LOGO --- //
-    const logoBase64 = await getImageBase64(empresa.foto.url)
+    const logoBase64 = await getImageBase64(empresa?.foto?.url)
 
     // --- TABLE ITEMS --- //
     const dataRows = doc.comprobante_items.map((p) => [
@@ -1358,7 +1360,7 @@ async function makePdf(doc, empresa) {
 
     docDefinition.content = [
         // --- LOGO --- //
-        {
+        logoBase64 && {
             image: logoBase64, // el logo en base64
             fit: [65 * 2.83465, 45 * 2.83465], // ajusta tamaño
             alignment: 'center', // opcional (left, center, right)
@@ -1583,7 +1585,7 @@ async function makePdf(doc, empresa) {
             fontSize: 8,
             margin: [0, 10, 0, 0],
         },
-    ]
+    ].filter(Boolean)
 
     docDefinition.styles = {
         empresa_style: { fontSize: 10, alignment: 'center' },
