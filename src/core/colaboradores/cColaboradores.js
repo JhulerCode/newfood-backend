@@ -66,18 +66,22 @@ const create = async (req, res) => {
             has_signin, permisos, vista_inicial,
         } = req.body
 
-        let { usuario, contrasena } = req.body
+        let { usuario, contrasena, sucursal } = req.body
 
         // ----- VERIFY SI EXISTE NOMBRE ----- //
         if (await ColaboradorRepository.existe({ nombres, apellidos, empresa }, res) == true) return
 
         if (has_signin) {
             if (await ColaboradorRepository.existe({ usuario }, res) == true) return
+            if (!validSucursal(req, sucursal)) {
+                return res.json({ code: 1, msg: 'Sucursal no válida' })
+            }
             contrasena = await bcrypt.hash(contrasena, 10)
         }
         else {
             usuario = null
             contrasena = null
+            sucursal = null
         }
 
         // ----- CREAR ----- //
@@ -87,7 +91,7 @@ const create = async (req, res) => {
             fecha_nacimiento, sexo,
             correo, telefono, ubigeo, direccion,
             cargo, sueldo, activo,
-            has_signin, usuario, contrasena, permisos, vista_inicial,
+            has_signin, usuario, contrasena, permisos, vista_inicial, sucursal,
             empresa,
             createdBy: colaborador
         })
@@ -114,18 +118,22 @@ const update = async (req, res) => {
             has_signin, permisos, vista_inicial
         } = req.body
 
-        let { usuario, contrasena } = req.body
+        let { usuario, contrasena, sucursal } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if (await ColaboradorRepository.existe({ nombres, apellidos, id, empresa }, res) == true) return
 
         if (has_signin) {
             if (await ColaboradorRepository.existe({ usuario, id, empresa }, res, 'El usuario ya existe') == true) return
+            if (!validSucursal(req, sucursal)) {
+                return res.json({ code: 1, msg: 'Sucursal no válida' })
+            }
             contrasena = contrasena != '*****' ? await bcrypt.hash(contrasena, 10) : undefined
         }
         else {
             usuario = null
             contrasena = null
+            sucursal = null
 
             borrarSesion(id)
         }
@@ -137,7 +145,7 @@ const update = async (req, res) => {
             fecha_nacimiento, sexo,
             correo, telefono, ubigeo, direccion,
             cargo, sueldo, activo,
-            has_signin, usuario, contrasena, permisos, vista_inicial,
+            has_signin, usuario, contrasena, permisos, vista_inicial, sucursal,
             updatedBy: colaborador
         })
 
@@ -261,6 +269,11 @@ async function loadOne(id) {
     }
 
     return data
+}
+
+function validSucursal(req, sucursal) {
+    if (!sucursal) return false
+    return req.empresa?.sucursales?.some((item) => item.id == sucursal) == true
 }
 
 export default {

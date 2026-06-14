@@ -52,7 +52,7 @@ export const Colaborador = sequelize.define('colaboradores', {
         },
     },
 
-    sucursal: { type: DataTypes.STRING }, //eliminar
+    sucursal: { type: DataTypes.STRING },
 })
 
 Empresa.hasMany(Colaborador, { foreignKey: 'empresa', as: 'colaboradores', onDelete: 'RESTRICT' })
