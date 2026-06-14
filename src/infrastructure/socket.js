@@ -451,6 +451,29 @@ export async function requestSucursalPrinters(sucursal) {
     })
 }
 
+export function disconnectSucursalPrinterAgent(sucursal, reason = 'printer_disconnected') {
+    const targetSocketId = printerSockets[sucursal]
+    if (!targetSocketId || !io) return false
+
+    const socket = io.sockets.sockets.get(targetSocketId)
+    if (!socket) {
+        delete printerSockets[sucursal]
+        return false
+    }
+
+    socket.emit('printer:disabled', { reason })
+    socket.disconnect(true)
+    delete printerSockets[sucursal]
+
+    console.log('SocketIO: printer force disconnected', {
+        sucursal,
+        socket_id: targetSocketId,
+        reason,
+    })
+
+    return true
+}
+
 function consoleLogSocket(socket_user, action) {
     console.log(`SocketIO: ${action}`, socket_user)
 }

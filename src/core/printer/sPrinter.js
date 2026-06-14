@@ -4,7 +4,7 @@ import {
     PrinterJobRepository,
     SucursalRepository,
 } from '#db/repositories.js'
-import { actualizarSucursal, obtenerSucursal } from '#store/sucursales.js'
+import { actualizarSucursal, guardarSucursal, obtenerSucursal } from '#store/sucursales.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
 const ENGINE = 'sumatra-pdf'
@@ -36,6 +36,29 @@ export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
     })
 
     return { sucursal: await getSanitizedSucursal(sucursalId), token }
+}
+
+export async function deleteSucursalPrinterToken({ empresa, sucursalId }) {
+    const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
+    if (!sucursal || sucursal.empresa !== empresa) return null
+
+    const patch = {
+        printer_token_hash: null,
+        printer_agent_enabled: false,
+        printer_status: 'offline',
+        printer_app_version: null,
+        printer_last_seen_at: null,
+    }
+
+    await SucursalRepository.update({ id: sucursalId }, patch)
+
+    const safeSucursal = await getSanitizedSucursal(sucursalId)
+    guardarSucursal(sucursalId, safeSucursal)
+    const storePatch = { ...patch }
+    delete storePatch.printer_token_hash
+    actualizarSucursal(sucursalId, { ...storePatch, empresa: safeSucursal.empresa })
+
+    return safeSucursal
 }
 
 export async function verifyPrinterToken(token) {

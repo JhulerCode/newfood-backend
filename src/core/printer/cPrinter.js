@@ -1,5 +1,6 @@
 import {
     generateSucursalPrinterToken,
+    deleteSucursalPrinterToken,
     createFailedJobForSucursal,
     getSanitizedSucursal,
     getJobForSucursal,
@@ -81,6 +82,27 @@ const patchJobStatus = async (req, res) => {
     }
 }
 
+const deleteToken = async (req, res) => {
+    try {
+        const data = await deleteSucursalPrinterToken({
+            empresa: req.user.empresa,
+            sucursalId: req.params.id,
+        })
+        if (!data) return res.status(404).json({ code: 1, msg: 'Sucursal no encontrada' })
+
+        try {
+            const { disconnectSucursalPrinterAgent } = await import('#infrastructure/socket.js')
+            disconnectSucursalPrinterAgent(req.params.id, 'printer_token_deleted')
+        } catch (error) {
+            console.log('No se pudo desconectar el agente de impresion', error.message)
+        }
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const createFailedJob = async (req, res) => {
     try {
         const data = await createFailedJobForSucursal(req.printerSucursal, req.body || {})
@@ -147,6 +169,7 @@ export default {
     findJob,
     patchJobStatus,
     generateToken,
+    deleteToken,
     updateSucursalConfig,
     listSucursalPrinters,
     listJobs,
