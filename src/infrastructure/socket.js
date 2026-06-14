@@ -253,6 +253,7 @@ export function initSocket(server) {
             io.to(socket_user.sucursal).emit('vEmitirComprobante:grabar', data)
         })
 
+        // --- Impresiones --- //
         socket.on('vComanda:imprimir', async (data) => {
             const socket_user = socketUsers[socket.id]
             consoleLogSocket(socket_user, 'vComanda:imprimir')

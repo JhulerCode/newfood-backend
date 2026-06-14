@@ -1213,10 +1213,16 @@ async function getComprobante(id) {
         const venta_canalesMap = arrayMap('venta_canales')
         const comprobante_estadosMap = arrayMap('comprobante_estados')
 
+        data.estado1 = comprobante_estadosMap[data.estado]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
         data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
-        data.estado1 = comprobante_estadosMap[data.estado]
+
+        if (data.transaccion1.venta_canal == 1) {
+            data.atencion = `${data.transaccion1.venta_mesa1.salon1.nombre} - ${data.transaccion1.venta_mesa1.nombre}`
+        } else {
+            data.atencion = data.venta_canal1.nombre
+        }
 
         data.total_letras = numeroATexto(data.monto)
         data.qr_string = `${data.empresa_datos.ruc}|${data.doc_tipo1.tipo}|${data.serie}|${data.numero}|${data.igv}|${data.monto}|${data.fecha_emision}|${data.cliente_datos.doc_tipo}|${data.cliente_datos.doc_numero}`

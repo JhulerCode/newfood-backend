@@ -53,9 +53,17 @@ const findById = async (req, res) => {
         if (data) {
             const pago_condicionesMap = arrayMap('pago_condiciones')
             const transaccion_estadosMap = arrayMap('transaccion_estados')
+            const venta_canalesMap = arrayMap('venta_canales')
 
             data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
             data.estado1 = transaccion_estadosMap[data.estado]
+            data.venta_canal1 = venta_canalesMap[data.venta_canal]
+
+            if (data.venta_canal == 1) {
+                data.atencion = `${data.venta_mesa1.salon1.nombre} - ${data.venta_mesa1.nombre}`
+            } else {
+                data.atencion = data.venta_canal1.nombre
+            }
         }
 
         res.json({ code: 0, data })
