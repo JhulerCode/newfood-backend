@@ -100,6 +100,10 @@ const sistemaData = {
         { id: 1, nombre: 'USB' },
         { id: 2, nombre: 'LAN' },
     ],
+    printer_estados: [
+        { id: 'online', nombre: 'ONLINE' },
+        { id: 'offline', nombre: 'OFFLINE' },
+    ],
 
     CATALOGO_TRIBUTOS_SUNAT: {
         // IGV

@@ -23,9 +23,13 @@ const find = async (req, res) => {
 
         if (data.length > 0) {
             const activo_estadosMap = arrayMap('activo_estados')
+            const printer_estadosMap = arrayMap('printer_estados')
 
             for (const a of data) {
                 if (qry?.cols?.includes('activo')) a.activo1 = activo_estadosMap[a.activo]
+                if (qry?.cols?.includes('printer_status')) {
+                    a.printer_status1 = printer_estadosMap[a.printer_status]
+                }
             }
         }
 
@@ -200,7 +204,9 @@ async function loadOne(id) {
 
     if (data) {
         const activo_estadosMap = arrayMap('activo_estados')
+        const printer_estadosMap = arrayMap('printer_estados')
         data.activo1 = activo_estadosMap[data.activo]
+        data.printer_status1 = printer_estadosMap[data.printer_status]
     }
 
     return data
