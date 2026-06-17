@@ -33,7 +33,7 @@ async function loadSucursalImpresoraCaja(sucursal) {
             nombre: { op: 'Es', val: 'CAJA' },
             sucursal: { op: 'Es', val: sucursal },
         },
-        cols: ['impresora_tipo', 'impresora'],
+        cols: ['impresora_tipo', 'impresora', 'impresora_display_name'],
     }
     const impresion_areas = await ImpresionAreaRepository.find(qry, true)
     const impresora_caja = impresion_areas[0] || null

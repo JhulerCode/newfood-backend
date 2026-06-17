@@ -163,7 +163,7 @@ async function refreshSucursalPrinterArea(sucursal) {
                 nombre: { op: 'Es', val: 'CAJA' },
                 sucursal: { op: 'Es', val: sucursal },
             },
-            cols: ['impresora_tipo', 'impresora'],
+            cols: ['impresora_tipo', 'impresora', 'impresora_display_name'],
         },
         true,
     )

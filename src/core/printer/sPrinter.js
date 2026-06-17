@@ -8,6 +8,7 @@ import { actualizarSucursal, guardarSucursal, obtenerSucursal } from '#store/suc
 
 const TOKEN_PREFIX = 'dvr_prn'
 const ENGINE = 'sumatra-pdf'
+const CASH_PRINTER_JOB_TYPES = new Set(['precuenta', 'comprobante', 'caja_resumen'])
 
 function hashPrinterToken(token) {
     return crypto.createHash('sha256').update(token).digest('hex')
@@ -159,8 +160,9 @@ export async function createSocketPrintJob({
         }
     }
 
-    const payload_printer_name = data?.impresora?.impresora || data?.impresion_area?.impresora
-    const area = payload_printer_name ? null : getCachedPrinterArea(sucursal, printerArea)
+    const area = getCachedPrinterArea(sucursal, printerArea)
+    const printer_name = CASH_PRINTER_JOB_TYPES.has(type) ? getPrinterDisplayName(area) : null
+
     const job = {
         id: crypto.randomUUID(),
         type,
@@ -168,7 +170,7 @@ export async function createSocketPrintJob({
         payload: data || {},
         colaborador: colaborador || {},
         printer_area: printerArea,
-        printer_name: payload_printer_name || area?.impresora || null,
+        printer_name: type === 'comanda' ? null : printer_name,
         engine: ENGINE,
         status: 'pending',
         attempts: 0,
@@ -217,9 +219,6 @@ export async function createFailedJobForSucursal(sucursal, body) {
 
     return data.toJSON()
 }
-
-
-
 
 export async function updateSucursalPrinterConfig({ empresa, sucursalId, body }) {
     const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
@@ -368,4 +367,8 @@ function getCachedPrinterArea(sucursal, nombre) {
     if (nombre === 'CAJA' && sucursal.impresora_caja) return sucursal.impresora_caja
 
     return sucursal.impresion_areas?.find((area) => area.nombre === nombre)
+}
+
+function getPrinterDisplayName(area) {
+    return area?.impresora_display_name?.trim() || null
 }
