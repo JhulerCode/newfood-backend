@@ -115,7 +115,7 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
-        await refreshSucursalPrinterArea(sucursal)
+        await refreshSucursalPrinterArea(data?.sucursal || sucursal)
 
         res.json({ code: 0, data })
     } catch (error) {

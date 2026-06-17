@@ -5,6 +5,7 @@ import { guardarEmpresa, empresasStore } from '#store/empresas.js'
 import { guardarSucursal } from '#store/sucursales.js'
 import { guardarSesion, borrarSesion } from '#store/sessions.js'
 import { EmpresaRepository, ColaboradorRepository, SocioRepository } from '#db/repositories.js'
+import { loadSucursalImpresoraCaja } from '#core/printer/sPrinter.js'
 
 const signin = async (req, res) => {
     try {
@@ -66,6 +67,7 @@ const signin = async (req, res) => {
             token,
             ...colaborador,
         })
+        await loadSucursalImpresoraCaja(colaborador.sucursal)
 
         res.json({ code: 0, token })
     } catch (error) {

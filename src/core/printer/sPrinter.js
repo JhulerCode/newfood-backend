@@ -18,6 +18,36 @@ function createPlainPrinterToken() {
     return `${TOKEN_PREFIX}_${crypto.randomBytes(32).toString('hex')}`
 }
 
+export async function loadSucursalImpresoraCaja(sucursalId) {
+    if (!sucursalId) return null
+
+    let sucursal = obtenerSucursal(sucursalId)
+    if (sucursal && sucursal.impresora_caja !== undefined) {
+        return sucursal.impresora_caja
+    }
+
+    if (!sucursal) {
+        const data = await SucursalRepository.find({ id: sucursalId }, true)
+        if (!data) return null
+        sucursal = guardarSucursal(sucursalId, data)
+    }
+
+    const areas = await ImpresionAreaRepository.find(
+        {
+            fltr: {
+                nombre: { op: 'Es', val: 'CAJA' },
+                sucursal: { op: 'Es', val: sucursalId },
+            },
+            cols: ['impresora_tipo', 'impresora', 'impresora_display_name'],
+        },
+        true,
+    )
+    const impresora_caja = areas[0] || null
+
+    actualizarSucursal(sucursalId, { impresora_caja })
+    return impresora_caja
+}
+
 export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
     const sucursal = await SucursalRepository.find({ id: sucursalId }, true)
     if (!sucursal || sucursal.empresa !== empresa) return null

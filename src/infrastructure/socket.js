@@ -1,18 +1,14 @@
 import { Server } from 'socket.io'
 import { obtenerEmpresa, guardarEmpresa } from '#store/empresas.js'
+import { obtenerSucursal, guardarSucursal } from '#store/sucursales.js'
 import {
-    obtenerSucursal,
-    guardarSucursal,
-    actualizarSucursal,
-} from '#store/sucursales.js'
-import {
-    ImpresionAreaRepository,
     EmpresaRepository,
     SucursalRepository,
     SocioRepository,
 } from '#db/repositories.js'
 import {
     createSocketPrintJob,
+    loadSucursalImpresoraCaja,
     markSucursalPrinterOffline,
     markSucursalPrinterOnline,
     verifyPrinterToken,
@@ -21,27 +17,6 @@ import {
 let io = null
 const socketUsers = {}
 const printerSockets = {}
-
-async function loadSucursalImpresoraCaja(sucursal) {
-    const cached_sucursal = obtenerSucursal(sucursal)
-    if (cached_sucursal && Object.hasOwn(cached_sucursal, 'impresora_caja')) {
-        return cached_sucursal.impresora_caja
-    }
-
-    const qry = {
-        fltr: {
-            nombre: { op: 'Es', val: 'CAJA' },
-            sucursal: { op: 'Es', val: sucursal },
-        },
-        cols: ['impresora_tipo', 'impresora', 'impresora_display_name'],
-    }
-    const impresion_areas = await ImpresionAreaRepository.find(qry, true)
-    const impresora_caja = impresion_areas[0] || null
-
-    actualizarSucursal(sucursal, { impresora_caja })
-
-    return impresora_caja
-}
 
 async function ensureSucursalStore(sucursal) {
     if (!sucursal?.id) return null
@@ -56,7 +31,9 @@ async function ensureSucursalStore(sucursal) {
 
     return guardarSucursal(sucursal.id, {
         ...data,
-        impresora_caja: cached_sucursal?.impresora_caja,
+        ...(cached_sucursal && Object.hasOwn(cached_sucursal, 'impresora_caja')
+            ? { impresora_caja: cached_sucursal.impresora_caja }
+            : {}),
     })
 }
 
@@ -149,6 +126,8 @@ export function initSocket(server) {
 
                 socket.join(colaborador.sucursal)
                 socketUsers[socket.id] = to_save
+
+                await loadSucursalImpresoraCaja(colaborador.sucursal)
             } else {
                 console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
             }
@@ -170,17 +149,7 @@ export function initSocket(server) {
                 socket.join(colaborador.sucursal)
                 socketUsers[socket.id] = to_save
 
-                // --- GUARDAR IMPRESORA CAJA EN LA SUCURSAL --- //
-                let sucursal = obtenerSucursal(colaborador.sucursal)
-
-                if (!sucursal) {
-                    if (colaborador.sucursal) {
-                        sucursal = await SucursalRepository.find({ id: colaborador.sucursal }, true)
-                        sucursal = guardarSucursal(colaborador.sucursal, sucursal)
-                    }
-                }
-
-                if (sucursal) await loadSucursalImpresoraCaja(colaborador.sucursal)
+                await loadSucursalImpresoraCaja(colaborador.sucursal)
             } else {
                 console.log(`🔴 Usuario no conectado | Empresa: ${colaborador.empresa}`)
             }
