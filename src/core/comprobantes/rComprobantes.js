@@ -4,17 +4,40 @@ import verifyPermiso from '#http/middlewares/verifyPermiso.js'
 
 const router = Router()
 
-router.get('/', verifyPermiso(['vReporteComprobantes:listar']), controller.find)
+router.get(
+    '/',
+    verifyPermiso(['vReporteComprobantes:listar', 'vCajaComprobantes:listar']),
+    controller.find,
+)
 
-router.get('/uno/:id', verifyPermiso(['vReporteComprobantes:imprimir']), controller.findById)
+router.get(
+    '/uno/:id',
+    verifyPermiso([
+        'vReporteComprobantes:imprimir',
+        'vCajaComprobantes:ver',
+        'vCajaComprobantes:imprimir',
+    ]),
+    controller.findById,
+)
 
-router.get('/pdf/:id', verifyPermiso(['vReporteComprobantes:descargarPdf']), controller.getPdf)
+router.get(
+    '/pdf/:id',
+    verifyPermiso(['vReporteComprobantes:descargarPdf', 'vCajaComprobantes:descargarPdf']),
+    controller.getPdf,
+)
 
-router.post('/send-mail', verifyPermiso(['vReporteComprobantes:enviarCorreo']), controller.sendMail)
+router.post(
+    '/send-mail',
+    verifyPermiso(['vReporteComprobantes:enviarCorreo', 'vCajaComprobantes:enviarCorreo']),
+    controller.sendMail,
+)
 
 router.post(
     '/send-whatsapp',
-    verifyPermiso(['vReporteComprobantes:enviarWhatsapp']),
+    verifyPermiso([
+        'vReporteComprobantes:enviarWhatsapp',
+        'vCajaComprobantes:enviarWhatsapp',
+    ]),
     controller.sendWhatsapp,
 )
 
@@ -22,13 +45,26 @@ router.post('/', verifyPermiso(['vPedidos:generarComprobante']), controller.crea
 
 router.patch(
     '/actualizar-pagos/:id',
-    verifyPermiso(['vReporteComprobantes:agregarPagos', 'vReporteComprobantes:editarPagos']),
+    verifyPermiso([
+        'vReporteComprobantes:agregarPagos',
+        'vReporteComprobantes:editarPagos',
+        'vCajaComprobantes:agregarPagos',
+        'vCajaComprobantes:editarPagos',
+    ]),
     controller.actualizarPago,
 )
 
-router.patch('/anular/:id', verifyPermiso(['vReporteComprobantes:anular']), controller.anular)
+router.patch(
+    '/anular/:id',
+    verifyPermiso(['vReporteComprobantes:anular', 'vCajaComprobantes:anular']),
+    controller.anular,
+)
 
-router.patch('/canjear/:id', verifyPermiso(['vReporteComprobantes:canjear']), controller.canjear)
+router.patch(
+    '/canjear/:id',
+    verifyPermiso(['vReporteComprobantes:canjear', 'vCajaComprobantes:canjear']),
+    controller.canjear,
+)
 
 router.get('/dashboard', verifyPermiso(['vDashboard:ver']), controller.resumen)
 
