@@ -670,7 +670,7 @@ ${'```Una solución de DivergeRest.com```'}`
                 type: 'document',
                 filename: file_name,
                 caption,
-                url: `https://api.divergerest.com/public/comprobantes/${id}/pdf`,
+                url: `https://api.divergerest.com/api/public/comprobantes/${id}/pdf`,
             },
             {
                 headers: {
