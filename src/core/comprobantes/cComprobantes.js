@@ -638,27 +638,49 @@ Enviamos el comprobante de pago *${comprobante_numero}* correspondiente a su rec
 
 Agradecemos mucho su preferencia. Esperamos haber sido parte de un buen momento 😊.
 
-${'```Una solución de DivergeRest.```'}`
+${'```Una solución de DivergeRest.com```'}`
         const file_name = `${comprobante_numero}.pdf`
 
+        // const response = await axios.post(
+        //     `https://whatsapp.divergerest.com/messages/media`,
+        //     {
+        //         to: `51${phone_to_send}`,
+        //         media,
+        //         file_name,
+        //         caption,
+        //     },
+        //     {
+        //         headers: {
+        //             Authorization: `Bearer ${whatsapp_api_key}`,
+        //             'Content-Type': 'application/json',
+        //         },
+        //     },
+        // )
+
+        // if (response.data.success) {
+        //     res.json({ code: 0 })
+        // } else {
+        //     res.json({ code: 1, msg: response.data.message })
+        // }
+
         const response = await axios.post(
-            `https://whatsapp.divergerest.com/messages/media`,
+            'https://wa.divergerest.com/send/media',
             {
-                to: `51${phone_to_send}`,
-                media,
-                file_name,
+                number: `51${phone_to_send}`,
+                type: 'document',
+                filename: file_name,
                 caption,
+                url: `https://api.divergerest.com/public/comprobantes/${id}/pdf`,
             },
             {
                 headers: {
-                    Authorization: `Bearer ${whatsapp_api_key}`,
-                    'Content-Type': 'application/json',
+                    apikey: '2e8a6b44-ecab-4e65-bf0a-c01423dafa17',
                 },
             },
         )
 
         console.log(response.data)
-        if (response.data.success) {
+        if (response.data.message == 'success') {
             res.json({ code: 0 })
         } else {
             res.json({ code: 1, msg: response.data.message })
@@ -1195,6 +1217,8 @@ async function getComprobante(id) {
     }
     const data = await ComprobanteRepository.find(qry, true)
 
+    if (!data) return null
+
     const qry1 = {
         id: data.transaccion,
         cols: ['venta_canal', 'venta_mesa', 'venta_socio_datos'],
@@ -1686,6 +1710,8 @@ const consultarEstado = async (req, res) => {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
+
+export { getComprobante, makePdf }
 
 const downloadXml = async (req, res) => {
     try {

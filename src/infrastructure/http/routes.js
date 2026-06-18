@@ -6,6 +6,7 @@ import verifyToken from '#http/middlewares/verifyToken.js'
 import auth from '#core/_auth/rAuth.js'
 import sistema from '#core/_sistema/rSistema.js'
 import printer from '#core/printer/rPrinter.js'
+import publicRoutes from '#core/public/rPublic.js'
 
 import decolecta from '#core/decolecta/rDecolecta.js'
 
@@ -40,6 +41,7 @@ router.get('/', (req, res) => {
 })
 
 router.use('/api/printer', printer)
+router.use('/api/public', publicRoutes)
 
 router.use('/api', verifyVersion)
 router.use('/api/auth', auth)
