@@ -4,6 +4,7 @@ import {
     PrinterJobRepository,
     SucursalRepository,
 } from '#db/repositories.js'
+import { obtenerEmpresa } from '#store/empresas.js'
 import { actualizarSucursal, guardarSucursal, obtenerSucursal } from '#store/sucursales.js'
 
 const TOKEN_PREFIX = 'dvr_prn'
@@ -197,7 +198,7 @@ export async function createSocketPrintJob({
         id: crypto.randomUUID(),
         type,
         source_event: event,
-        payload: data || {},
+        payload: buildPrintJobPayload(type, data, sucursal),
         colaborador: colaborador || {},
         printer_area: printerArea,
         printer_name: type === 'comanda' ? null : printer_name,
@@ -213,6 +214,23 @@ export async function createSocketPrintJob({
         enabled: true,
         job,
         sucursal,
+    }
+}
+
+function buildPrintJobPayload(type, data, sucursal) {
+    const payload = data || {}
+    if (type !== 'comprobante') return payload
+
+    const empresa = obtenerEmpresa(payload.empresa || sucursal?.empresa)
+    const foto = empresa?.foto
+    if (!foto?.url) return payload
+
+    return {
+        ...payload,
+        empresa_datos: {
+            ...(payload.empresa_datos || {}),
+            foto,
+        },
     }
 }
 
