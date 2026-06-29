@@ -44,7 +44,7 @@ const listSucursalPrinters = async (req, res) => {
         const data = await requestSucursalPrinters(req.params.id)
         res.json({ code: 0, data })
     } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
+        res.json({ code: 1, msg: error.message })
     }
 }
 

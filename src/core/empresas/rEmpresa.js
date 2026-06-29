@@ -23,9 +23,39 @@ router.post(
     controller.create
 )
 
+router.get(
+    '/:empresa_id/sucursales',
+    verifyPermiso(['vTenantSucursales:listar']),
+    controller.findSucursales
+)
+
+router.get(
+    '/:empresa_id/sucursales/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:ver', 'vTenantSucursales:editar']),
+    controller.findSucursalById
+)
+
+router.post(
+    '/:empresa_id/sucursales',
+    verifyPermiso(['vTenantSucursales:crear']),
+    controller.createSucursal
+)
+
+router.patch(
+    '/:empresa_id/sucursales/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:editar']),
+    controller.updateSucursal
+)
+
+router.delete(
+    '/:empresa_id/sucursales/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:eliminar']),
+    controller.deleteSucursal
+)
+
 router.patch(
     '/:id',
-    verifyPermiso(['vEmpresa:editar', 'vTenants:editar', 'vTenantFeatures:editar']),
+    verifyPermiso(['vEmpresa:editar', 'vTenants:editar']),
     uploadMem.single('archivo'),
     controller.update
 )
