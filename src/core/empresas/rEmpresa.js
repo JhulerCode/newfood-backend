@@ -7,19 +7,33 @@ const router = Router()
 
 router.get(
     '/',
+    verifyPermiso(['vTenants:listar']),
     controller.find
 )
 
 router.get(
     '/uno/:id',
+    verifyPermiso(['vEmpresa:ver', 'vTenants:ver', 'vTenants:editar']),
     controller.findById
+)
+
+router.post(
+    '/',
+    verifyPermiso(['vTenants:crear']),
+    controller.create
 )
 
 router.patch(
     '/:id',
-    verifyPermiso(['vEmpresa:editar']),
+    verifyPermiso(['vEmpresa:editar', 'vTenants:editar', 'vTenantFeatures:editar']),
     uploadMem.single('archivo'),
     controller.update
+)
+
+router.delete(
+    '/:id',
+    verifyPermiso(['vTenants:eliminar']),
+    controller.delet
 )
 
 // router.patch(

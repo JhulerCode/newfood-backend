@@ -1,12 +1,120 @@
-import { EmpresaRepository } from '#db/repositories.js'
+import { EmpresaRepository, SucursalRepository } from '#db/repositories.js'
 import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
-import { resUpdateFalse } from '#http/helpers.js'
-import { actualizarEmpresa } from '#store/empresas.js'
+import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
+import { arrayMap } from '#store/system.js'
+import { actualizarEmpresa, borrarEmpresa, guardarEmpresa } from '#store/empresas.js'
+import { borrarSucursal, guardarSucursal } from '#store/sucursales.js'
+
+const feature_ids = [
+    'pedidos',
+    'pos',
+    'mesas',
+    'delivery',
+    'para_llevar',
+    'insumos',
+    'recetas',
+    'areas_impresion',
+]
+
+function normalizeFeatures(features) {
+    const normalized_features = {}
+
+    for (const feature_id of feature_ids) {
+        normalized_features[feature_id] = features?.[feature_id] === true
+    }
+
+    return normalized_features
+}
+
+function isAdminUser(req) {
+    return req.user?.permisos?.some((permiso) => permiso.startsWith('vTenants:')) == true
+}
+
+function getEmpresaPayload(body, include_admin_fields = false) {
+    const payload = {
+        nombre_comercial: body.nombre_comercial,
+        domicilio_fiscal: body.domicilio_fiscal,
+        ubigeo: body.ubigeo,
+        igv_porcentaje: body.igv_porcentaje,
+        telefono: body.telefono,
+        correo: body.correo,
+        foto: body.foto,
+    }
+
+    if (include_admin_fields) {
+        payload.tipo = body.tipo
+        payload.ruc = body.ruc
+        payload.razon_social = body.razon_social
+        payload.subdominio = body.subdominio
+        payload.activo = body.activo === true
+        payload.features = normalizeFeatures(body.features)
+    }
+
+    return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined))
+}
+
+async function syncSucursales(empresa_id, sucursales = [], colaborador) {
+    const actuales = await SucursalRepository.find(
+        { fltr: { empresa: { op: 'Es', val: empresa_id } }, cols: { exclude: [] } },
+        true,
+    )
+    const enviados_ids = sucursales.filter((sucursal) => sucursal.id).map((sucursal) => sucursal.id)
+
+    for (const actual of actuales) {
+        if (!enviados_ids.includes(actual.id)) {
+            await SucursalRepository.delete({ id: actual.id })
+            borrarSucursal(actual.id)
+        }
+    }
+
+    for (const sucursal of sucursales) {
+        const data = {
+            codigo: sucursal.codigo,
+            direccion: sucursal.direccion,
+            telefono: sucursal.telefono,
+            correo: sucursal.correo,
+            activo: sucursal.activo === true,
+            empresa: empresa_id,
+        }
+
+        if (sucursal.id) {
+            await SucursalRepository.update(
+                { id: sucursal.id, empresa: empresa_id },
+                { ...data, updatedBy: colaborador },
+            )
+            guardarSucursal(sucursal.id, { id: sucursal.id, ...data })
+        } else {
+            const nuevo = await SucursalRepository.create({ ...data, createdBy: colaborador })
+            guardarSucursal(nuevo.id, nuevo.toJSON())
+        }
+    }
+}
+
+async function loadOne(id) {
+    const data = await EmpresaRepository.find({ id, cols: { exclude: [] } }, true)
+    if (!data) return null
+
+    data.sucursales = await SucursalRepository.find(
+        {
+            fltr: { empresa: { op: 'Es', val: id } },
+            cols: { exclude: [] },
+            ordr: [['codigo', 'ASC']],
+        },
+        true,
+    )
+
+    const activo_estadosMap = arrayMap('activo_estados')
+    data.activo1 = activo_estadosMap[data.activo]
+    for (const sucursal of data.sucursales) sucursal.activo1 = activo_estadosMap[sucursal.activo]
+
+    return data
+}
 
 const find = async (req, res) => {
     try {
-        const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+
+        if (!isAdminUser(req)) return res.status(403).json({ msg: 'Acceso denegado' })
 
         // qry.fltr.empresa = { op: 'Es', val: empresa }
 
@@ -20,6 +128,9 @@ const find = async (req, res) => {
         //     }
         // }
 
+        const activo_estadosMap = arrayMap('activo_estados')
+        for (const item of data) item.activo1 = activo_estadosMap[item.activo]
+
         res.json({ code: 0, data })
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
@@ -28,7 +139,9 @@ const find = async (req, res) => {
 
 const findById = async (req, res) => {
     try {
-        const data = req.empresa
+        const { id } = req.params
+        const can_admin = isAdminUser(req)
+        const data = can_admin ? await loadOne(id) : req.empresa
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -46,20 +159,31 @@ const update = async (req, res) => {
             req.body = { ...datos }
         }
 
-        const {
-            razon_social,
-            nombre_comercial,
+        const can_admin = isAdminUser(req)
+        if (!can_admin && id != req.user.empresa) {
+            return res.status(403).json({ msg: 'Acceso denegado' })
+        }
 
-            domicilio_fiscal,
-            ubigeo,
-            igv_porcentaje,
-
-            telefono,
-            correo,
-            foto,
-
-            subdominio,
-        } = req.body
+        if (can_admin) {
+            if (
+                (await EmpresaRepository.existe(
+                    { ruc: req.body.ruc, id },
+                    res,
+                    'El RUC ya existe',
+                )) == true
+            ) {
+                return
+            }
+            if (
+                (await EmpresaRepository.existe(
+                    { subdominio: req.body.subdominio, id },
+                    res,
+                    'El subdominio ya existe',
+                )) == true
+            ) {
+                return
+            }
+        }
 
         //--- Subir archivo ---//
         let newFile
@@ -73,16 +197,8 @@ const update = async (req, res) => {
         }
 
         const send = {
-            nombre_comercial,
-
-            domicilio_fiscal,
-            ubigeo,
-            igv_porcentaje,
-
-            telefono,
-            correo,
-            foto: newFile || foto,
-
+            ...getEmpresaPayload(req.body, can_admin),
+            foto: newFile || req.body.foto,
             updatedBy: colaborador,
         }
 
@@ -92,9 +208,68 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         //--- Eliminar archivo de minio ---//
-        if (req.file) await minioRemoveObject(foto.id)
+        if (req.file && req.body.foto?.id) await minioRemoveObject(req.body.foto.id)
 
-        actualizarEmpresa(id, { razon_social, ...send })
+        if (can_admin) await syncSucursales(id, req.body.sucursales || [], colaborador)
+
+        const data = await loadOne(id)
+        actualizarEmpresa(id, data)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const create = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const send = {
+            ...getEmpresaPayload(req.body, true),
+            features: normalizeFeatures(req.body.features),
+        }
+
+        if ((await EmpresaRepository.existe({ ruc: send.ruc }, res, 'El RUC ya existe')) == true) {
+            return
+        }
+        if (
+            (await EmpresaRepository.existe(
+                { subdominio: send.subdominio },
+                res,
+                'El subdominio ya existe',
+            )) == true
+        ) {
+            return
+        }
+
+        const nuevo = await EmpresaRepository.create(send)
+        await syncSucursales(nuevo.id, req.body.sucursales || [], colaborador)
+
+        const data = await loadOne(nuevo.id)
+        guardarEmpresa(nuevo.id, data)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const delet = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const sucursales = await SucursalRepository.find(
+            { fltr: { empresa: { op: 'Es', val: id } }, cols: ['id'] },
+            true,
+        )
+        for (const sucursal of sucursales) {
+            await SucursalRepository.delete({ id: sucursal.id })
+            borrarSucursal(sucursal.id)
+        }
+
+        if ((await EmpresaRepository.delete({ id })) == false) return resDeleteFalse(res)
+
+        borrarEmpresa(id)
 
         res.json({ code: 0 })
     } catch (error) {
@@ -189,6 +364,8 @@ const update = async (req, res) => {
 export default {
     find,
     findById,
+    create,
     update,
+    delet,
     // updateCdt
 }

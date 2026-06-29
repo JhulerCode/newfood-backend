@@ -16,6 +16,8 @@ export const Empresa = sequelize.define('empresas', {
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
     foto: { type: DataTypes.JSON, defaultValue: {} },
+    features: { type: DataTypes.JSON, defaultValue: {} },
+    activo: { type: DataTypes.BOOLEAN, defaultValue: true },
 
     subdominio: { type: DataTypes.STRING },
     updatedBy: { type: DataTypes.STRING },

@@ -33,7 +33,7 @@ async function verifyToken(req, res, next) {
             ...empresa,
         }
 
-        const sucursal = empresa.sucursales.find((s) => s.id == xSucursal)
+        const sucursal = (empresa.sucursales || []).find((s) => s.id == xSucursal)
         req.sucursal = {
             ...sucursal,
         }

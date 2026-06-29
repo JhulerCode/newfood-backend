@@ -40,6 +40,10 @@ const signin = async (req, res) => {
             for (const a of empresa.sucursales) guardarSucursal(a.id, a)
         }
 
+        if (empresa.activo === false) {
+            return res.json({ code: 1, msg: 'Empresa desactivada' })
+        }
+
         // --- VERIFICAR COLABORADOR --- //
         const qry1 = {
             fltr: {
