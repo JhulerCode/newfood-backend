@@ -67,6 +67,16 @@ router.post(
     controller.createBulk
 )
 
+router.post(
+    '/sync-sucursales',
+    verifyPermiso([
+        'vInsumos:editarBulk',
+        'vProductos:editarBulk',
+        'vCombos:editar',
+    ]),
+    controller.syncSucursales
+)
+
 router.patch(
     '/bulk/:id',
     verifyPermiso([

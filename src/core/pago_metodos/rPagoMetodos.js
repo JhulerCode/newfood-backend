@@ -25,6 +25,12 @@ router.post(
     controller.create
 )
 
+router.post(
+    '/sync-sucursales',
+    verifyPermiso(['vPagoMetodos:editar']),
+    controller.syncSucursales
+)
+
 router.patch(
     '/:id',
     verifyPermiso(['vPagoMetodos:editar']),

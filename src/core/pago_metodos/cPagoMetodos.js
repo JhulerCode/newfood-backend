@@ -1,5 +1,9 @@
 import sequelize from '#db/sequelize.js'
-import { PagoMetodoRepository, SucursalPagoMetodoRepository } from '#db/repositories.js'
+import {
+    PagoMetodoRepository,
+    SucursalRepository,
+    SucursalPagoMetodoRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 
 const find = async (req, res) => {
@@ -135,6 +139,69 @@ const delet = async (req, res) => {
     }
 }
 
+const syncSucursales = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador, empresa } = req.user
+
+        const qry = {
+            fltr: { empresa: { op: 'Es', val: empresa } },
+            cols: ['id'],
+        }
+
+        const pago_metodos = await PagoMetodoRepository.find(qry, true)
+        const sucursales = await SucursalRepository.find(qry, true)
+        const sucursal_pago_metodos_actuales = await SucursalPagoMetodoRepository.find(
+            {
+                fltr: { empresa: { op: 'Es', val: empresa } },
+                cols: ['sucursal', 'pago_metodo'],
+            },
+            true,
+        )
+
+        const sucursal_pago_metodos_map = new Set(
+            sucursal_pago_metodos_actuales.map((a) => `${a.sucursal}:${a.pago_metodo}`),
+        )
+        const sucursal_pago_metodos = []
+
+        for (const pago_metodo of pago_metodos) {
+            for (const sucursal of sucursales) {
+                const relation_key = `${sucursal.id}:${pago_metodo.id}`
+
+                if (sucursal_pago_metodos_map.has(relation_key)) continue
+
+                sucursal_pago_metodos.push({
+                    sucursal: sucursal.id,
+                    pago_metodo: pago_metodo.id,
+                    estado: true,
+                    empresa,
+                    createdBy: colaborador,
+                })
+            }
+        }
+
+        if (sucursal_pago_metodos.length > 0) {
+            await SucursalPagoMetodoRepository.createBulk(sucursal_pago_metodos, transaction)
+        }
+
+        await transaction.commit()
+
+        res.json({
+            code: 0,
+            data: {
+                created: sucursal_pago_metodos.length,
+                pago_metodos: pago_metodos.length,
+                sucursales: sucursales.length,
+            },
+        })
+    } catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 // --- Funciones --- //
 async function loadOne(id) {
     const data = await PagoMetodoRepository.find({ id }, true)
@@ -154,4 +221,5 @@ export default {
     create,
     update,
     delet,
+    syncSucursales,
 }

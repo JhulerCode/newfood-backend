@@ -1,6 +1,11 @@
 import sequelize from '#db/sequelize.js'
-import { ComprobanteTipoRepository, SucursalComprobanteTipoRepository } from '#db/repositories.js'
+import {
+    ComprobanteTipoRepository,
+    SucursalRepository,
+    SucursalComprobanteTipoRepository,
+} from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
+import { resDeleteFalse } from '#http/helpers.js'
 
 const find = async (req, res) => {
     try {
@@ -112,6 +117,75 @@ const delet = async (req, res) => {
     }
 }
 
+const syncSucursales = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador, empresa } = req.user
+
+        const qry = {
+            fltr: { empresa: { op: 'Es', val: empresa } },
+            cols: ['id'],
+        }
+
+        const comprobante_tipos = await ComprobanteTipoRepository.find(qry, true)
+        const sucursales = await SucursalRepository.find(qry, true)
+        const sucursal_comprobante_tipos_actuales =
+            await SucursalComprobanteTipoRepository.find(
+                {
+                    fltr: { empresa: { op: 'Es', val: empresa } },
+                    cols: ['sucursal', 'comprobante_tipo'],
+                },
+                true,
+            )
+
+        const sucursal_comprobante_tipos_map = new Set(
+            sucursal_comprobante_tipos_actuales.map(
+                (a) => `${a.sucursal}:${a.comprobante_tipo}`,
+            ),
+        )
+        const sucursal_comprobante_tipos = []
+
+        for (const comprobante_tipo of comprobante_tipos) {
+            for (const sucursal of sucursales) {
+                const relation_key = `${sucursal.id}:${comprobante_tipo.id}`
+
+                if (sucursal_comprobante_tipos_map.has(relation_key)) continue
+
+                sucursal_comprobante_tipos.push({
+                    sucursal: sucursal.id,
+                    comprobante_tipo: comprobante_tipo.id,
+                    estado: true,
+                    empresa,
+                    createdBy: colaborador,
+                })
+            }
+        }
+
+        if (sucursal_comprobante_tipos.length > 0) {
+            await SucursalComprobanteTipoRepository.createBulk(
+                sucursal_comprobante_tipos,
+                transaction,
+            )
+        }
+
+        await transaction.commit()
+
+        res.json({
+            code: 0,
+            data: {
+                created: sucursal_comprobante_tipos.length,
+                comprobante_tipos: comprobante_tipos.length,
+                sucursales: sucursales.length,
+            },
+        })
+    } catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 // --- Funciones --- //
 async function loadOne(id) {
     const data = await ComprobanteTipoRepository.find({ id }, true)
@@ -134,4 +208,5 @@ export default {
     findById,
     create,
     delet,
+    syncSucursales,
 }

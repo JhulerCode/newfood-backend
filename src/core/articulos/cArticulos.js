@@ -3,6 +3,7 @@ import sequelize from '#db/sequelize.js'
 import {
     ArticuloRepository,
     ComboArticuloRepository,
+    SucursalRepository,
     SucursalArticuloRepository,
 } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
@@ -383,6 +384,81 @@ const updateBulk = async (req, res) => {
     }
 }
 
+const syncSucursales = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador, empresa } = req.user
+        const { tipo, is_combo } = req.body
+
+        const fltr = { empresa: { op: 'Es', val: empresa } }
+
+        if (tipo !== undefined && tipo !== null && tipo !== '') {
+            fltr.tipo = { op: 'Es', val: tipo }
+        }
+
+        if (is_combo !== undefined && is_combo !== null) {
+            fltr.is_combo = { op: 'Es', val: is_combo }
+        }
+
+        const articulos = await ArticuloRepository.find({ fltr, cols: ['id'] }, true)
+        const sucursales = await SucursalRepository.find(
+            {
+                fltr: { empresa: { op: 'Es', val: empresa } },
+                cols: ['id'],
+            },
+            true,
+        )
+        const sucursal_articulos_actuales = await SucursalArticuloRepository.find(
+            {
+                fltr: { empresa: { op: 'Es', val: empresa } },
+                cols: ['sucursal', 'articulo'],
+            },
+            true,
+        )
+
+        const sucursal_articulos_map = new Set(
+            sucursal_articulos_actuales.map((a) => `${a.sucursal}:${a.articulo}`),
+        )
+        const sucursal_articulos = []
+
+        for (const articulo of articulos) {
+            for (const sucursal of sucursales) {
+                const relation_key = `${sucursal.id}:${articulo.id}`
+
+                if (sucursal_articulos_map.has(relation_key)) continue
+
+                sucursal_articulos.push({
+                    sucursal: sucursal.id,
+                    articulo: articulo.id,
+                    estado: true,
+                    empresa,
+                    createdBy: colaborador,
+                })
+            }
+        }
+
+        if (sucursal_articulos.length > 0) {
+            await SucursalArticuloRepository.createBulk(sucursal_articulos, transaction)
+        }
+
+        await transaction.commit()
+
+        res.json({
+            code: 0,
+            data: {
+                created: sucursal_articulos.length,
+                articulos: articulos.length,
+                sucursales: sucursales.length,
+            },
+        })
+    } catch (error) {
+        await transaction.rollback()
+
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 //--- Helpers ---//
 async function loadOne(id) {
     const data = await ArticuloRepository.find(
@@ -413,4 +489,5 @@ export default {
     createBulk,
     deleteBulk,
     updateBulk,
+    syncSucursales,
 }

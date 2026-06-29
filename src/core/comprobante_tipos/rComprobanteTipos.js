@@ -25,6 +25,12 @@ router.post(
     controller.create
 )
 
+router.post(
+    '/sync-sucursales',
+    verifyPermiso(['vComprobanteTipos:crear']),
+    controller.syncSucursales
+)
+
 router.delete(
     '/:id',
     verifyPermiso(['vComprobanteTipos:eliminar']),
