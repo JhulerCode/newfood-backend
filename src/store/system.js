@@ -60,6 +60,7 @@ const sistemaData = {
         { id: '1', nombre: 'SALÓN' },
         { id: '2', nombre: 'PARA LLEVAR' },
         { id: '3', nombre: 'DELIVERY' },
+        { id: '4', nombre: 'POS' },
     ],
     caja_operacion_tipos: [
         { id: 1, nombre: 'INGRESO' },

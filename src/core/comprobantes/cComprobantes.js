@@ -563,7 +563,7 @@ const create = async (req, res) => {
 
         res.json({ code: 0, data, facturacion: res_mifact, data_transaccion })
     } catch (error) {
-        await transaction.rollback()
+        if (!transaction.finished) await transaction.rollback()
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
@@ -1241,9 +1241,12 @@ async function getComprobante(id) {
         data.estado1 = comprobante_estadosMap[data.estado]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-        data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
+        data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal] || {
+            id: data.transaccion1.venta_canal,
+            nombre: 'POS',
+        }
 
-        if (data.transaccion1.venta_canal == 1) {
+        if (data.transaccion1.venta_canal == 1 && data.transaccion1.venta_mesa1) {
             data.atencion = `${data.transaccion1.venta_mesa1.salon1.nombre} - ${data.transaccion1.venta_mesa1.nombre}`
         } else {
             data.atencion = data.venta_canal1.nombre
@@ -1291,7 +1294,7 @@ async function makePdf(doc, empresa) {
     ])
 
     // --- TIPO DE ATENCIÓN --- //
-    if (doc.transaccion1.venta_canal == 1) {
+    if (doc.transaccion1.venta_canal == 1 && doc.transaccion1.venta_mesa1) {
         doc.atencion = `${doc.transaccion1.venta_mesa1.salon1.nombre} - ${doc.transaccion1.venta_mesa1.nombre}`
     } else {
         doc.atencion = doc.venta_canal1.nombre
