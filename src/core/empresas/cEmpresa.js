@@ -14,7 +14,7 @@ import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.j
 import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
 import { arrayMap } from '#store/system.js'
 import { actualizarEmpresa, borrarEmpresa, guardarEmpresa } from '#store/empresas.js'
-import { borrarSucursal, guardarSucursal } from '#store/sucursales.js'
+import { borrarSucursal } from '#store/sucursales.js'
 import bcrypt from 'bcrypt'
 
 const feature_ids = [
@@ -244,43 +244,6 @@ function getEmpresaPayload(body, include_admin_fields = false) {
     return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined))
 }
 
-async function syncSucursales(empresa_id, sucursales = [], colaborador) {
-    const actuales = await SucursalRepository.find(
-        { fltr: { empresa: { op: 'Es', val: empresa_id } }, cols: { exclude: [] } },
-        true,
-    )
-    const enviados_ids = sucursales.filter((sucursal) => sucursal.id).map((sucursal) => sucursal.id)
-
-    for (const actual of actuales) {
-        if (!enviados_ids.includes(actual.id)) {
-            await SucursalRepository.delete({ id: actual.id })
-            borrarSucursal(actual.id)
-        }
-    }
-
-    for (const sucursal of sucursales) {
-        const data = {
-            codigo: sucursal.codigo,
-            direccion: sucursal.direccion,
-            telefono: sucursal.telefono,
-            correo: sucursal.correo,
-            activo: sucursal.activo === true,
-            empresa: empresa_id,
-        }
-
-        if (sucursal.id) {
-            await SucursalRepository.update(
-                { id: sucursal.id, empresa: empresa_id },
-                { ...data, updatedBy: colaborador },
-            )
-            guardarSucursal(sucursal.id, { id: sucursal.id, ...data })
-        } else {
-            const nuevo = await SucursalRepository.create({ ...data, createdBy: colaborador })
-            guardarSucursal(nuevo.id, nuevo.toJSON())
-        }
-    }
-}
-
 async function createSucursalBase(empresa_id, sucursal, colaborador, transaction) {
     const nuevo = await SucursalRepository.create(
         {
@@ -496,8 +459,6 @@ const update = async (req, res) => {
         //--- Eliminar archivo de minio ---//
         if (req.file && req.body.foto?.id) await minioRemoveObject(req.body.foto.id)
 
-        if (can_admin) await syncSucursales(id, req.body.sucursales || [], colaborador)
-
         const data = await loadOne(id)
         actualizarEmpresa(id, data)
 
@@ -587,168 +548,6 @@ const delet = async (req, res) => {
         res.status(500).json({
             code: -1,
             msg: 'No se puede eliminar la empresa porque ya tiene datos relacionados',
-            error,
-        })
-    }
-}
-
-const findSucursales = async (req, res) => {
-    try {
-        const { empresa_id } = req.params
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : { fltr: {}, cols: { exclude: [] } }
-
-        qry.fltr = qry.fltr || {}
-        qry.fltr.empresa = { op: 'Es', val: empresa_id }
-
-        const data = await SucursalRepository.find(qry, true)
-        const activo_estadosMap = arrayMap('activo_estados')
-        for (const item of data) item.activo1 = activo_estadosMap[item.activo]
-
-        res.json({ code: 0, data })
-    } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const findSucursalById = async (req, res) => {
-    try {
-        const { empresa_id, sucursal_id } = req.params
-        const data = await SucursalRepository.find({ id: sucursal_id }, true)
-
-        if (!data || data.empresa != empresa_id) return res.json({ code: 1, msg: 'No encontrado' })
-
-        res.json({ code: 0, data })
-    } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const createSucursal = async (req, res) => {
-    const transaction = await sequelize.transaction()
-
-    try {
-        const { colaborador } = req.user
-        const { empresa_id } = req.params
-
-        if (
-            (await SucursalRepository.existe(
-                { codigo: req.body.codigo, empresa: empresa_id },
-                res,
-                'El codigo ya existe',
-            )) == true
-        ) {
-            await transaction.rollback()
-            return
-        }
-
-        const nuevo = await createSucursalBase(
-            empresa_id,
-            {
-                codigo: req.body.codigo,
-                direccion: req.body.direccion,
-                telefono: req.body.telefono,
-                correo: req.body.correo,
-                activo: req.body.activo,
-            },
-            colaborador,
-            transaction,
-        )
-
-        const pago_metodos = await PagoMetodoRepository.find(
-            { fltr: { empresa: { op: 'Es', val: empresa_id } }, cols: ['id'] },
-            true,
-        )
-        if (pago_metodos.length > 0) {
-            await SucursalPagoMetodoRepository.createBulk(
-                pago_metodos.map((pago_metodo) => ({
-                    sucursal: nuevo.id,
-                    pago_metodo: pago_metodo.id,
-                    estado: true,
-                    empresa: empresa_id,
-                    createdBy: colaborador,
-                })),
-                transaction,
-            )
-        }
-
-        await transaction.commit()
-
-        const data = await SucursalRepository.find({ id: nuevo.id }, true)
-        guardarSucursal(nuevo.id, data)
-
-        res.json({ code: 0, data })
-    } catch (error) {
-        await transaction.rollback()
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const updateSucursal = async (req, res) => {
-    try {
-        const { colaborador } = req.user
-        const { empresa_id, sucursal_id } = req.params
-        const { codigo, direccion, telefono, correo, activo } = req.body
-
-        if (
-            (await SucursalRepository.existe(
-                { codigo, id: sucursal_id, empresa: empresa_id },
-                res,
-                'El codigo ya existe',
-            )) == true
-        ) {
-            return
-        }
-
-        const updated = await SucursalRepository.update(
-            { id: sucursal_id, empresa: empresa_id },
-            {
-                codigo,
-                direccion,
-                telefono,
-                correo,
-                activo: activo === true,
-                updatedBy: colaborador,
-            },
-        )
-
-        if (updated == false) return resUpdateFalse(res)
-
-        const data = await SucursalRepository.find({ id: sucursal_id }, true)
-        guardarSucursal(sucursal_id, data)
-
-        res.json({ code: 0, data })
-    } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
-    }
-}
-
-const deleteSucursal = async (req, res) => {
-    const transaction = await sequelize.transaction()
-
-    try {
-        const { empresa_id, sucursal_id } = req.params
-
-        await SucursalArticuloRepository.delete({ sucursal: sucursal_id, empresa: empresa_id }, transaction)
-        await ImpresionAreaRepository.delete({ sucursal: sucursal_id, empresa: empresa_id }, transaction)
-        await SucursalPagoMetodoRepository.delete({ sucursal: sucursal_id, empresa: empresa_id }, transaction)
-        await SucursalComprobanteTipoRepository.delete({ sucursal: sucursal_id, empresa: empresa_id }, transaction)
-
-        if ((await SucursalRepository.delete({ id: sucursal_id, empresa: empresa_id }, transaction)) == false) {
-            await transaction.rollback()
-            return resDeleteFalse(res)
-        }
-
-        await transaction.commit()
-
-        borrarSucursal(sucursal_id)
-
-        res.json({ code: 0 })
-    } catch (error) {
-        await transaction.rollback()
-
-        res.status(500).json({
-            code: -1,
-            msg: 'No se puede eliminar la sucursal porque ya tiene datos relacionados',
             error,
         })
     }
@@ -844,10 +643,5 @@ export default {
     create,
     update,
     delet,
-    findSucursales,
-    findSucursalById,
-    createSucursal,
-    updateSucursal,
-    deleteSucursal,
     // updateCdt
 }

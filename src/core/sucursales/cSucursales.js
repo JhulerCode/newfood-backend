@@ -15,10 +15,11 @@ import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
 
 const find = async (req, res) => {
     try {
-        const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
+        const empresa_id = getEmpresaId(req)
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : { fltr: {}, cols: { exclude: [] } }
 
-        qry.fltr.empresa = { op: 'Es', val: empresa }
+        qry.fltr = qry.fltr || {}
+        qry.fltr.empresa = { op: 'Es', val: empresa_id }
 
         let data = await SucursalRepository.find(qry, true)
 
@@ -42,9 +43,12 @@ const find = async (req, res) => {
 
 const findById = async (req, res) => {
     try {
-        const { id } = req.params
+        const empresa_id = getEmpresaId(req)
+        const sucursal_id = getSucursalId(req)
 
-        const data = await SucursalRepository.find({ id })
+        const data = await SucursalRepository.find({ id: sucursal_id }, true)
+
+        if (!data || data.empresa != empresa_id) return res.json({ code: 1, msg: 'No encontrado' })
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -56,11 +60,15 @@ const create = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador, empresa } = req.user
+        const { colaborador } = req.user
+        const empresa_id = getEmpresaId(req)
         const { codigo, direccion, telefono, correo, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if ((await SucursalRepository.existe({ codigo, empresa }, res)) == true) return
+        if ((await SucursalRepository.existe({ codigo, empresa: empresa_id }, res)) == true) {
+            await transaction.rollback()
+            return
+        }
 
         // --- CREAR --- //
         const nuevo = await SucursalRepository.create(
@@ -70,14 +78,14 @@ const create = async (req, res) => {
                 telefono,
                 correo,
                 activo,
-                empresa,
+                empresa: empresa_id,
                 createdBy: colaborador,
             },
             transaction,
         )
 
         const qry = {
-            fltr: { empresa: { op: 'Es', val: empresa } },
+            fltr: { empresa: { op: 'Es', val: empresa_id } },
         }
 
         // --- CREAR TIPOS DE COMPROBANTE --- //
@@ -86,7 +94,7 @@ const create = async (req, res) => {
             sucursal: nuevo.id,
             comprobante_tipo: a.id,
             estado: true,
-            empresa,
+            empresa: empresa_id,
             createdBy: colaborador,
         }))
         if (produccion_areas_new.length > 0) {
@@ -99,7 +107,7 @@ const create = async (req, res) => {
             sucursal: nuevo.id,
             pago_metodo: a.id,
             estado: true,
-            empresa,
+            empresa: empresa_id,
             createdBy: colaborador,
         }))
         if (pago_metodos_new.length > 0) {
@@ -112,7 +120,7 @@ const create = async (req, res) => {
             sucursal: nuevo.id,
             articulo: a.id,
             estado: true,
-            empresa,
+            empresa: empresa_id,
             createdBy: colaborador,
         }))
         if (articulos_new.length > 0) {
@@ -125,9 +133,10 @@ const create = async (req, res) => {
                 nombre: 'CAJA',
                 impresora_tipo: '1',
                 impresora: 'CAJA',
+                activo: true,
 
                 sucursal: nuevo.id,
-                empresa,
+                empresa: empresa_id,
                 createdBy: colaborador,
             },
             transaction,
@@ -153,30 +162,38 @@ const create = async (req, res) => {
 
 const update = async (req, res) => {
     try {
-        const { colaborador, empresa } = req.user
-        const { id } = req.params
+        const { colaborador } = req.user
+        const empresa_id = getEmpresaId(req)
+        const sucursal_id = getSucursalId(req)
         const { codigo, direccion, telefono, correo, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
-        if ((await SucursalRepository.existe({ codigo, id, empresa }, res)) == true) return
+        if (
+            (await SucursalRepository.existe(
+                { codigo, id: sucursal_id, empresa: empresa_id },
+                res,
+            )) == true
+        ) {
+            return
+        }
 
         // --- ACTUALIZAR --- //
         const updated = await SucursalRepository.update(
-            { id },
+            { id: sucursal_id, empresa: empresa_id },
             {
                 codigo,
                 direccion,
                 telefono,
                 correo,
-                activo,
+                activo: activo === true,
                 updatedBy: colaborador,
             },
         )
 
         if (updated == false) return resUpdateFalse(res)
 
-        const data = await loadOne(id)
-        actualizarSucursal(id, data)
+        const data = await loadOne(sucursal_id)
+        actualizarSucursal(sucursal_id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -185,21 +202,61 @@ const update = async (req, res) => {
 }
 
 const delet = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
-        const { id } = req.params
+        const empresa_id = getEmpresaId(req)
+        const sucursal_id = getSucursalId(req)
 
-        // --- ACTUALIZAR --- //
-        if ((await SucursalRepository.delete({ id })) == false) return resDeleteFalse(res)
+        await SucursalArticuloRepository.delete(
+            { sucursal: sucursal_id, empresa: empresa_id },
+            transaction,
+        )
+        await ImpresionAreaRepository.delete({ sucursal: sucursal_id, empresa: empresa_id }, transaction)
+        await SucursalPagoMetodoRepository.delete(
+            { sucursal: sucursal_id, empresa: empresa_id },
+            transaction,
+        )
+        await SucursalComprobanteTipoRepository.delete(
+            { sucursal: sucursal_id, empresa: empresa_id },
+            transaction,
+        )
 
-        borrarSucursal(id)
+        if (
+            (await SucursalRepository.delete(
+                { id: sucursal_id, empresa: empresa_id },
+                transaction,
+            )) == false
+        ) {
+            await transaction.rollback()
+            return resDeleteFalse(res)
+        }
+
+        await transaction.commit()
+
+        borrarSucursal(sucursal_id)
 
         res.json({ code: 0 })
     } catch (error) {
-        res.status(500).json({ code: -1, msg: error.message, error })
+        await transaction.rollback()
+
+        res.status(500).json({
+            code: -1,
+            msg: 'No se puede eliminar la sucursal porque ya tiene datos relacionados',
+            error,
+        })
     }
 }
 
 // --- Funciones --- //
+function getEmpresaId(req) {
+    return req.params.empresa_id || req.user.empresa
+}
+
+function getSucursalId(req) {
+    return req.params.sucursal_id || req.params.id
+}
+
 async function loadOne(id) {
     const data = await SucursalRepository.find({ id }, true)
 

@@ -5,6 +5,36 @@ import verifyPermiso from '#http/middlewares/verifyPermiso.js'
 const router = Router()
 
 router.get(
+    '/empresas/:empresa_id',
+    verifyPermiso(['vTenantSucursales:listar']),
+    controller.find
+)
+
+router.get(
+    '/empresas/:empresa_id/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:ver', 'vTenantSucursales:editar']),
+    controller.findById
+)
+
+router.post(
+    '/empresas/:empresa_id',
+    verifyPermiso(['vTenantSucursales:crear']),
+    controller.create
+)
+
+router.patch(
+    '/empresas/:empresa_id/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:editar']),
+    controller.update
+)
+
+router.delete(
+    '/empresas/:empresa_id/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:eliminar']),
+    controller.delet
+)
+
+router.get(
     '/',
     verifyPermiso([
         'vSucursales:listar',
