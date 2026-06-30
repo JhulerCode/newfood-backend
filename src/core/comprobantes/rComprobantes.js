@@ -41,7 +41,7 @@ router.post(
     controller.sendWhatsapp,
 )
 
-router.post('/', verifyPermiso(['vPedidos:generarComprobante']), controller.create)
+router.post('/', verifyPermiso(['vCajaComprobantes:crear']), controller.create)
 
 router.patch(
     '/actualizar-pagos/:id',

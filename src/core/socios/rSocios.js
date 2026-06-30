@@ -11,7 +11,7 @@ router.get(
         'vClientes:listar',
         'vPedidos:crear',
         'vPedidos:editarDetalles',
-        'vPedidos:generarComprobante',
+        'vCajaComprobantes:crear',
     ]),
     controller.find
 )

@@ -119,7 +119,7 @@ const create = async (req, res) => {
                 pago_condicion,
                 monto,
 
-                observacion,
+                // observacion,
                 estado: 2,
 
                 venta_codigo: transaccion1.venta_codigo,
@@ -138,11 +138,12 @@ const create = async (req, res) => {
 
             const itemsT = []
             for (const a of comprobante_items) {
-                randomId = crypto.randomUUID()
+                const randomId = crypto.randomUUID()
                 a.id = randomId
                 a.id1 = randomId
 
                 const send = {
+                    id: a.id,
                     articulo: a.articulo,
                     cantidad: a.cantidad,
 
