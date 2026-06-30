@@ -631,8 +631,8 @@ const sendWhatsapp = async (req, res) => {
         const data = await getComprobante(id)
         const comprobante_numero = `${data.serie}-${data.numero}`
         const empresa_nombre = data.empresa_datos.razon_social
-        const buffer = await makePdf(data, req.empresa)
-        const media = buffer.toString('base64')
+        // const buffer = await makePdf(data, req.empresa)
+        // const media = buffer.toString('base64')
         const caption = `Estimado cliente,
 
 Enviamos el comprobante de pago *${comprobante_numero}* correspondiente a su reciente consumo en *${empresa_nombre}*.
@@ -1241,10 +1241,7 @@ async function getComprobante(id) {
         data.estado1 = comprobante_estadosMap[data.estado]
         data.cliente_datos.doc_tipo1 = documentos_identidadMap[data.cliente_datos.doc_tipo]
         data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
-        data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal] || {
-            id: data.transaccion1.venta_canal,
-            nombre: 'POS',
-        }
+        data.venta_canal1 = venta_canalesMap[data.transaccion1.venta_canal]
 
         if (data.transaccion1.venta_canal == 1 && data.transaccion1.venta_mesa1) {
             data.atencion = `${data.transaccion1.venta_mesa1.salon1.nombre} - ${data.transaccion1.venta_mesa1.nombre}`
