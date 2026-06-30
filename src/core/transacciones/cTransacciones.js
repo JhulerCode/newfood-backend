@@ -57,12 +57,15 @@ const findById = async (req, res) => {
 
             data.pago_condicion1 = pago_condicionesMap[data.pago_condicion]
             data.estado1 = transaccion_estadosMap[data.estado]
-            data.venta_canal1 = venta_canalesMap[data.venta_canal]
 
-            if (data.venta_canal == 1) {
-                data.atencion = `${data.venta_mesa1.salon1.nombre} - ${data.venta_mesa1.nombre}`
-            } else {
-                data.atencion = data.venta_canal1.nombre
+            if (data.tipo == 2) {
+                data.venta_canal1 = venta_canalesMap[data.venta_canal]
+
+                if (data.venta_canal == 1 && data.venta_mesa1) {
+                    data.atencion = `${data.venta_mesa1.salon1.nombre} - ${data.venta_mesa1.nombre}`
+                } else {
+                    data.atencion = data.venta_canal1?.nombre || ''
+                }
             }
         }
 
