@@ -1,81 +1,47 @@
-import { Router } from "express"
-import controller from "./cSucursales.js"
+import { Router } from 'express'
+import controller from './cSucursales.js'
 import verifyPermiso from '#http/middlewares/verifyPermiso.js'
 
 const router = Router()
 
-router.get(
-    '/empresas/:empresa_id',
-    verifyPermiso(['vTenantSucursales:listar']),
-    controller.find
-)
+router.get('/empresas/:empresa_id', verifyPermiso(['vTenantSucursales:listar']), controller.find)
 
 router.get(
     '/empresas/:empresa_id/:sucursal_id',
     verifyPermiso(['vTenantSucursales:ver', 'vTenantSucursales:editar']),
-    controller.findById
+    controller.findById,
 )
 
-router.post(
-    '/empresas/:empresa_id',
-    verifyPermiso(['vTenantSucursales:crear']),
-    controller.create
-)
+router.post('/empresas/:empresa_id', verifyPermiso(['vTenantSucursales:crear']), controller.create)
 
 router.patch(
     '/empresas/:empresa_id/:sucursal_id',
     verifyPermiso(['vTenantSucursales:editar']),
-    controller.update
+    controller.update,
 )
 
 router.patch(
     '/empresas/:empresa_id/estado/:sucursal_id',
     verifyPermiso(['vTenantSucursales:editar']),
-    controller.updateEstado
+    controller.updateEstado,
 )
 
 router.delete(
     '/empresas/:empresa_id/:sucursal_id',
     verifyPermiso(['vTenantSucursales:eliminar']),
-    controller.delet
+    controller.delet,
 )
 
-router.get(
-    '/',
-    verifyPermiso([
-        'vSucursales:listar',
-    ]),
-    controller.find
-)
+router.get('/', verifyPermiso(['vSucursales:listar']), controller.find)
 
-router.get(
-    '/uno/:id',
-    verifyPermiso(['vSucursales:editar']),
-    controller.findById
-)
+router.get('/uno/:id', verifyPermiso(['vSucursales:editar']), controller.findById)
 
-router.post(
-    '/',
-    verifyPermiso(['vSucursales:crear']),
-    controller.create
-)
+router.post('/', verifyPermiso(['vSucursales:crear']), controller.create)
 
-router.patch(
-    '/:id',
-    verifyPermiso(['vSucursales:editar']),
-    controller.update
-)
+router.patch('/:id', verifyPermiso(['vSucursales:editar']), controller.update)
 
-router.patch(
-    '/estado/:id',
-    verifyPermiso(['vSucursales:editar']),
-    controller.updateEstado
-)
+router.patch('/estado/:id', verifyPermiso(['vSucursales:editar']), controller.updateEstado)
 
-router.delete(
-    '/:id',
-    verifyPermiso(['vSucursales:eliminar']),
-    controller.delet
-)
+router.delete('/:id', verifyPermiso(['vSucursales:eliminar']), controller.delet)
 
 export default router

@@ -10,6 +10,7 @@ export const Sucursal = sequelize.define('sucursales', {
     direccion: { type: DataTypes.STRING },
     telefono: { type: DataTypes.STRING },
     correo: { type: DataTypes.STRING },
+    anydesk_id: { type: DataTypes.STRING },
 
     activo: { type: DataTypes.BOOLEAN },
     fecha_fin: { type: DataTypes.DATEONLY },

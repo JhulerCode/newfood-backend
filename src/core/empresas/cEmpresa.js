@@ -231,6 +231,8 @@ function getEmpresaPayload(body, include_admin_fields = false) {
         telefono: body.telefono,
         correo: body.correo,
         foto: body.foto,
+        sol_usuario: body.sol_usuario,
+        sol_clave: body.sol_clave,
     }
 
     if (include_admin_fields) {
