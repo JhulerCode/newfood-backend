@@ -62,7 +62,7 @@ const create = async (req, res) => {
     try {
         const { colaborador } = req.user
         const empresa_id = getEmpresaId(req)
-        const { codigo, direccion, telefono, correo, anydesk_id, activo } = req.body
+        const { codigo, direccion, telefono, correo, anydesk_id, fecha_fin, activo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await SucursalRepository.existe({ codigo, empresa: empresa_id }, res)) == true) {
@@ -78,6 +78,7 @@ const create = async (req, res) => {
                 telefono,
                 correo,
                 anydesk_id,
+                fecha_fin,
                 activo,
                 empresa: empresa_id,
                 createdBy: colaborador,
@@ -166,7 +167,7 @@ const update = async (req, res) => {
         const { colaborador } = req.user
         const empresa_id = getEmpresaId(req)
         const sucursal_id = getSucursalId(req)
-        const { codigo, direccion, telefono, correo, anydesk_id } = req.body
+        const { codigo, direccion, telefono, correo, anydesk_id, fecha_fin } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if (
@@ -187,6 +188,7 @@ const update = async (req, res) => {
                 telefono,
                 correo,
                 anydesk_id,
+                fecha_fin,
                 updatedBy: colaborador,
             },
         )
