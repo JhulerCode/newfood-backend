@@ -1,4 +1,6 @@
 import { DineroMovimiento } from '#db/models/DineroMovimiento.js'
+import { Comprobante } from '#db/models/Comprobante.js'
+import { ComprobanteTipo } from '#db/models/ComprobanteTipo.js'
 import { Op, fn, col } from 'sequelize'
 import {
     CajaAperturaRepository,
@@ -105,6 +107,7 @@ const findResumen = async (req, res) => {
 
         const send = {
             efectivo_ingresos: [],
+            efectivo_operaciones: [],
             efectivo_ingresos_total: 0,
             efectivo_ingresos_extra_total: 0,
 
@@ -134,6 +137,7 @@ const findResumen = async (req, res) => {
 
             ventas_ayer: 0,
             ventas_mes: 0,
+            ventas_mes_sunat_aceptadas: 0,
         }
 
         // --- Dinero movimientos --- //
@@ -161,9 +165,11 @@ const findResumen = async (req, res) => {
 
                         send.efectivo_ingresos.push({
                             id: a.id,
+                            tipo: 'INGRESO',
                             operacion: caja_operacionesMap[a.operacion].nombre,
                             detalle: a.detalle,
                             monto: Number(a.monto),
+                            createdAt: a.createdAt,
                         })
                     }
 
@@ -205,13 +211,19 @@ const findResumen = async (req, res) => {
 
                     send.efectivo_egresos.push({
                         id: a.id,
+                        tipo: 'EGRESO',
                         operacion: caja_operacionesMap[a.operacion].nombre,
                         detalle: a.detalle,
                         monto: Number(a.monto),
+                        createdAt: a.createdAt,
                     })
                 }
             }
         }
+
+        send.efectivo_operaciones = [...send.efectivo_ingresos, ...send.efectivo_egresos].sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+        )
 
         send.efectivo_ingresos_total += send.efectivo_ingresos_extra_total
 
@@ -473,6 +485,27 @@ const findResumen = async (req, res) => {
                     caja_apertura: caja_aperturas.map((a) => a.id),
                     estado: '2',
                     operacion: '1',
+                },
+            })
+
+            send.ventas_mes_sunat_aceptadas = await Comprobante.findOne({
+                attributes: [[fn('SUM', col('monto')), 'total']],
+                raw: true,
+                include: [
+                    {
+                        model: ComprobanteTipo,
+                        as: 'doc_tipo1',
+                        attributes: [],
+                        where: {
+                            tipo: { [Op.in]: ['01', '03'] },
+                        },
+                    },
+                ],
+                where: {
+                    empresa,
+                    sucursal: req.sucursal.id,
+                    caja_apertura: { [Op.in]: caja_aperturas.map((a) => a.id) },
+                    estado: '3',
                 },
             })
 
