@@ -5,7 +5,7 @@ import { obtenerEmpresa } from '#store/empresas.js'
 
 async function verifyToken(req, res, next) {
     const authorization = req.headers['authorization']
-    // const xEmpresa = req.headers['x-empresa']
+    const xEmpresa = req.headers['x-empresa']
     const xSucursal = req.headers['x-sucursal']
 
     if (!authorization) return res.status(401).json({ msg: 'Token faltante' })
@@ -29,6 +29,14 @@ async function verifyToken(req, res, next) {
         }
 
         const empresa = obtenerEmpresa(session.empresa)
+        if (!empresa) {
+            return res.status(401).json({ msg: 'Empresa no encontrada en sesion' })
+        }
+
+        if (!xEmpresa || empresa.subdominio !== xEmpresa) {
+            return res.status(401).json({ msg: 'Sesion no valida para este empresa' })
+        }
+
         req.empresa = {
             ...empresa,
         }
