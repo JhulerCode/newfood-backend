@@ -1049,159 +1049,46 @@ const resumen = async (req, res) => {
         if (qry) Object.assign(qry1.fltr, qry.fltr)
 
         const comprobantes = await ComprobanteRepository.find(qry1, true)
-
-        const ventas = {
-            tiempo: {},
-            pago_metodos: [],
-            comprobante_tipos: [],
-            canales: [],
-            productos: [],
-            total: 0,
-            sunat_aceptadas_total: 0,
-            descuentos: 0,
-        }
-
-        const anulados = {
-            total: 0,
-            descuentos: 0,
-        }
-
-        const comprobante_tiposMap = arrayMap('comprobante_tipos')
         const venta_canalesMap = arrayMap('venta_canales')
 
-        // --- INDICES AUXILIARES --- //
-        const pagoMetodosMap = {}
-        const comprobanteTiposMap = {}
-        const canalesMap = {}
-        const productosMap = {}
-        const mesesMap = {}
-        const pedidosMap = {}
+        const dashboard_items = comprobantes.map((a) => ({
+            id: a.id,
+            mes: dayjs(a.fecha_emision).format('YYYY-MMM'),
+            mes_orden: dayjs(a.fecha_emision).format('YYYY-MM'),
+            estado: a.estado,
+            monto: Number(a.monto),
+            doc_tipo: a.doc_tipo1.tipo,
+            doc_tipo_nombre: a.doc_tipo1.tipo1.nombre,
+            transaccion: a.transaccion1.id,
+            venta_canal: a.transaccion1.venta_canal,
+            venta_canal_nombre: venta_canalesMap[a.transaccion1.venta_canal].nombre,
+            pago_metodos: a.dinero_movimientos.map((b) => ({
+                id: b.pago_metodo,
+                nombre: b.pago_metodo1.nombre,
+                color: b.pago_metodo1.color,
+                monto: Number(b.monto),
+            })),
+            productos: a.comprobante_items.map((b) => {
+                const prd = calcularUno({
+                    pu: Number(b.pu),
+                    descuento_tipo: b.descuento_tipo,
+                    descuento_valor: b.descuento_valor,
+                    cantidad: Number(b.cantidad),
+                })
 
-        for (const a of comprobantes) {
-            // --- ACEPTADOS --- //
-            if (['1', '2', '3'].includes(a.estado)) {
-                ventas.total += Number(a.monto)
-
-                if (a.estado == '3' && ['01', '03'].includes(a.doc_tipo1.tipo)) {
-                    ventas.sunat_aceptadas_total += Number(a.monto)
+                return {
+                    id: b.articulo,
+                    nombre: b.descripcion,
+                    cantidad: Number(b.cantidad),
+                    monto: Number(prd.total),
+                    descuento: prd.descuento,
                 }
+            }),
+        }))
 
-                // --- MÉTODOS DE PAGO --- //
-                for (const b of a.dinero_movimientos) {
-                    const mkey = b.pago_metodo
-                    if (!pagoMetodosMap[mkey]) {
-                        const item = {
-                            id: mkey,
-                            name: b.pago_metodo1.nombre,
-                            value: Number(b.monto),
-                            itemStyle: { color: b.pago_metodo1.color },
-                        }
-                        ventas.pago_metodos.push(item)
-                        pagoMetodosMap[mkey] = item
-                    } else {
-                        pagoMetodosMap[mkey].value += Number(b.monto)
-                    }
-                }
+        res.json({ code: 0, data: { dashboard_items } })
+        return
 
-                // --- TIPOS DE COMPROBANTES --- //
-                const comp_tipo = comprobante_tiposMap[a.doc_tipo1.tipo]
-                if (!comprobanteTiposMap[comp_tipo.id]) {
-                    const item = {
-                        id: comp_tipo.id,
-                        name: comp_tipo.nombre,
-                        value: Number(a.monto),
-                    }
-                    ventas.comprobante_tipos.push(item)
-                    comprobanteTiposMap[comp_tipo.id] = item
-                } else {
-                    comprobanteTiposMap[comp_tipo.id].value += Number(a.monto)
-                }
-
-                // --- CANALES --- //
-                const cKey = a.transaccion1.venta_canal
-                if (!canalesMap[cKey]) {
-                    const item = {
-                        id: cKey,
-                        name: venta_canalesMap[cKey].nombre,
-                        value: Number(a.monto),
-                        cantidad: 0,
-                    }
-                    ventas.canales.push(item)
-                    canalesMap[cKey] = item
-                } else {
-                    canalesMap[cKey].value += Number(a.monto)
-                }
-
-                if (!pedidosMap[a.transaccion1.id]) {
-                    pedidosMap[a.transaccion1.id] = a.transaccion1
-                    canalesMap[cKey].cantidad += 1
-                }
-
-                // --- PRODUCTOS --- //
-                for (const b of a.comprobante_items) {
-                    const prd = calcularUno({
-                        pu: Number(b.pu),
-                        descuento_tipo: b.descuento_tipo,
-                        descuento_valor: b.descuento_valor,
-                        cantidad: Number(b.cantidad),
-                    })
-
-                    ventas.descuentos += prd.descuento
-                    const pKey = b.articulo
-
-                    if (!productosMap[pKey]) {
-                        const item = {
-                            id: b.articulo,
-                            nombre: b.descripcion,
-                            cantidad: Number(b.cantidad),
-                            monto: Number(prd.total),
-                            descuento: prd.descuento == 0 ? null : prd.descuento,
-                        }
-                        ventas.productos.push(item)
-                        productosMap[pKey] = item
-                    } else {
-                        productosMap[pKey].cantidad += Number(b.cantidad)
-                        productosMap[pKey].monto += Number(prd.total)
-                        productosMap[pKey].descuento += prd.descuento == 0 ? null : prd.descuento
-                    }
-                }
-
-                // --- TIEMPO --- //
-                const mes = dayjs(a.fecha_emision).format('YYYY-MMM')
-                if (!mesesMap[mes]) mesesMap[mes] = 0
-                mesesMap[mes] += Number(a.monto)
-            }
-
-            // --- ANULADOS --- //
-            if (a.estado == 0) {
-                anulados.total += Number(a.monto)
-
-                for (const b of a.comprobante_items) {
-                    const prd = calcularUno({
-                        pu: Number(b.pu),
-                        descuento_tipo: b.descuento_tipo,
-                        descuento_valor: b.descuento_valor,
-                        cantidad: Number(b.cantidad),
-                    })
-                    anulados.descuentos += prd.descuento
-                }
-            }
-        }
-
-        ventas.tiempo = {
-            meses: Object.keys(mesesMap),
-            ventas: Object.values(mesesMap),
-        }
-
-        ventas.productos = ventas.productos.sort((a, b) => b.monto - a.monto)
-
-        const data = {
-            ventas,
-            anulados,
-            general: ventas.total + anulados.total + ventas.descuentos + anulados.descuentos,
-        }
-
-        res.json({ code: 0, data })
     } catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })
     }
