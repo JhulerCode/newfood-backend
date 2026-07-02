@@ -56,6 +56,10 @@ export function initSocket(server) {
             if (socketUsers[socket.id]) {
                 socketUsers[socket.id].ultima_actividad_at = new Date().toISOString()
             }
+
+            if (socket.data.printerSucursal) {
+                socket.data.printerLastActivityAt = new Date().toISOString()
+            }
         })
 
         socket.on('printer:join', async (data = {}) => {
@@ -80,6 +84,9 @@ export function initSocket(server) {
                 await markSucursalPrinterOnline(stored_sucursal || sucursal, data.appVersion)
                 socket.join(`printer:${sucursal.id}`)
                 socket.data.printerSucursal = sucursal.id
+                socket.data.printerAppVersion = data.appVersion || null
+                socket.data.printerConnectedAt = new Date().toISOString()
+                socket.data.printerLastActivityAt = socket.data.printerConnectedAt
                 printerSockets[sucursal.id] = socket.id
 
                 socket.emit('printer:ready')
@@ -415,18 +422,51 @@ export function getIO() {
 }
 
 export function getSocketUsers(empresa_id = null) {
-    return Object.values(socketUsers)
+    const users = Object.values(socketUsers)
         .filter((socket_user) => !empresa_id || socket_user.empresa == empresa_id)
-        .map((socket_user) => {
-            const socket = io?.sockets?.sockets?.get(socket_user.socket_id)
+        .map(addSocketInfo)
 
-            return {
-                ...socket_user,
-                connected: socket?.connected === true,
-                transport: socket?.conn?.transport?.name,
-                ip: socket?.handshake?.address,
-            }
-        })
+    const printers = Object.entries(printerSockets)
+        .map(([sucursal_id, socket_id]) => buildPrinterSocketUser(sucursal_id, socket_id))
+        .filter((socket_user) => socket_user && (!empresa_id || socket_user.empresa == empresa_id))
+
+    return [...users, ...printers]
+}
+
+function addSocketInfo(socket_user) {
+    const socket = io?.sockets?.sockets?.get(socket_user.socket_id)
+
+    return {
+        ...socket_user,
+        connected: socket?.connected === true,
+        transport: socket?.conn?.transport?.name,
+        ip: socket?.handshake?.address,
+    }
+}
+
+function buildPrinterSocketUser(sucursal_id, socket_id) {
+    const socket = io?.sockets?.sockets?.get(socket_id)
+    if (!socket?.connected) {
+        delete printerSockets[sucursal_id]
+        return null
+    }
+
+    const sucursal = obtenerSucursal(sucursal_id)
+    if (!sucursal?.empresa) return null
+
+    return addSocketInfo({
+        id: `${sucursal_id}_printer_agent`,
+        nombres: 'PC principal',
+        apellidos: 'Agente de impresion',
+        empresa: sucursal.empresa,
+        sucursal: sucursal_id,
+        sucursal_codigo: sucursal.codigo,
+        socket_id,
+        tipo: 'printer_agent',
+        app_version: socket.data.printerAppVersion,
+        conectado_at: socket.data.printerConnectedAt,
+        ultima_actividad_at: socket.data.printerLastActivityAt,
+    })
 }
 
 export async function requestSucursalPrinters(sucursal) {
