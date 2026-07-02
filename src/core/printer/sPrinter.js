@@ -45,7 +45,7 @@ export async function loadSucursalImpresoraCaja(sucursalId) {
     )
     const impresora_caja = areas[0] || null
 
-    actualizarSucursal(sucursalId, { impresora_caja })
+    actualizarSucursal(sucursalId, { impresora_caja, empresa: sucursal.empresa })
     return impresora_caja
 }
 

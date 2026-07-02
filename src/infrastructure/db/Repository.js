@@ -196,7 +196,7 @@ const include1 = {
     sucursales: {
         model: Sucursal,
         as: 'sucursales',
-        attributes: ['id', 'codigo'],
+        attributes: ['id', 'codigo', 'activo', 'fecha_fin', 'empresa'],
     },
     sucursal_articulos: {
         model: SucursalArticulo,

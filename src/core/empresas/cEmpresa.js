@@ -238,8 +238,7 @@ function getEmpresaPayload(body, include_admin_fields = false) {
         payload.ruc = body.ruc
         payload.razon_social = body.razon_social
         payload.subdominio = body.subdominio
-        payload.activo = body.activo === true
-        payload.features = normalizeFeatures(body.features)
+        if (body.features !== undefined) payload.features = normalizeFeatures(body.features)
     }
 
     return Object.fromEntries(Object.entries(payload).filter(([, value]) => value !== undefined))
@@ -413,6 +412,32 @@ const findSockets = async (req, res) => {
     }
 }
 
+const updateEstado = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { id } = req.params
+
+        if (!isAdminUser(req)) return res.status(403).json({ msg: 'Acceso denegado' })
+
+        const updated = await EmpresaRepository.update(
+            { id },
+            {
+                activo: req.body.activo === true,
+                updatedBy: colaborador,
+            },
+        )
+
+        if (updated == false) return resUpdateFalse(res)
+
+        const data = await loadOne(id)
+        actualizarEmpresa(id, data)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const update = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -430,6 +455,7 @@ const update = async (req, res) => {
 
         if (can_admin) {
             if (
+                req.body.ruc !== undefined &&
                 (await EmpresaRepository.existe(
                     { ruc: req.body.ruc, id },
                     res,
@@ -439,6 +465,7 @@ const update = async (req, res) => {
                 return
             }
             if (
+                req.body.subdominio !== undefined &&
                 (await EmpresaRepository.existe(
                     { subdominio: req.body.subdominio, id },
                     res,
@@ -656,6 +683,7 @@ export default {
     find,
     findById,
     findSockets,
+    updateEstado,
     create,
     update,
     delet,

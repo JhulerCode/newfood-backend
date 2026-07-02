@@ -4,8 +4,18 @@ import jat from '#shared/jat.js'
 import { guardarEmpresa, empresasStore } from '#store/empresas.js'
 import { guardarSucursal } from '#store/sucursales.js'
 import { guardarSesion, borrarSesion } from '#store/sessions.js'
-import { EmpresaRepository, ColaboradorRepository, SocioRepository } from '#db/repositories.js'
+import {
+    EmpresaRepository,
+    ColaboradorRepository,
+    SocioRepository,
+    SucursalRepository,
+} from '#db/repositories.js'
 import { loadSucursalImpresoraCaja } from '#core/printer/sPrinter.js'
+import {
+    findAccessibleSucursal,
+    validateEmpresaAccess,
+    validateSucursalAccess,
+} from '#shared/tenantAccess.js'
 
 const signin = async (req, res) => {
     try {
@@ -40,9 +50,8 @@ const signin = async (req, res) => {
             for (const a of empresa.sucursales) guardarSucursal(a.id, a)
         }
 
-        if (empresa.activo === false) {
-            return res.json({ code: 1, msg: 'Empresa desactivada' })
-        }
+        const empresa_error = validateEmpresaAccess(empresa)
+        if (empresa_error) return res.json({ code: 1, msg: empresa_error })
 
         // --- VERIFICAR COLABORADOR --- //
         const qry1 = {
@@ -60,6 +69,30 @@ const signin = async (req, res) => {
 
         const colaborador = colaboradores[0]
 
+        const is_admin_subdominio = empresa.subdominio === 'admin'
+        let sucursal = empresa.sucursales?.find((item) => item.id == colaborador.sucursal)
+        if (!is_admin_subdominio && !sucursal && colaborador.sucursal) {
+            const data = await SucursalRepository.find({ id: colaborador.sucursal }, true)
+            if (data?.empresa == empresa.id) {
+                sucursal = data
+                guardarSucursal(data.id, data)
+            }
+        }
+
+        if (!is_admin_subdominio) {
+            const sucursal_error = validateSucursalAccess(sucursal)
+            if (sucursal_error) {
+                if (!canChangeSucursal(colaborador)) {
+                    return res.json({ code: 1, msg: sucursal_error })
+                }
+
+                sucursal = findAccessibleSucursal(empresa.sucursales)
+                if (!sucursal) {
+                    return res.json({ code: 1, msg: 'No hay sucursales activas disponibles' })
+                }
+            }
+        }
+
         const correct = await bcrypt.compare(contrasena, colaborador.contrasena)
         if (!correct) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
 
@@ -67,11 +100,13 @@ const signin = async (req, res) => {
         const token = jat.encrypt({ id: colaborador.id }, config.tokenMyApi)
 
         delete colaborador.contrasena
+        if (!is_admin_subdominio && sucursal) colaborador.sucursal = sucursal.id
+
         guardarSesion(colaborador.id, {
             token,
             ...colaborador,
         })
-        await loadSucursalImpresoraCaja(colaborador.sucursal)
+        if (!is_admin_subdominio) await loadSucursalImpresoraCaja(sucursal.id)
 
         res.json({ code: 0, token })
     } catch (error) {
@@ -100,6 +135,10 @@ async function loadEmpresaClienteVarios(empresa_id) {
     }
     const clientes = await SocioRepository.find(qry, true)
     return clientes[0]
+}
+
+function canChangeSucursal(colaborador) {
+    return colaborador.permisos?.includes('vSucursales:cambiarSucursal') == true
 }
 
 export default {

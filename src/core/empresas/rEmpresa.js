@@ -23,6 +23,12 @@ router.get(
     controller.findSockets
 )
 
+router.patch(
+    '/estado/:id',
+    verifyPermiso(['vTenants:editar']),
+    controller.updateEstado
+)
+
 router.post(
     '/',
     verifyPermiso(['vTenants:crear']),

@@ -165,7 +165,7 @@ const update = async (req, res) => {
         const { colaborador } = req.user
         const empresa_id = getEmpresaId(req)
         const sucursal_id = getSucursalId(req)
-        const { codigo, direccion, telefono, correo, activo } = req.body
+        const { codigo, direccion, telefono, correo } = req.body
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if (
@@ -185,7 +185,31 @@ const update = async (req, res) => {
                 direccion,
                 telefono,
                 correo,
-                activo: activo === true,
+                updatedBy: colaborador,
+            },
+        )
+
+        if (updated == false) return resUpdateFalse(res)
+
+        const data = await loadOne(sucursal_id)
+        actualizarSucursal(sucursal_id, data)
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
+const updateEstado = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const empresa_id = getEmpresaId(req)
+        const sucursal_id = getSucursalId(req)
+
+        const updated = await SucursalRepository.update(
+            { id: sucursal_id, empresa: empresa_id },
+            {
+                activo: req.body.activo === true,
                 updatedBy: colaborador,
             },
         )
@@ -275,5 +299,6 @@ export default {
     findById,
     create,
     update,
+    updateEstado,
     delet,
 }

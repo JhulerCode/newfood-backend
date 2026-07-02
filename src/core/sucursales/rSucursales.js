@@ -28,6 +28,12 @@ router.patch(
     controller.update
 )
 
+router.patch(
+    '/empresas/:empresa_id/estado/:sucursal_id',
+    verifyPermiso(['vTenantSucursales:editar']),
+    controller.updateEstado
+)
+
 router.delete(
     '/empresas/:empresa_id/:sucursal_id',
     verifyPermiso(['vTenantSucursales:eliminar']),
@@ -58,6 +64,12 @@ router.patch(
     '/:id',
     verifyPermiso(['vSucursales:editar']),
     controller.update
+)
+
+router.patch(
+    '/estado/:id',
+    verifyPermiso(['vSucursales:editar']),
+    controller.updateEstado
 )
 
 router.delete(

@@ -12,6 +12,7 @@ export const Sucursal = sequelize.define('sucursales', {
     correo: { type: DataTypes.STRING },
 
     activo: { type: DataTypes.BOOLEAN },
+    fecha_fin: { type: DataTypes.DATEONLY },
     printer_token_hash: { type: DataTypes.STRING },
     printer_agent_enabled: { type: DataTypes.BOOLEAN, defaultValue: false },
     printer_status: { type: DataTypes.STRING, defaultValue: 'offline' },
