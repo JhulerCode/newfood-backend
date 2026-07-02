@@ -1057,6 +1057,7 @@ const resumen = async (req, res) => {
             canales: [],
             productos: [],
             total: 0,
+            sunat_aceptadas_total: 0,
             descuentos: 0,
         }
 
@@ -1080,6 +1081,10 @@ const resumen = async (req, res) => {
             // --- ACEPTADOS --- //
             if (['1', '2', '3'].includes(a.estado)) {
                 ventas.total += Number(a.monto)
+
+                if (a.estado == '3' && ['01', '03'].includes(a.doc_tipo1.tipo)) {
+                    ventas.sunat_aceptadas_total += Number(a.monto)
+                }
 
                 // --- MÉTODOS DE PAGO --- //
                 for (const b of a.dinero_movimientos) {
