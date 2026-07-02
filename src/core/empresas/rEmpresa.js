@@ -17,6 +17,12 @@ router.get(
     controller.findById
 )
 
+router.get(
+    '/:id/sockets',
+    verifyPermiso(['vTenants:listar']),
+    controller.findSockets
+)
+
 router.post(
     '/',
     verifyPermiso(['vTenants:crear']),

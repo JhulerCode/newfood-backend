@@ -52,6 +52,12 @@ export function initSocket(server) {
     })
 
     io.on('connection', (socket) => {
+        socket.onAny(() => {
+            if (socketUsers[socket.id]) {
+                socketUsers[socket.id].ultima_actividad_at = new Date().toISOString()
+            }
+        })
+
         socket.on('printer:join', async (data = {}) => {
             try {
                 const sucursal = await verifyPrinterToken(data.token)
@@ -121,6 +127,9 @@ export function initSocket(server) {
                     sucursal_codigo: empresa.sucursales.find((s) => s.id == colaborador.sucursal)
                         ?.codigo,
                     socket_id: socket.id,
+                    tipo: 'pc_principal',
+                    conectado_at: new Date().toISOString(),
+                    ultima_actividad_at: new Date().toISOString(),
                 }
                 consoleLogSocket(to_save, '🟢 Usuario conectado')
 
@@ -143,6 +152,9 @@ export function initSocket(server) {
                     sucursal_codigo: empresa.sucursales.find((s) => s.id == colaborador.sucursal)
                         ?.codigo,
                     socket_id: socket.id,
+                    tipo: 'usuario',
+                    conectado_at: new Date().toISOString(),
+                    ultima_actividad_at: new Date().toISOString(),
                 }
                 consoleLogSocket(to_save, '🟢 Usuario conectado')
 
@@ -400,6 +412,21 @@ export function getIO() {
         throw new Error('Socket.io no inicializado')
     }
     return io
+}
+
+export function getSocketUsers(empresa_id = null) {
+    return Object.values(socketUsers)
+        .filter((socket_user) => !empresa_id || socket_user.empresa == empresa_id)
+        .map((socket_user) => {
+            const socket = io?.sockets?.sockets?.get(socket_user.socket_id)
+
+            return {
+                ...socket_user,
+                connected: socket?.connected === true,
+                transport: socket?.conn?.transport?.name,
+                ip: socket?.handshake?.address,
+            }
+        })
 }
 
 export async function requestSucursalPrinters(sucursal) {
