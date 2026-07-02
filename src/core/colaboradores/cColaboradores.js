@@ -179,7 +179,12 @@ const delet = async (req, res) => {
 
 const login = async (req, res) => {
     try {
-        res.json({ code: 0, data: req.user, empresa: req.empresa })
+        res.json({
+            code: 0,
+            data: req.user,
+            empresa: req.empresa,
+            access_notice: req.user.access_notice || null,
+        })
     }
     catch (error) {
         res.status(500).json({ code: -1, msg: error.message, error })

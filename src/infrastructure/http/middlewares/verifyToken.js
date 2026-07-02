@@ -4,6 +4,8 @@ import { obtenerSesion } from '#store/sessions.js'
 import { obtenerEmpresa } from '#store/empresas.js'
 import {
     findAccessibleSucursal,
+    getSucursalAccessNotice,
+    shouldDeactivateSucursal,
     validateEmpresaAccess,
     validateSucursalAccess,
 } from '#shared/tenantAccess.js'
@@ -52,6 +54,8 @@ async function verifyToken(req, res, next) {
         }
 
         const is_admin_subdominio = empresa.subdominio === 'admin'
+        if (!is_admin_subdominio) await deactivateExpiredSucursales(empresa)
+
         const sucursales = empresa.sucursales || []
         let sucursal =
             sucursales.find((s) => s.id == xSucursal) ||
@@ -66,6 +70,12 @@ async function verifyToken(req, res, next) {
         }
 
         if (!is_admin_subdominio) {
+            if (shouldDeactivateSucursal(sucursal)) {
+                await SucursalRepository.update({ id: sucursal.id }, { activo: false })
+                sucursal.activo = false
+                guardarSucursal(sucursal.id, sucursal)
+            }
+
             const sucursal_error = validateSucursalAccess(sucursal)
             if (sucursal_error) {
                 if (!canChangeSucursal(session)) {
@@ -80,6 +90,9 @@ async function verifyToken(req, res, next) {
                 session.sucursal = sucursal.id
                 req.user.sucursal = sucursal.id
             }
+
+            session.access_notice = getSucursalAccessNotice(sucursal)
+            req.user.access_notice = session.access_notice
         }
 
         req.sucursal = {
@@ -94,6 +107,16 @@ async function verifyToken(req, res, next) {
 
 function canChangeSucursal(session) {
     return session.permisos?.includes('vSucursales:cambiarSucursal') == true
+}
+
+async function deactivateExpiredSucursales(empresa) {
+    for (const sucursal of empresa.sucursales || []) {
+        if (!shouldDeactivateSucursal(sucursal)) continue
+
+        await SucursalRepository.update({ id: sucursal.id }, { activo: false })
+        sucursal.activo = false
+        guardarSucursal(sucursal.id, sucursal)
+    }
 }
 
 export default verifyToken

@@ -13,6 +13,8 @@ import {
 import { loadSucursalImpresoraCaja } from '#core/printer/sPrinter.js'
 import {
     findAccessibleSucursal,
+    getSucursalAccessNotice,
+    shouldDeactivateSucursal,
     validateEmpresaAccess,
     validateSucursalAccess,
 } from '#shared/tenantAccess.js'
@@ -70,6 +72,8 @@ const signin = async (req, res) => {
         const colaborador = colaboradores[0]
 
         const is_admin_subdominio = empresa.subdominio === 'admin'
+        if (!is_admin_subdominio) await deactivateExpiredSucursales(empresa)
+
         let sucursal = empresa.sucursales?.find((item) => item.id == colaborador.sucursal)
         if (!is_admin_subdominio && !sucursal && colaborador.sucursal) {
             const data = await SucursalRepository.find({ id: colaborador.sucursal }, true)
@@ -80,6 +84,12 @@ const signin = async (req, res) => {
         }
 
         if (!is_admin_subdominio) {
+            if (shouldDeactivateSucursal(sucursal)) {
+                await SucursalRepository.update({ id: sucursal.id }, { activo: false })
+                sucursal.activo = false
+                guardarSucursal(sucursal.id, sucursal)
+            }
+
             const sucursal_error = validateSucursalAccess(sucursal)
             if (sucursal_error) {
                 if (!canChangeSucursal(colaborador)) {
@@ -105,6 +115,7 @@ const signin = async (req, res) => {
         guardarSesion(colaborador.id, {
             token,
             ...colaborador,
+            access_notice: !is_admin_subdominio ? getSucursalAccessNotice(sucursal) : null,
         })
         if (!is_admin_subdominio) await loadSucursalImpresoraCaja(sucursal.id)
 
@@ -139,6 +150,16 @@ async function loadEmpresaClienteVarios(empresa_id) {
 
 function canChangeSucursal(colaborador) {
     return colaborador.permisos?.includes('vSucursales:cambiarSucursal') == true
+}
+
+async function deactivateExpiredSucursales(empresa) {
+    for (const sucursal of empresa.sucursales || []) {
+        if (!shouldDeactivateSucursal(sucursal)) continue
+
+        await SucursalRepository.update({ id: sucursal.id }, { activo: false })
+        sucursal.activo = false
+        guardarSucursal(sucursal.id, sucursal)
+    }
 }
 
 export default {

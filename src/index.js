@@ -3,6 +3,7 @@ import cors from 'cors'
 import config from './config.js'
 import routes from '#http/routes.js'
 import { initSocket } from '#infrastructure/socket.js'
+import { initSucursalAccessScheduler } from '#core/sucursales/sSucursalAccess.js'
 
 const app = express()
 
@@ -23,3 +24,6 @@ const server = app.listen(PORT, () => {
 
 // --- SOCKET --- //
 initSocket(server)
+
+// --- SUCURSALES --- //
+initSucursalAccessScheduler()
