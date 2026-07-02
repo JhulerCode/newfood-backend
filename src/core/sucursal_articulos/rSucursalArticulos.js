@@ -10,6 +10,12 @@ router.get(
 )
 
 router.patch(
+    '/bulk/:id',
+    verifyPermiso(['vSucursales:editar']),
+    controller.updateBulk
+)
+
+router.patch(
     '/:id',
     verifyPermiso(['vSucursales:editar']),
     controller.update

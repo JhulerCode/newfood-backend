@@ -45,7 +45,30 @@ const update = async (req, res) => {
     }
 }
 
+const updateBulk = async (req, res) => {
+    try {
+        const { colaborador } = req.user
+        const { ids, prop, val } = req.body
+
+        // --- ACTUALIZAR --- //
+        const updated = await SucursalArticuloRepository.update(
+            { id: ids },
+            {
+                [prop]: val,
+                updatedBy: colaborador,
+            },
+        )
+
+        if (updated == false) return resUpdateFalse(res)
+
+        res.json({ code: 0 })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 export default {
     find,
     update,
+    updateBulk,
 }

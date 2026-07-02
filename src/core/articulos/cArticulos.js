@@ -378,8 +378,6 @@ const updateBulk = async (req, res) => {
 
         res.json({ code: 0 })
     } catch (error) {
-        await transaction.rollback()
-
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
