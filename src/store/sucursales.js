@@ -1,36 +1,38 @@
 import { getIO } from '#infrastructure/socket.js'
-import { getRedisClient, getJson, setJson } from '#infrastructure/redisClient.js'
-import {
-    actualizarSucursalEnEmpresa,
-    borrarSucursalEnEmpresa,
-    buscarSucursalEnEmpresas,
-} from './empresas.js'
+import { getRedisClient, getJson, setJson } from '#infrastructure/redis/client.js'
+import { redisKeys } from '#infrastructure/redis/keys.js'
 
 const SUCURSAL_TTL_SECONDS = 60 * 60
 
-function sucursalKey(id) {
-    return `sucursal:${id}`
+async function obtenerSucursal(id) {
+    return await getJson(redisKeys.sucursal(id))
 }
 
-async function obtenerSucursal(id) {
-    return await getJson(sucursalKey(id))
+async function obtenerSucursalesPorEmpresa(empresa_id) {
+    const keys = await getRedisClient().keys(redisKeys.sucursalPattern())
+    const sucursales = []
+
+    for (const key of keys) {
+        const sucursal = await getJson(key)
+        if (sucursal?.empresa == empresa_id) sucursales.push(sucursal)
+    }
+
+    return sucursales
 }
 
 async function guardarSucursal(id, values) {
     if (!values) return await obtenerSucursal(id)
 
-    const current = (await obtenerSucursal(id)) || (await buscarSucursalEnEmpresas(id)) || {}
+    const current = (await obtenerSucursal(id)) || {}
     const sucursal = { ...current, ...values, id: values.id || id }
 
-    await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
-    await actualizarSucursalEnEmpresa(sucursal)
+    await setJson(redisKeys.sucursal(id), sucursal, SUCURSAL_TTL_SECONDS)
 
     return await obtenerSucursal(id)
 }
 
 async function borrarSucursal(id) {
-    await borrarSucursalEnEmpresa(await obtenerSucursal(id))
-    await getRedisClient().del(sucursalKey(id))
+    await getRedisClient().del(redisKeys.sucursal(id))
 }
 
 async function actualizarSucursal(id, values) {
@@ -38,11 +40,7 @@ async function actualizarSucursal(id, values) {
     if (!values) return
 
     if (!sucursal) {
-        const empresa_sucursal = await buscarSucursalEnEmpresas(id)
-        if (!empresa_sucursal) return
-
-        sucursal = empresa_sucursal
-        await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
+        return
     }
 
     Object.entries(values).forEach(([key, value]) => {
@@ -51,8 +49,7 @@ async function actualizarSucursal(id, values) {
         }
     })
 
-    await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
-    await actualizarSucursalEnEmpresa(sucursal)
+    await setJson(redisKeys.sucursal(id), sucursal, SUCURSAL_TTL_SECONDS)
 
     console.log(`Empresa: ${values.empresa} | Action: sucursal updated`)
     getIO().to(id).emit('sucursal-updated', sucursal)
@@ -60,4 +57,10 @@ async function actualizarSucursal(id, values) {
     return sucursal
 }
 
-export { obtenerSucursal, guardarSucursal, borrarSucursal, actualizarSucursal }
+export {
+    obtenerSucursal,
+    obtenerSucursalesPorEmpresa,
+    guardarSucursal,
+    borrarSucursal,
+    actualizarSucursal,
+}

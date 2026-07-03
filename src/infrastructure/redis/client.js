@@ -1,5 +1,5 @@
-import { createClient } from 'redis'
-import config from '../config.js'
+import Redis from 'ioredis'
+import config from '../../config.js'
 
 let redis_client = null
 
@@ -8,24 +8,24 @@ async function connectRedis() {
         throw new Error('REDIS_URI no configurado')
     }
 
-    if (redis_client?.isOpen) return redis_client
+    if (redis_client?.status === 'ready') return redis_client
 
-    redis_client = createClient({
-        url: config.REDIS_URI,
+    redis_client = new Redis(config.REDIS_URI, {
+        lazyConnect: true,
     })
 
     redis_client.on('error', (error) => {
         console.error('Redis error:', error.message)
     })
 
-    await redis_client.connect()
+    if (redis_client.status !== 'ready') await redis_client.connect()
     console.log('Redis conectado')
 
     return redis_client
 }
 
 function getRedisClient() {
-    if (!redis_client?.isOpen) {
+    if (redis_client?.status !== 'ready') {
         throw new Error('Redis no conectado')
     }
 
@@ -41,7 +41,7 @@ async function setJson(key, value, ttl_seconds = null) {
     const serialized = JSON.stringify(value)
 
     if (ttl_seconds) {
-        await getRedisClient().set(key, serialized, { EX: ttl_seconds })
+        await getRedisClient().set(key, serialized, 'EX', ttl_seconds)
         return value
     }
 

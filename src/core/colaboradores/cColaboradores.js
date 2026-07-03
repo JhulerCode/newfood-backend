@@ -2,6 +2,7 @@ import { ColaboradorRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import bcrypt from 'bcrypt'
 import { borrarSesion, actualizarSesion } from '#store/sessions.js'
+import { borrarColaborador } from '#store/colaboradores.js'
 import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
 
 const find = async (req, res) => {
@@ -136,6 +137,7 @@ const update = async (req, res) => {
             sucursal = null
 
             await borrarSesion(id)
+            await borrarColaborador(id)
         }
 
         //--- ACTUALIZAR ---//
@@ -152,7 +154,7 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
-        await actualizarSesion(id, data)
+        if (has_signin) await actualizarSesion(id, data)
 
         res.json({ code: 0, data })
     }
@@ -168,6 +170,7 @@ const delet = async (req, res) => {
         if (await ColaboradorRepository.delete({ id }) == false) return resDeleteFalse(res)
 
         await borrarSesion(id)
+        await borrarColaborador(id)
 
         res.json({ code: 0 })
     }

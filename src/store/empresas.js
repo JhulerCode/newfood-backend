@@ -1,34 +1,46 @@
 import { getIO } from '#infrastructure/socket.js'
-import { getRedisClient, getJson, setJson } from '#infrastructure/redisClient.js'
+import { getRedisClient, getJson, setJson } from '#infrastructure/redis/client.js'
+import { redisKeys } from '#infrastructure/redis/keys.js'
 
 const EMPRESA_TTL_SECONDS = 60 * 60
 
-function empresaKey(id) {
-    return `empresa:${id}`
-}
+function cleanEmpresa(values) {
+    if (!values) return null
 
-function empresaSubdominioKey(subdominio) {
-    return `empresa_subdominio:${subdominio}`
+    const { sucursales, ...empresa } = values
+    return empresa
 }
 
 async function obtenerEmpresa(id) {
-    return await getJson(empresaKey(id))
+    const empresa = await getJson(redisKeys.empresa(id))
+    if (!empresa) return null
+
+    if (Array.isArray(empresa.sucursales)) {
+        await guardarEmpresa(id, empresa)
+        return cleanEmpresa(empresa)
+    }
+
+    return empresa
 }
 
 async function obtenerEmpresaPorSubdominio(subdominio) {
-    const id = await getRedisClient().get(empresaSubdominioKey(subdominio))
+    const id = await getRedisClient().get(redisKeys.empresaSubdominio(subdominio))
     if (!id) return null
 
     return await obtenerEmpresa(id)
 }
 
 async function guardarEmpresa(id, values) {
-    await setJson(empresaKey(id), values, EMPRESA_TTL_SECONDS)
+    const empresa = cleanEmpresa(values)
+    await setJson(redisKeys.empresa(id), empresa, EMPRESA_TTL_SECONDS)
 
-    if (values?.subdominio) {
-        await getRedisClient().set(empresaSubdominioKey(values.subdominio), id, {
-            EX: EMPRESA_TTL_SECONDS,
-        })
+    if (empresa?.subdominio) {
+        await getRedisClient().set(
+            redisKeys.empresaSubdominio(empresa.subdominio),
+            id,
+            'EX',
+            EMPRESA_TTL_SECONDS,
+        )
     }
 
     return await obtenerEmpresa(id)
@@ -36,8 +48,8 @@ async function guardarEmpresa(id, values) {
 
 async function borrarEmpresa(id) {
     const empresa = await obtenerEmpresa(id)
-    if (empresa?.subdominio) await getRedisClient().del(empresaSubdominioKey(empresa.subdominio))
-    await getRedisClient().del(empresaKey(id))
+    if (empresa?.subdominio) await getRedisClient().del(redisKeys.empresaSubdominio(empresa.subdominio))
+    await getRedisClient().del(redisKeys.empresa(id))
 }
 
 async function actualizarEmpresa(id, values) {
@@ -58,54 +70,10 @@ async function actualizarEmpresa(id, values) {
     return empresa
 }
 
-async function actualizarSucursalEnEmpresa(sucursal) {
-    if (!sucursal?.empresa) return null
-
-    const empresa = await obtenerEmpresa(sucursal.empresa)
-    if (!empresa) return null
-
-    if (!Array.isArray(empresa.sucursales)) empresa.sucursales = []
-
-    const index = empresa.sucursales.findIndex((item) => item.id === sucursal.id)
-    if (index >= 0) empresa.sucursales.splice(index, 1, sucursal)
-    else empresa.sucursales.push(sucursal)
-
-    await guardarEmpresa(empresa.id, empresa)
-
-    return empresa
-}
-
-async function borrarSucursalEnEmpresa(sucursal) {
-    if (!sucursal?.empresa) return null
-
-    const empresa = await obtenerEmpresa(sucursal.empresa)
-    if (!empresa || !Array.isArray(empresa.sucursales)) return empresa
-
-    empresa.sucursales = empresa.sucursales.filter((item) => item.id !== sucursal.id)
-    await guardarEmpresa(empresa.id, empresa)
-
-    return empresa
-}
-
-async function buscarSucursalEnEmpresas(sucursal_id) {
-    const keys = await getRedisClient().keys('empresa:*')
-
-    for (const key of keys) {
-        const empresa = await getJson(key)
-        const sucursal = empresa?.sucursales?.find((item) => item.id === sucursal_id)
-        if (sucursal) return sucursal
-    }
-
-    return null
-}
-
 export {
     obtenerEmpresa,
     obtenerEmpresaPorSubdominio,
     guardarEmpresa,
     borrarEmpresa,
     actualizarEmpresa,
-    actualizarSucursalEnEmpresa,
-    borrarSucursalEnEmpresa,
-    buscarSucursalEnEmpresas,
 }

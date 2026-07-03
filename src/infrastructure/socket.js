@@ -1,6 +1,6 @@
 import { Server } from 'socket.io'
 import { obtenerEmpresa, guardarEmpresa } from '#store/empresas.js'
-import { obtenerSucursal, guardarSucursal } from '#store/sucursales.js'
+import { obtenerSucursal, obtenerSucursalesPorEmpresa, guardarSucursal } from '#store/sucursales.js'
 import {
     EmpresaRepository,
     SucursalRepository,
@@ -112,20 +112,7 @@ export function initSocket(server) {
         })
 
         socket.on('joinPcPrincipal', async (colaborador) => {
-            let empresa = await obtenerEmpresa(colaborador.empresa)
-
-            if (!empresa) {
-                const qry = {
-                    id: colaborador.empresa,
-                    incl: ['sucursales'],
-                }
-
-                empresa = await EmpresaRepository.find(qry, true)
-                empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
-                await guardarEmpresa(colaborador.empresa, empresa)
-
-                for (const a of empresa.sucursales) await guardarSucursal(a.id, a)
-            }
+            const empresa = await loadEmpresaForSocket(colaborador.empresa)
 
             if (empresa) {
                 const to_save = {
@@ -150,7 +137,7 @@ export function initSocket(server) {
         })
 
         socket.on('joinUser', async (colaborador) => {
-            const empresa = await obtenerEmpresa(colaborador.empresa)
+            const empresa = await loadEmpresaForSocket(colaborador.empresa)
 
             if (empresa) {
                 const to_save = {
@@ -412,6 +399,47 @@ export function initSocket(server) {
             delete socketUsers[socket.id]
         })
     })
+}
+
+async function loadEmpresaForSocket(empresa_id) {
+    let empresa = await obtenerEmpresa(empresa_id)
+
+    if (!empresa) {
+        const qry = {
+            id: empresa_id,
+            incl: ['sucursales'],
+        }
+
+        empresa = await EmpresaRepository.find(qry, true)
+        if (!empresa) return null
+
+        empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
+        await guardarEmpresa(empresa_id, empresa)
+
+        for (const sucursal of empresa.sucursales || []) await guardarSucursal(sucursal.id, sucursal)
+    }
+
+    empresa.sucursales = await loadSucursalesForSocket(empresa.id)
+    return empresa
+}
+
+async function loadSucursalesForSocket(empresa_id) {
+    let sucursales = await obtenerSucursalesPorEmpresa(empresa_id)
+    if (sucursales.length > 0) return sucursales
+
+    sucursales = await SucursalRepository.find(
+        {
+            fltr: {
+                empresa: { op: 'Es', val: empresa_id },
+            },
+            cols: { exclude: [] },
+        },
+        true,
+    )
+
+    for (const sucursal of sucursales) await guardarSucursal(sucursal.id, sucursal)
+
+    return sucursales
 }
 
 export function getIO() {

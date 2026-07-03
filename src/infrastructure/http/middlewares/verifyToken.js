@@ -1,6 +1,7 @@
 import { verifyAccessToken } from '#infrastructure/tokenService.js'
-import { obtenerSesionPorId, refreshSesion } from '#store/sessions.js'
+import { obtenerSesionPorId } from '#store/sessions.js'
 import { obtenerEmpresa, guardarEmpresa } from '#store/empresas.js'
+import { obtenerColaborador, guardarColaborador } from '#store/colaboradores.js'
 import {
     findAccessibleSucursal,
     getSucursalAccessNotice,
@@ -8,37 +9,54 @@ import {
     validateEmpresaAccess,
     validateSucursalAccess,
 } from '#shared/tenantAccess.js'
-import { EmpresaRepository, SocioRepository, SucursalRepository } from '#db/repositories.js'
-import { guardarSucursal } from '#store/sucursales.js'
+import {
+    ColaboradorRepository,
+    EmpresaRepository,
+    SocioRepository,
+    SucursalRepository,
+} from '#db/repositories.js'
+import { guardarSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
 
 async function verifyToken(req, res, next) {
     const xEmpresa = req.headers['x-empresa']
     const xSucursal = req.headers['x-sucursal']
-    const token = req.cookies?.access_token
+    const token = getAccessToken(req)
 
     if (!token) return res.status(401).json({ msg: 'Token faltante' })
 
     try {
         const user = verifyAccessToken(token)
         const session = await obtenerSesionPorId(user.session_id)
-        let session_changed = false
+        let colaborador_changed = false
 
         if (!session || session.colaborador_id !== user.colaborador_id) {
             return res.status(401).json({ msg: 'Sesion no valida' })
         }
 
-        req.user = {
-            colaborador: session.id,
-            ...session,
+        let colaborador = await obtenerColaborador(session.colaborador_id)
+        if (!colaborador) {
+            colaborador = await loadColaboradorById(session.colaborador_id)
+            if (!colaborador) return res.status(401).json({ msg: 'Colaborador no encontrado' })
+        }
+        if (colaborador.active_session_id !== session.session_id) {
+            colaborador.active_session_id = session.session_id
+            colaborador_changed = true
         }
 
-        let empresa = await obtenerEmpresa(session.empresa)
+        req.user = {
+            colaborador: colaborador.id,
+            ...colaborador,
+        }
+
+        let empresa = await obtenerEmpresa(colaborador.empresa)
         if (!empresa) {
-            empresa = await loadEmpresaById(session.empresa)
+            empresa = await loadEmpresaById(colaborador.empresa)
             if (!empresa) {
                 return res.status(401).json({ msg: 'Empresa no encontrada en sesion' })
             }
         }
+
+        empresa.sucursales = await loadSucursalesByEmpresa(empresa.id)
 
         if (!xEmpresa || empresa.subdominio !== xEmpresa) {
             return res.status(401).json({ msg: 'Sesion no valida para este empresa' })
@@ -57,10 +75,10 @@ async function verifyToken(req, res, next) {
         const sucursales = empresa.sucursales || []
         let sucursal =
             sucursales.find((s) => s.id == xSucursal) ||
-            sucursales.find((s) => s.id == session.sucursal)
+            sucursales.find((s) => s.id == colaborador.sucursal)
 
-        if (!is_admin_subdominio && !sucursal && session.sucursal) {
-            const data = await SucursalRepository.find({ id: session.sucursal }, true)
+        if (!is_admin_subdominio && !sucursal && colaborador.sucursal) {
+            const data = await SucursalRepository.find({ id: colaborador.sucursal }, true)
             if (data?.empresa == empresa.id) {
                 sucursal = data
                 await guardarSucursal(data.id, data)
@@ -76,7 +94,7 @@ async function verifyToken(req, res, next) {
 
             const sucursal_error = validateSucursalAccess(sucursal)
             if (sucursal_error) {
-                if (!canChangeSucursal(session)) {
+                if (!canChangeSucursal(colaborador)) {
                     return res.status(403).json({ msg: sucursal_error })
                 }
 
@@ -85,20 +103,20 @@ async function verifyToken(req, res, next) {
                     return res.status(403).json({ msg: 'No hay sucursales activas disponibles' })
                 }
 
-                session.sucursal = sucursal.id
+                colaborador.sucursal = sucursal.id
                 req.user.sucursal = sucursal.id
-                session_changed = true
+                colaborador_changed = true
             }
 
             const access_notice = getSucursalAccessNotice(sucursal)
-            if (JSON.stringify(session.access_notice) !== JSON.stringify(access_notice)) {
-                session_changed = true
+            if (JSON.stringify(colaborador.access_notice) !== JSON.stringify(access_notice)) {
+                colaborador_changed = true
             }
-            session.access_notice = access_notice
-            req.user.access_notice = session.access_notice
+            colaborador.access_notice = access_notice
+            req.user.access_notice = colaborador.access_notice
         }
 
-        if (session_changed) await refreshSesion(session.session_id, session)
+        if (colaborador_changed) await guardarColaborador(colaborador.id, colaborador)
 
         req.sucursal = {
             ...sucursal,
@@ -108,6 +126,11 @@ async function verifyToken(req, res, next) {
     } catch {
         return res.status(401).json({ msg: 'Token invalido o expirado' })
     }
+}
+
+function getAccessToken(req) {
+    const authorization = req.headers.authorization
+    if (authorization?.startsWith('Bearer ')) return authorization.substring(7)
 }
 
 function canChangeSucursal(session) {
@@ -134,6 +157,33 @@ async function loadEmpresaById(id) {
     for (const sucursal of empresa.sucursales || []) await guardarSucursal(sucursal.id, sucursal)
 
     return empresa
+}
+
+async function loadSucursalesByEmpresa(empresa_id) {
+    let sucursales = await obtenerSucursalesPorEmpresa(empresa_id)
+    if (sucursales.length > 0) return sucursales
+
+    sucursales = await SucursalRepository.find(
+        {
+            fltr: {
+                empresa: { op: 'Es', val: empresa_id },
+            },
+            cols: { exclude: [] },
+        },
+        true,
+    )
+
+    for (const sucursal of sucursales) await guardarSucursal(sucursal.id, sucursal)
+
+    return sucursales
+}
+
+async function loadColaboradorById(id) {
+    const colaborador = await ColaboradorRepository.find({ id }, true)
+    if (!colaborador) return null
+
+    delete colaborador.contrasena
+    return await guardarColaborador(id, colaborador)
 }
 
 async function loadEmpresaClienteVarios(empresa_id) {

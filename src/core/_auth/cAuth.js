@@ -4,12 +4,12 @@ import {
     createRefreshToken,
     createRefreshTokenId,
     createSessionId,
-    setAuthCookies,
+    setRefreshCookie,
     clearAuthCookies,
     verifyRefreshToken,
 } from '#infrastructure/tokenService.js'
 import { guardarEmpresa, obtenerEmpresaPorSubdominio } from '#store/empresas.js'
-import { guardarSucursal } from '#store/sucursales.js'
+import { guardarSucursal, obtenerSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
 import {
     guardarSesion,
     borrarSesion,
@@ -42,38 +42,22 @@ const signin = async (req, res) => {
 
         if (!empresa) {
             empresa = await loadEmpresaBySubdominio(xEmpresa)
-            if (!empresa) return res.json({ code: 1, msg: 'Empresa no encontrada' })
         }
 
         const empresa_error = validateEmpresaAccess(empresa)
         if (empresa_error) return res.json({ code: 1, msg: empresa_error })
 
         // --- VERIFICAR COLABORADOR --- //
-        const qry1 = {
-            fltr: {
-                usuario: { op: 'Es', val: usuario },
-                activo: { op: 'Es', val: true },
-                empresa: { op: 'Es', val: empresa.id },
-            },
-            cols: { exclude: [] },
-        }
-
-        const colaboradores = await ColaboradorRepository.find(qry1, true)
-        if (colaboradores.length == 0)
-            return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
-
-        const colaborador = colaboradores[0]
+        const colaborador = await loadColaboradorByUsuario(usuario, empresa.id)
+        if (!colaborador) return res.json({ code: 1, msg: 'Usuario o contraseña incorrecta' })
 
         const is_admin_subdominio = empresa.subdominio === 'admin'
-        if (!is_admin_subdominio) await deactivateExpiredSucursales(empresa)
 
-        let sucursal = empresa.sucursales?.find((item) => item.id == colaborador.sucursal)
-        if (!is_admin_subdominio && !sucursal && colaborador.sucursal) {
-            const data = await SucursalRepository.find({ id: colaborador.sucursal }, true)
-            if (data?.empresa == empresa.id) {
-                sucursal = data
-                await guardarSucursal(data.id, data)
-            }
+        let sucursal = null
+        let sucursales = []
+
+        if (!is_admin_subdominio && colaborador.sucursal) {
+            sucursal = await loadSucursalById(colaborador.sucursal, empresa.id)
         }
 
         if (!is_admin_subdominio) {
@@ -89,7 +73,9 @@ const signin = async (req, res) => {
                     return res.json({ code: 1, msg: sucursal_error })
                 }
 
-                sucursal = findAccessibleSucursal(empresa.sucursales)
+                sucursales = await loadSucursalesByEmpresa(empresa.id)
+                await deactivateExpiredSucursales(sucursales)
+                sucursal = findAccessibleSucursal(sucursales)
                 if (!sucursal) {
                     return res.json({ code: 1, msg: 'No hay sucursales activas disponibles' })
                 }
@@ -114,17 +100,19 @@ const signin = async (req, res) => {
 
         delete colaborador.contrasena
         if (!is_admin_subdominio && sucursal) colaborador.sucursal = sucursal.id
+        const client_info = getRequestClientInfo(req)
 
         await guardarSesion(colaborador.id, {
+            ...colaborador,
             session_id,
             refresh_token_id,
-            ...colaborador,
+            client_info,
             access_notice: !is_admin_subdominio ? getSucursalAccessNotice(sucursal) : null,
         })
-        setAuthCookies(res, { access_token, refresh_token })
+        setRefreshCookie(res, refresh_token)
         if (!is_admin_subdominio) await loadSucursalImpresoraCaja(sucursal.id)
 
-        res.json({ code: 0 })
+        res.json({ code: 0, access_token })
     } catch (error) {
         res.status(500).send({ code: -1, msg: error.message, error })
     }
@@ -178,12 +166,12 @@ const refresh = async (req, res) => {
             refresh_token_id,
         })
 
-        setAuthCookies(res, { access_token, refresh_token: next_refresh_token })
+        setRefreshCookie(res, next_refresh_token)
 
-        res.json({ code: 0 })
+        res.json({ code: 0, access_token })
     } catch {
         clearAuthCookies(res)
-        return res.status(401).json({ msg: 'SesiÃ³n expirada' })
+        return res.status(401).json({ msg: 'Sesión expirada' })
     }
 }
 
@@ -205,7 +193,6 @@ async function loadEmpresaBySubdominio(subdominio) {
             subdominio: { op: 'Es', val: subdominio },
         },
         cols: { exclude: [] },
-        incl: ['sucursales'],
     }
 
     const empresas = await EmpresaRepository.find(qry, true)
@@ -215,23 +202,114 @@ async function loadEmpresaBySubdominio(subdominio) {
     empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
     await guardarEmpresa(empresa.id, empresa)
 
-    for (const sucursal of empresa.sucursales) await guardarSucursal(sucursal.id, sucursal)
-
     return empresa
+}
+
+async function loadSucursalById(id, empresa_id) {
+    let sucursal = await obtenerSucursal(id)
+    if (sucursal?.empresa == empresa_id) return sucursal
+
+    sucursal = await SucursalRepository.find({ id }, true)
+    if (!sucursal || sucursal.empresa != empresa_id) return null
+
+    return await guardarSucursal(sucursal.id, sucursal)
+}
+
+async function loadSucursalesByEmpresa(empresa_id) {
+    let sucursales = await obtenerSucursalesPorEmpresa(empresa_id)
+    if (sucursales.length > 0) return sucursales
+
+    sucursales = await SucursalRepository.find(
+        {
+            fltr: {
+                empresa: { op: 'Es', val: empresa_id },
+            },
+            cols: { exclude: [] },
+        },
+        true,
+    )
+
+    for (const sucursal of sucursales) await guardarSucursal(sucursal.id, sucursal)
+
+    return sucursales
+}
+
+async function loadColaboradorByUsuario(usuario, empresa_id) {
+    const qry1 = {
+        fltr: {
+            usuario: { op: 'Es', val: usuario },
+            activo: { op: 'Es', val: true },
+            empresa: { op: 'Es', val: empresa_id },
+        },
+        cols: { exclude: [] },
+    }
+
+    const colaboradores = await ColaboradorRepository.find(qry1, true)
+
+    if (colaboradores.length == 0) return null
+
+    return colaboradores[0]
 }
 
 function canChangeSucursal(colaborador) {
     return colaborador.permisos?.includes('vSucursales:cambiarSucursal') == true
 }
 
-async function deactivateExpiredSucursales(empresa) {
-    for (const sucursal of empresa.sucursales || []) {
+async function deactivateExpiredSucursales(sucursales) {
+    for (const sucursal of sucursales || []) {
         if (!shouldDeactivateSucursal(sucursal)) continue
 
         await SucursalRepository.update({ id: sucursal.id }, { activo: false })
         sucursal.activo = false
         await guardarSucursal(sucursal.id, sucursal)
     }
+}
+
+function getRequestClientInfo(req) {
+    const user_agent = req.get('user-agent') || req.body?.client_info?.user_agent || null
+    const platform = req.get('sec-ch-ua-platform') || req.body?.client_info?.platform || null
+
+    return {
+        ...req.body?.client_info,
+        ip: getRequestIp(req),
+        platform,
+        user_agent,
+        device: parseDevice(user_agent, platform),
+    }
+}
+
+function getRequestIp(req) {
+    const forwarded_for = req.headers['x-forwarded-for']
+    if (typeof forwarded_for === 'string' && forwarded_for.trim()) {
+        return forwarded_for.split(',')[0].trim()
+    }
+
+    return req.ip || req.socket?.remoteAddress || null
+}
+
+function parseDevice(user_agent = '', platform = '') {
+    const ua = user_agent.toLowerCase()
+    const platform_text = `${platform || ''}`.toLowerCase()
+
+    let type = 'desktop'
+    if (/tablet|ipad/.test(ua)) type = 'tablet'
+    else if (/mobile|android|iphone|ipod/.test(ua)) type = 'mobile'
+
+    let os = 'unknown'
+    if (/windows/.test(ua) || /windows/.test(platform_text)) os = 'Windows'
+    else if (/android/.test(ua) || /android/.test(platform_text)) os = 'Android'
+    else if (/iphone|ipad|ipod/.test(ua) || /ios/.test(platform_text)) os = 'iOS'
+    else if (/mac os|macintosh/.test(ua) || /macos/.test(platform_text)) os = 'macOS'
+    else if (/linux/.test(ua) || /linux/.test(platform_text)) os = 'Linux'
+
+    let browser = 'unknown'
+    if (/edg\//.test(ua)) browser = 'Edge'
+    else if (/opr\//.test(ua) || /opera/.test(ua)) browser = 'Opera'
+    else if (/firefox\//.test(ua)) browser = 'Firefox'
+    else if (/chrome\//.test(ua) || /crios\//.test(ua)) browser = 'Chrome'
+    else if (/safari\//.test(ua)) browser = 'Safari'
+
+    return { type, os, browser }
 }
 
 export default {

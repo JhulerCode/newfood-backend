@@ -6,7 +6,6 @@ const ACCESS_TOKEN_COOKIE = 'access_token'
 const REFRESH_TOKEN_COOKIE = 'refresh_token'
 const ACCESS_TOKEN_EXPIRES_IN = '15m'
 const REFRESH_TOKEN_EXPIRES_IN = '30d'
-const ACCESS_TOKEN_MAX_AGE = 15 * 60 * 1000
 const REFRESH_TOKEN_MAX_AGE = 30 * 24 * 60 * 60 * 1000
 
 function createSessionId() {
@@ -55,24 +54,20 @@ function verifyRefreshToken(token) {
 }
 
 function getCookieOptions(max_age) {
-    const is_production = process.env.NODE_ENV === 'production'
+    const is_production = config.NODE_ENV === 'production'
 
     return {
         httpOnly: true,
-        sameSite: 'none',
         secure: is_production,
+        sameSite: is_production ? 'none' : 'lax',
         maxAge: max_age,
-        path: '/',
+        // path: '/',
     }
 }
 
-function setAuthCookies(res, { access_token, refresh_token }) {
-    res.cookie(ACCESS_TOKEN_COOKIE, access_token, getCookieOptions(ACCESS_TOKEN_MAX_AGE))
+function setRefreshCookie(res, refresh_token) {
     res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, getCookieOptions(REFRESH_TOKEN_MAX_AGE))
-}
-
-function setAccessCookie(res, access_token) {
-    res.cookie(ACCESS_TOKEN_COOKIE, access_token, getCookieOptions(ACCESS_TOKEN_MAX_AGE))
+    res.clearCookie(ACCESS_TOKEN_COOKIE, getCookieOptions(0))
 }
 
 function clearAuthCookies(res) {
@@ -91,7 +86,6 @@ export {
     createRefreshToken,
     verifyAccessToken,
     verifyRefreshToken,
-    setAuthCookies,
-    setAccessCookie,
+    setRefreshCookie,
     clearAuthCookies,
 }
