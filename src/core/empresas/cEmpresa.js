@@ -406,7 +406,7 @@ const findSockets = async (req, res) => {
 
         if (!isAdminUser(req)) return res.status(403).json({ msg: 'Acceso denegado' })
 
-        const data = getSocketUsers(id)
+        const data = await getSocketUsers(id)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -432,7 +432,7 @@ const updateEstado = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(id)
-        actualizarEmpresa(id, data)
+        await actualizarEmpresa(id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -504,7 +504,7 @@ const update = async (req, res) => {
         if (req.file && req.body.foto?.id) await minioRemoveObject(req.body.foto.id)
 
         const data = await loadOne(id)
-        actualizarEmpresa(id, data)
+        await actualizarEmpresa(id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -542,7 +542,7 @@ const create = async (req, res) => {
         await transaction.commit()
 
         const data = await loadOne(nuevo.id)
-        guardarEmpresa(nuevo.id, data)
+        await guardarEmpresa(nuevo.id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -569,7 +569,7 @@ const delet = async (req, res) => {
             await SucursalPagoMetodoRepository.delete({ sucursal: sucursal.id }, transaction)
             await SucursalComprobanteTipoRepository.delete({ sucursal: sucursal.id }, transaction)
             await SucursalRepository.delete({ id: sucursal.id }, transaction)
-            borrarSucursal(sucursal.id)
+            await borrarSucursal(sucursal.id)
         }
 
         await PagoMetodoRepository.delete({ empresa: id }, transaction)
@@ -583,7 +583,7 @@ const delet = async (req, res) => {
 
         await transaction.commit()
 
-        borrarEmpresa(id)
+        await borrarEmpresa(id)
 
         res.json({ code: 0 })
     } catch (error) {

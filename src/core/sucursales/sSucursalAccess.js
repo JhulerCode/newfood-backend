@@ -20,7 +20,7 @@ export async function deactivateExpiredSucursales() {
         if (!shouldDeactivateSucursal(sucursal)) continue
 
         await SucursalRepository.update({ id: sucursal.id }, { activo: false })
-        guardarSucursal(sucursal.id, { ...sucursal, activo: false })
+        await guardarSucursal(sucursal.id, { ...sucursal, activo: false })
         updated++
     }
 

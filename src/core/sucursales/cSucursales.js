@@ -152,7 +152,7 @@ const create = async (req, res) => {
             impresora: 'CAJA',
         }
 
-        guardarSucursal(nuevo.id, data)
+        await guardarSucursal(nuevo.id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -196,7 +196,7 @@ const update = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(sucursal_id)
-        actualizarSucursal(sucursal_id, data)
+        await actualizarSucursal(sucursal_id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -221,7 +221,7 @@ const updateEstado = async (req, res) => {
         if (updated == false) return resUpdateFalse(res)
 
         const data = await loadOne(sucursal_id)
-        actualizarSucursal(sucursal_id, data)
+        await actualizarSucursal(sucursal_id, data)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -265,7 +265,7 @@ const delet = async (req, res) => {
 
         await transaction.commit()
 
-        borrarSucursal(sucursal_id)
+        await borrarSucursal(sucursal_id)
 
         res.json({ code: 0 })
     } catch (error) {

@@ -1,22 +1,47 @@
 import { getIO } from '#infrastructure/socket.js'
+import { getRedisClient, getJson, setJson } from '#infrastructure/redisClient.js'
 
-const empresasStore = new Map()
+const EMPRESA_TTL_SECONDS = 60 * 60
 
-function obtenerEmpresa(id) {
-    return empresasStore.get(id)
+function empresaKey(id) {
+    return `empresa:${id}`
 }
 
-function guardarEmpresa(id, values) {
-    empresasStore.set(id, values)
-    return obtenerEmpresa(id)
+function empresaSubdominioKey(subdominio) {
+    return `empresa_subdominio:${subdominio}`
 }
 
-function borrarEmpresa(id) {
-    empresasStore.delete(id)
+async function obtenerEmpresa(id) {
+    return await getJson(empresaKey(id))
+}
+
+async function obtenerEmpresaPorSubdominio(subdominio) {
+    const id = await getRedisClient().get(empresaSubdominioKey(subdominio))
+    if (!id) return null
+
+    return await obtenerEmpresa(id)
+}
+
+async function guardarEmpresa(id, values) {
+    await setJson(empresaKey(id), values, EMPRESA_TTL_SECONDS)
+
+    if (values?.subdominio) {
+        await getRedisClient().set(empresaSubdominioKey(values.subdominio), id, {
+            EX: EMPRESA_TTL_SECONDS,
+        })
+    }
+
+    return await obtenerEmpresa(id)
+}
+
+async function borrarEmpresa(id) {
+    const empresa = await obtenerEmpresa(id)
+    if (empresa?.subdominio) await getRedisClient().del(empresaSubdominioKey(empresa.subdominio))
+    await getRedisClient().del(empresaKey(id))
 }
 
 async function actualizarEmpresa(id, values) {
-    const empresa = obtenerEmpresa(id)
+    const empresa = await obtenerEmpresa(id)
     if (!empresa || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
@@ -25,16 +50,18 @@ async function actualizarEmpresa(id, values) {
         }
     })
 
-    console.log(`📡 Empresa: ${values.razon_social} | Action: empresa updated`)
-    getIO().to(id).emit('empresa-updated', obtenerEmpresa(id)) // Falta hacer que emita a todas las sucursales
+    await guardarEmpresa(id, empresa)
 
-    return obtenerEmpresa(id)
+    console.log(`Empresa: ${values.razon_social} | Action: empresa updated`)
+    getIO().to(id).emit('empresa-updated', empresa)
+
+    return empresa
 }
 
-function actualizarSucursalEnEmpresa(sucursal) {
+async function actualizarSucursalEnEmpresa(sucursal) {
     if (!sucursal?.empresa) return null
 
-    const empresa = obtenerEmpresa(sucursal.empresa)
+    const empresa = await obtenerEmpresa(sucursal.empresa)
     if (!empresa) return null
 
     if (!Array.isArray(empresa.sucursales)) empresa.sucursales = []
@@ -43,22 +70,29 @@ function actualizarSucursalEnEmpresa(sucursal) {
     if (index >= 0) empresa.sucursales.splice(index, 1, sucursal)
     else empresa.sucursales.push(sucursal)
 
+    await guardarEmpresa(empresa.id, empresa)
+
     return empresa
 }
 
-function borrarSucursalEnEmpresa(sucursal) {
+async function borrarSucursalEnEmpresa(sucursal) {
     if (!sucursal?.empresa) return null
 
-    const empresa = obtenerEmpresa(sucursal.empresa)
+    const empresa = await obtenerEmpresa(sucursal.empresa)
     if (!empresa || !Array.isArray(empresa.sucursales)) return empresa
 
     empresa.sucursales = empresa.sucursales.filter((item) => item.id !== sucursal.id)
+    await guardarEmpresa(empresa.id, empresa)
+
     return empresa
 }
 
-function buscarSucursalEnEmpresas(sucursalId) {
-    for (const empresa of empresasStore.values()) {
-        const sucursal = empresa?.sucursales?.find((item) => item.id === sucursalId)
+async function buscarSucursalEnEmpresas(sucursal_id) {
+    const keys = await getRedisClient().keys('empresa:*')
+
+    for (const key of keys) {
+        const empresa = await getJson(key)
+        const sucursal = empresa?.sucursales?.find((item) => item.id === sucursal_id)
         if (sucursal) return sucursal
     }
 
@@ -66,8 +100,8 @@ function buscarSucursalEnEmpresas(sucursalId) {
 }
 
 export {
-    empresasStore,
     obtenerEmpresa,
+    obtenerEmpresaPorSubdominio,
     guardarEmpresa,
     borrarEmpresa,
     actualizarEmpresa,

@@ -168,7 +168,7 @@ async function refreshSucursalPrinterArea(sucursal) {
         true,
     )
 
-    actualizarSucursal(sucursal, {
+    await actualizarSucursal(sucursal, {
         impresora_caja: areas[0] || null,
     })
 }

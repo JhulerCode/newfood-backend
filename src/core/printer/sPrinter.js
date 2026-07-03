@@ -22,7 +22,7 @@ function createPlainPrinterToken() {
 export async function loadSucursalImpresoraCaja(sucursalId) {
     if (!sucursalId) return null
 
-    let sucursal = obtenerSucursal(sucursalId)
+    let sucursal = await obtenerSucursal(sucursalId)
     if (sucursal && sucursal.impresora_caja !== undefined) {
         return sucursal.impresora_caja
     }
@@ -30,7 +30,7 @@ export async function loadSucursalImpresoraCaja(sucursalId) {
     if (!sucursal) {
         const data = await SucursalRepository.find({ id: sucursalId }, true)
         if (!data) return null
-        sucursal = guardarSucursal(sucursalId, data)
+        sucursal = await guardarSucursal(sucursalId, data)
     }
 
     const areas = await ImpresionAreaRepository.find(
@@ -45,7 +45,7 @@ export async function loadSucursalImpresoraCaja(sucursalId) {
     )
     const impresora_caja = areas[0] || null
 
-    actualizarSucursal(sucursalId, { impresora_caja, empresa: sucursal.empresa })
+    await actualizarSucursal(sucursalId, { impresora_caja, empresa: sucursal.empresa })
     return impresora_caja
 }
 
@@ -62,7 +62,7 @@ export async function generateSucursalPrinterToken({ empresa, sucursalId }) {
             printer_status: 'offline',
         },
     )
-    actualizarSucursal(sucursalId, {
+    await actualizarSucursal(sucursalId, {
         printer_agent_enabled: true,
         printer_status: 'offline',
     })
@@ -85,10 +85,10 @@ export async function deleteSucursalPrinterToken({ empresa, sucursalId }) {
     await SucursalRepository.update({ id: sucursalId }, patch)
 
     const safeSucursal = await getSanitizedSucursal(sucursalId)
-    guardarSucursal(sucursalId, safeSucursal)
+    await guardarSucursal(sucursalId, safeSucursal)
     const storePatch = { ...patch }
     delete storePatch.printer_token_hash
-    actualizarSucursal(sucursalId, { ...storePatch, empresa: safeSucursal.empresa })
+    await actualizarSucursal(sucursalId, { ...storePatch, empresa: safeSucursal.empresa })
 
     return safeSucursal
 }
@@ -123,7 +123,7 @@ export async function markSucursalPrinterOnline(sucursal, appVersion) {
     if (appVersion) patch.printer_app_version = appVersion
 
     await SucursalRepository.update({ id: sucursal.id }, patch)
-    actualizarSucursal(sucursal.id, { ...patch, empresa: sucursal.empresa })
+    await actualizarSucursal(sucursal.id, { ...patch, empresa: sucursal.empresa })
 }
 
 export async function getSanitizedSucursal(id) {
@@ -173,7 +173,7 @@ export async function createSocketPrintJob({
         }
     }
 
-    const sucursal = obtenerSucursal(sucursalId)
+    const sucursal = await obtenerSucursal(sucursalId)
     if (!sucursal) {
         return {
             enabled: false,
@@ -198,7 +198,7 @@ export async function createSocketPrintJob({
         id: crypto.randomUUID(),
         type,
         source_event: event,
-        payload: buildPrintJobPayload(type, data, sucursal),
+        payload: await buildPrintJobPayload(type, data, sucursal),
         colaborador: colaborador || {},
         printer_area: printerArea,
         printer_name: type === 'comanda' ? null : printer_name,
@@ -217,11 +217,11 @@ export async function createSocketPrintJob({
     }
 }
 
-function buildPrintJobPayload(type, data, sucursal) {
+async function buildPrintJobPayload(type, data, sucursal) {
     const payload = data || {}
     if (type !== 'comprobante') return payload
 
-    const empresa = obtenerEmpresa(payload.empresa || sucursal?.empresa)
+    const empresa = await obtenerEmpresa(payload.empresa || sucursal?.empresa)
     const foto = empresa?.foto
     if (!foto?.url) return payload
 
@@ -281,7 +281,7 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
                     : sucursal.printer_agent_enabled,
         },
     )
-    actualizarSucursal(sucursalId, {
+    await actualizarSucursal(sucursalId, {
         printer_agent_enabled:
             typeof body.printer_agent_enabled === 'boolean'
                 ? body.printer_agent_enabled
@@ -294,7 +294,7 @@ export async function updateSucursalPrinterConfig({ empresa, sucursalId, body })
 export async function markSucursalPrinterOffline(sucursalId) {
     if (!sucursalId) return
     await SucursalRepository.update({ id: sucursalId }, { printer_status: 'offline' })
-    actualizarSucursal(sucursalId, { printer_status: 'offline' })
+    await actualizarSucursal(sucursalId, { printer_status: 'offline' })
 }
 
 export async function getJobForSucursal(sucursal, id) {

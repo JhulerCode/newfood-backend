@@ -1,5 +1,6 @@
 import { getComprobante, makePdf } from '#core/comprobantes/cComprobantes.js'
-import { obtenerEmpresa } from '#store/empresas.js'
+import { EmpresaRepository } from '#db/repositories.js'
+import { guardarEmpresa, obtenerEmpresa } from '#store/empresas.js'
 
 const getPdf = async (req, res) => {
     try {
@@ -10,7 +11,11 @@ const getPdf = async (req, res) => {
             return res.status(404).json({ code: 1, msg: 'Comprobante no encontrado' })
         }
 
-        const empresa = obtenerEmpresa(data.empresa)
+        let empresa = await obtenerEmpresa(data.empresa)
+        if (!empresa) {
+            empresa = await EmpresaRepository.find({ id: data.empresa }, true)
+            if (empresa) await guardarEmpresa(empresa.id, empresa)
+        }
         const buffer = await makePdf(data, empresa)
 
         res.setHeader('Content-Type', 'application/pdf')

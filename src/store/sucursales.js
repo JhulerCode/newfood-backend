@@ -1,43 +1,48 @@
 import { getIO } from '#infrastructure/socket.js'
+import { getRedisClient, getJson, setJson } from '#infrastructure/redisClient.js'
 import {
     actualizarSucursalEnEmpresa,
     borrarSucursalEnEmpresa,
     buscarSucursalEnEmpresas,
 } from './empresas.js'
 
-const sucursalesStore = new Map()
+const SUCURSAL_TTL_SECONDS = 60 * 60
 
-function obtenerSucursal(id) {
-    return sucursalesStore.get(id)
+function sucursalKey(id) {
+    return `sucursal:${id}`
 }
 
-function guardarSucursal(id, values) {
-    if (!values) return obtenerSucursal(id)
+async function obtenerSucursal(id) {
+    return await getJson(sucursalKey(id))
+}
 
-    const current = obtenerSucursal(id) || buscarSucursalEnEmpresas(id) || {}
+async function guardarSucursal(id, values) {
+    if (!values) return await obtenerSucursal(id)
+
+    const current = (await obtenerSucursal(id)) || (await buscarSucursalEnEmpresas(id)) || {}
     const sucursal = { ...current, ...values, id: values.id || id }
 
-    sucursalesStore.set(id, sucursal)
-    actualizarSucursalEnEmpresa(sucursal)
+    await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
+    await actualizarSucursalEnEmpresa(sucursal)
 
-    return obtenerSucursal(id)
+    return await obtenerSucursal(id)
 }
 
-function borrarSucursal(id) {
-    borrarSucursalEnEmpresa(obtenerSucursal(id))
-    sucursalesStore.delete(id)
+async function borrarSucursal(id) {
+    await borrarSucursalEnEmpresa(await obtenerSucursal(id))
+    await getRedisClient().del(sucursalKey(id))
 }
 
-function actualizarSucursal(id, values) {
-    let sucursal = obtenerSucursal(id)
+async function actualizarSucursal(id, values) {
+    let sucursal = await obtenerSucursal(id)
     if (!values) return
 
     if (!sucursal) {
-        const empresa_sucursal = buscarSucursalEnEmpresas(id)
+        const empresa_sucursal = await buscarSucursalEnEmpresas(id)
         if (!empresa_sucursal) return
 
         sucursal = empresa_sucursal
-        sucursalesStore.set(id, sucursal)
+        await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
     }
 
     Object.entries(values).forEach(([key, value]) => {
@@ -46,11 +51,13 @@ function actualizarSucursal(id, values) {
         }
     })
 
-    console.log(`📡 Empresa: ${values.empresa} | Action: sucursal updated`)
-    actualizarSucursalEnEmpresa(sucursal)
-    getIO().to(id).emit('sucursal-updated', obtenerSucursal(id))
+    await setJson(sucursalKey(id), sucursal, SUCURSAL_TTL_SECONDS)
+    await actualizarSucursalEnEmpresa(sucursal)
 
-    return obtenerSucursal(id)
+    console.log(`Empresa: ${values.empresa} | Action: sucursal updated`)
+    getIO().to(id).emit('sucursal-updated', sucursal)
+
+    return sucursal
 }
 
-export { sucursalesStore, obtenerSucursal, guardarSucursal, borrarSucursal, actualizarSucursal }
+export { obtenerSucursal, guardarSucursal, borrarSucursal, actualizarSucursal }

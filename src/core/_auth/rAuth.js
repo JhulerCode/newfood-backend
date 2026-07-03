@@ -4,6 +4,7 @@ import controller from "./cAuth.js"
 const router = Router()
 
 router.post('/', controller.signin)
+router.post('/refresh', controller.refresh)
 router.post('/logout', controller.logout)
 // router.get('/empresas', controller.getEmpresas)
 // router.get('/sessions', controller.getSessions)
