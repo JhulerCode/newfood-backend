@@ -1,5 +1,5 @@
 import { SucursalRepository } from '#db/repositories.js'
-import { guardarSucursal } from '#store/sucursales.js'
+import { actualizarSucursal } from '#store/sucursales.js'
 import { shouldDeactivateSucursal } from '#shared/tenantAccess.js'
 
 const INTERVAL_MS = 60 * 60 * 1000
@@ -20,7 +20,7 @@ export async function deactivateExpiredSucursales() {
         if (!shouldDeactivateSucursal(sucursal)) continue
 
         await SucursalRepository.update({ id: sucursal.id }, { activo: false })
-        await guardarSucursal(sucursal.id, { ...sucursal, activo: false })
+        await actualizarSucursal(sucursal.id, { activo: false })
         updated++
     }
 

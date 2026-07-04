@@ -23,6 +23,12 @@ router.get(
     controller.findSockets
 )
 
+router.get(
+    '/:id/sessions',
+    verifyPermiso(['vTenants:listar']),
+    controller.findSessions
+)
+
 router.patch(
     '/estado/:id',
     verifyPermiso(['vTenants:editar']),

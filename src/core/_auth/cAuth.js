@@ -9,7 +9,8 @@ import {
     verifyRefreshToken,
 } from '#infrastructure/tokenService.js'
 import { guardarEmpresa, obtenerEmpresaPorSubdominio } from '#store/empresas.js'
-import { guardarSucursal, obtenerSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
+import { guardarSucursal, obtenerSucursal } from '#store/sucursales.js'
+import { guardarColaborador } from '#store/colaboradores.js'
 import {
     guardarSesion,
     borrarSesion,
@@ -73,7 +74,7 @@ const signin = async (req, res) => {
                     return res.json({ code: 1, msg: sucursal_error })
                 }
 
-                sucursales = await loadSucursalesByEmpresa(empresa.id)
+                sucursales = await loadSucursalesByEmpresaFromDb(empresa.id)
                 await deactivateExpiredSucursales(sucursales)
                 sucursal = findAccessibleSucursal(sucursales)
                 if (!sucursal) {
@@ -101,18 +102,21 @@ const signin = async (req, res) => {
         delete colaborador.contrasena
         if (!is_admin_subdominio && sucursal) colaborador.sucursal = sucursal.id
         const client_info = getRequestClientInfo(req)
-
-        await guardarSesion(colaborador.id, {
+        const colaborador_cache = {
             ...colaborador,
+            access_notice: !is_admin_subdominio ? getSucursalAccessNotice(sucursal) : null,
+        }
+
+        await guardarColaborador(colaborador.id, colaborador_cache)
+        await guardarSesion(colaborador.id, {
             session_id,
             refresh_token_id,
             client_info,
-            access_notice: !is_admin_subdominio ? getSucursalAccessNotice(sucursal) : null,
         })
         setRefreshCookie(res, refresh_token)
         if (!is_admin_subdominio) await loadSucursalImpresoraCaja(sucursal.id)
 
-        res.json({ code: 0, access_token })
+        res.json({ code: 0, access_token, sucursal_id: sucursal?.id || null })
     } catch (error) {
         res.status(500).send({ code: -1, msg: error.message, error })
     }
@@ -215,11 +219,8 @@ async function loadSucursalById(id, empresa_id) {
     return await guardarSucursal(sucursal.id, sucursal)
 }
 
-async function loadSucursalesByEmpresa(empresa_id) {
-    let sucursales = await obtenerSucursalesPorEmpresa(empresa_id)
-    if (sucursales.length > 0) return sucursales
-
-    sucursales = await SucursalRepository.find(
+async function loadSucursalesByEmpresaFromDb(empresa_id) {
+    const sucursales = await SucursalRepository.find(
         {
             fltr: {
                 empresa: { op: 'Es', val: empresa_id },

@@ -3,7 +3,6 @@ import { obtenerSesionPorId } from '#store/sessions.js'
 import { obtenerEmpresa, guardarEmpresa } from '#store/empresas.js'
 import { obtenerColaborador, guardarColaborador } from '#store/colaboradores.js'
 import {
-    findAccessibleSucursal,
     getSucursalAccessNotice,
     shouldDeactivateSucursal,
     validateEmpresaAccess,
@@ -15,7 +14,7 @@ import {
     SocioRepository,
     SucursalRepository,
 } from '#db/repositories.js'
-import { guardarSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
+import { guardarSucursal, obtenerSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
 
 async function verifyToken(req, res, next) {
     const xEmpresa = req.headers['x-empresa']
@@ -38,13 +37,10 @@ async function verifyToken(req, res, next) {
             colaborador = await loadColaboradorById(session.colaborador_id)
             if (!colaborador) return res.status(401).json({ msg: 'Colaborador no encontrado' })
         }
-        if (colaborador.active_session_id !== session.session_id) {
-            colaborador.active_session_id = session.session_id
-            colaborador_changed = true
-        }
 
         req.user = {
             colaborador: colaborador.id,
+            session_id: session.session_id,
             ...colaborador,
         }
 
@@ -56,8 +52,6 @@ async function verifyToken(req, res, next) {
             }
         }
 
-        empresa.sucursales = await loadSucursalesByEmpresa(empresa.id)
-
         if (!xEmpresa || empresa.subdominio !== xEmpresa) {
             return res.status(401).json({ msg: 'Sesion no valida para este empresa' })
         }
@@ -65,27 +59,12 @@ async function verifyToken(req, res, next) {
         const empresa_error = validateEmpresaAccess(empresa)
         if (empresa_error) return res.status(403).json({ msg: empresa_error })
 
-        req.empresa = {
-            ...empresa,
-        }
-
         const is_admin_subdominio = empresa.subdominio === 'admin'
-        if (!is_admin_subdominio) await deactivateExpiredSucursales(empresa)
-
-        const sucursales = empresa.sucursales || []
-        let sucursal =
-            sucursales.find((s) => s.id == xSucursal) ||
-            sucursales.find((s) => s.id == colaborador.sucursal)
-
-        if (!is_admin_subdominio && !sucursal && colaborador.sucursal) {
-            const data = await SucursalRepository.find({ id: colaborador.sucursal }, true)
-            if (data?.empresa == empresa.id) {
-                sucursal = data
-                await guardarSucursal(data.id, data)
-            }
-        }
+        let sucursal = null
 
         if (!is_admin_subdominio) {
+            sucursal = await loadSucursalById(xSucursal, empresa.id)
+
             if (shouldDeactivateSucursal(sucursal)) {
                 await SucursalRepository.update({ id: sucursal.id }, { activo: false })
                 sucursal.activo = false
@@ -94,18 +73,11 @@ async function verifyToken(req, res, next) {
 
             const sucursal_error = validateSucursalAccess(sucursal)
             if (sucursal_error) {
-                if (!canChangeSucursal(colaborador)) {
-                    return res.status(403).json({ msg: sucursal_error })
-                }
-
-                sucursal = findAccessibleSucursal(sucursales)
-                if (!sucursal) {
-                    return res.status(403).json({ msg: 'No hay sucursales activas disponibles' })
-                }
-
-                colaborador.sucursal = sucursal.id
-                req.user.sucursal = sucursal.id
-                colaborador_changed = true
+                return res.status(403).json({
+                    code: 'SUCURSAL_NO_DISPONIBLE',
+                    msg: sucursal_error,
+                    can_change_sucursal: canChangeSucursal(colaborador),
+                })
             }
 
             const access_notice = getSucursalAccessNotice(sucursal)
@@ -113,7 +85,13 @@ async function verifyToken(req, res, next) {
                 colaborador_changed = true
             }
             colaborador.access_notice = access_notice
+            req.user.sucursal = sucursal.id
             req.user.access_notice = colaborador.access_notice
+        }
+
+        empresa.sucursales = await loadSucursalesByEmpresa(empresa.id)
+        req.empresa = {
+            ...empresa,
         }
 
         if (colaborador_changed) await guardarColaborador(colaborador.id, colaborador)
@@ -123,8 +101,8 @@ async function verifyToken(req, res, next) {
         }
 
         next()
-    } catch {
-        return res.status(401).json({ msg: 'Token invalido o expirado' })
+    } catch (error) {
+        return res.status(401).json({ msg: 'Token invalido o expirado', error: error.message })
     }
 }
 
@@ -137,14 +115,16 @@ function canChangeSucursal(session) {
     return session.permisos?.includes('vSucursales:cambiarSucursal') == true
 }
 
-async function deactivateExpiredSucursales(empresa) {
-    for (const sucursal of empresa.sucursales || []) {
-        if (!shouldDeactivateSucursal(sucursal)) continue
+async function loadSucursalById(id, empresa_id) {
+    if (!id) return null
 
-        await SucursalRepository.update({ id: sucursal.id }, { activo: false })
-        sucursal.activo = false
-        await guardarSucursal(sucursal.id, sucursal)
-    }
+    let sucursal = await obtenerSucursal(id)
+    if (sucursal?.empresa == empresa_id) return sucursal
+
+    sucursal = await SucursalRepository.find({ id }, true)
+    if (!sucursal || sucursal.empresa != empresa_id) return null
+
+    return await guardarSucursal(sucursal.id, sucursal)
 }
 
 async function loadEmpresaById(id) {
@@ -153,8 +133,6 @@ async function loadEmpresaById(id) {
 
     empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
     await guardarEmpresa(empresa.id, empresa)
-
-    for (const sucursal of empresa.sucursales || []) await guardarSucursal(sucursal.id, sucursal)
 
     return empresa
 }

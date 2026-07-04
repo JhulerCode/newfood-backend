@@ -15,7 +15,8 @@ import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
 import { arrayMap } from '#store/system.js'
 import { actualizarEmpresa, borrarEmpresa, guardarEmpresa } from '#store/empresas.js'
 import { borrarSucursal } from '#store/sucursales.js'
-import { getSocketUsers } from '#infrastructure/socket.js'
+import { getSocketCountsBySession, getSocketUsers } from '#infrastructure/socket.js'
+import { obtenerSesionesPorEmpresa } from '#store/sessions.js'
 import bcrypt from 'bcrypt'
 
 const feature_ids = [
@@ -414,6 +415,24 @@ const findSockets = async (req, res) => {
     }
 }
 
+const findSessions = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        if (!isAdminUser(req)) return res.status(403).json({ msg: 'Acceso denegado' })
+
+        const socket_counts = getSocketCountsBySession()
+        const data = (await obtenerSesionesPorEmpresa(id)).map((session) => ({
+            ...session,
+            sockets_count: socket_counts[session.session_id] || 0,
+        }))
+
+        res.json({ code: 0, data })
+    } catch (error) {
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const updateEstado = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -685,6 +704,7 @@ export default {
     find,
     findById,
     findSockets,
+    findSessions,
     updateEstado,
     create,
     update,
