@@ -16,17 +16,23 @@ import {
 } from '#db/repositories.js'
 import { guardarSucursal, obtenerSucursal, obtenerSucursalesPorEmpresa } from '#store/sucursales.js'
 
-async function verifyToken(req, res, next) {
-    const xEmpresa = req.headers['x-empresa']
-    const xSucursal = req.headers['x-sucursal']
+function authenticateToken(req, res, next) {
     const token = getAccessToken(req)
 
     if (!token) return res.status(401).json({ msg: 'Token faltante' })
 
     try {
-        const user = verifyAccessToken(token)
+        req.authPayload = verifyAccessToken(token)
+        next()
+    } catch (error) {
+        return res.status(401).json({ msg: 'Token invalido o expirado', error: error.message })
+    }
+}
+
+async function loadSessionUser(req, res, next) {
+    try {
+        const user = req.authPayload
         const session = await obtenerSesionPorId(user.session_id)
-        let colaborador_changed = false
 
         if (!session || session.colaborador_id !== user.colaborador_id) {
             return res.status(401).json({ msg: 'Sesion no valida' })
@@ -44,6 +50,17 @@ async function verifyToken(req, res, next) {
             ...colaborador,
         }
 
+        next()
+    } catch (error) {
+        return res.status(500).json({ msg: 'Error al validar la sesion', error: error.message })
+    }
+}
+
+async function loadEmpresaContext(req, res, next) {
+    const xEmpresa = req.headers['x-empresa']
+
+    try {
+        const colaborador = req.user
         let empresa = await obtenerEmpresa(colaborador.empresa)
         if (!empresa) {
             empresa = await loadEmpresaById(colaborador.empresa)
@@ -59,6 +76,24 @@ async function verifyToken(req, res, next) {
         const empresa_error = validateEmpresaAccess(empresa)
         if (empresa_error) return res.status(403).json({ msg: empresa_error })
 
+        empresa.sucursales = await loadSucursalesByEmpresa(empresa.id)
+        req.empresa = {
+            ...empresa,
+        }
+
+        next()
+    } catch (error) {
+        return res.status(500).json({ msg: 'Error al cargar contexto de empresa', error: error.message })
+    }
+}
+
+async function loadSucursalContext(req, res, next) {
+    const xSucursal = req.headers['x-sucursal']
+
+    try {
+        const colaborador = req.user
+        const empresa = req.empresa
+        let colaborador_changed = false
         const is_admin_subdominio = empresa.subdominio === 'admin'
         let sucursal = null
 
@@ -89,11 +124,6 @@ async function verifyToken(req, res, next) {
             req.user.access_notice = colaborador.access_notice
         }
 
-        empresa.sucursales = await loadSucursalesByEmpresa(empresa.id)
-        req.empresa = {
-            ...empresa,
-        }
-
         if (colaborador_changed) await guardarColaborador(colaborador.id, colaborador)
 
         req.sucursal = {
@@ -102,8 +132,24 @@ async function verifyToken(req, res, next) {
 
         next()
     } catch (error) {
-        return res.status(401).json({ msg: 'Token invalido o expirado', error: error.message })
+        return res.status(500).json({ msg: 'Error al cargar contexto de sucursal', error: error.message })
     }
+}
+
+function verifyToken(req, res, next) {
+    authenticateToken(req, res, (authError) => {
+        if (authError) return next(authError)
+
+        loadSessionUser(req, res, (sessionError) => {
+            if (sessionError) return next(sessionError)
+
+            loadEmpresaContext(req, res, (empresaError) => {
+                if (empresaError) return next(empresaError)
+
+                loadSucursalContext(req, res, next)
+            })
+        })
+    })
 }
 
 function getAccessToken(req) {
@@ -174,6 +220,13 @@ async function loadEmpresaClienteVarios(empresa_id) {
     }
     const clientes = await SocioRepository.find(qry, true)
     return clientes[0]
+}
+
+export {
+    authenticateToken,
+    loadEmpresaContext,
+    loadSessionUser,
+    loadSucursalContext,
 }
 
 export default verifyToken
