@@ -8,5 +8,6 @@ const router = Router()
 router.post('/', authRateLimiter, controller.signin)
 router.post('/refresh', controller.refresh)
 router.post('/logout', controller.logout)
+router.post('/refresh-empresa', controller.refreshEmpresa)
 
 export default router

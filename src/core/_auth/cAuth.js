@@ -56,11 +56,11 @@ const signin = async (req, res) => {
 
         let sucursal = null
         let sucursales = []
-
+        console.log('ASD1')
         if (!is_admin_subdominio && colaborador.sucursal) {
             sucursal = await loadSucursalById(colaborador.sucursal, empresa.id)
         }
-
+        console.log('ASD2')
         if (!is_admin_subdominio) {
             if (shouldDeactivateSucursal(sucursal)) {
                 await SucursalRepository.update({ id: sucursal.id }, { activo: false })
@@ -173,6 +173,17 @@ const refresh = async (req, res) => {
         setRefreshCookie(res, next_refresh_token)
 
         res.json({ code: 0, access_token })
+    } catch {
+        clearAuthCookies(res)
+        return res.status(401).json({ msg: 'Sesión expirada' })
+    }
+}
+
+const refreshEmpresa = async (req, res) => {
+    try {
+        const xEmpresa = req.headers['x-empresa']
+        const data = await loadEmpresaBySubdominio(xEmpresa)
+        res.json({ code: 0, data })
     } catch {
         clearAuthCookies(res)
         return res.status(401).json({ msg: 'Sesión expirada' })
@@ -317,4 +328,5 @@ export default {
     signin,
     logout,
     refresh,
+    refreshEmpresa,
 }
