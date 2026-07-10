@@ -6,10 +6,10 @@ const router = Router()
 
 router.get(
     '/',
-    verifyPermiso([
-        'vComprobanteTipos:listar',
-        'vCajaComprobantes:crear',
-    ]),
+    // verifyPermiso([
+    //     'vComprobanteTipos:listar',
+    //     'vCajaComprobantes:crear',
+    // ]),
     controller.find
 )
 
