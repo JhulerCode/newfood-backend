@@ -1,7 +1,13 @@
 import { Router } from 'express'
 
 import verifyVersion from '#http/middlewares/verifyVersion.js'
-import verifyToken from '#http/middlewares/verifyToken.js'
+import {
+    authenticateToken,
+    loadEmpresaContext,
+    loadSessionUser,
+    loadSucursalContext,
+} from '#http/middlewares/verifyToken.js'
+import verifyPermiso from '#http/middlewares/verifyPermiso.js'
 
 import auth from '#core/_auth/rAuth.js'
 import sistema from '#core/_sistema/rSistema.js'
@@ -28,6 +34,7 @@ import receta_insumos from '#core/receta_insumos/rRecetaInsumos.js'
 import salones from '#core/salones/rSalones.js'
 import socios from '#core/socios/rSocios.js'
 import sucursales from '#core/sucursales/rSucursales.js'
+import sucursalesController from '#core/sucursales/cSucursales.js'
 import sucursal_articulos from '#core/sucursal_articulos/rSucursalArticulos.js'
 import sucursal_comprobante_tipos from '#core/sucursal_comprobante_tipos/rSucursalComprobanteTipos.js'
 import sucursal_pago_metodos from '#core/sucursal_pago_metodos/rSucursalPagoMetodos.js'
@@ -46,28 +53,37 @@ router.use('/api/public', publicRoutes)
 router.use('/api', verifyVersion)
 router.use('/api/auth', auth)
 
-router.use('/api', verifyToken)
+router.use('/api', authenticateToken)
+router.use('/api', loadSessionUser)
+router.use('/api', loadEmpresaContext)
+
+router.get(
+    '/api/sucursales/cambiar',
+    verifyPermiso(['vSucursales:cambiarSucursal']),
+    sucursalesController.find,
+)
+
+router.use('/api', loadSucursalContext)
 router.use('/api/sistema', sistema)
 router.use('/api/decolecta', decolecta)
-
 router.use('/api/articulo_categorias', articulo_categorias)
 router.use('/api/articulos', articulos)
-router.use('/api/caja_aperturas', caja_aperturas)
-router.use('/api/colaboradores', colaboradores)
-router.use('/api/comprobante_items', comprobante_items)
-router.use('/api/comprobantes', comprobantes)
 router.use('/api/combo_articulos', combo_articulos)
 router.use('/api/empresas', empresas)
+router.use('/api/comprobante_tipos', comprobante_tipos)
+router.use('/api/pago_metodos', pago_metodos)
+router.use('/api/socios', socios)
+router.use('/api/sucursales', sucursales)
+router.use('/api/colaboradores', colaboradores)
+router.use('/api/caja_aperturas', caja_aperturas)
+router.use('/api/comprobante_items', comprobante_items)
+router.use('/api/comprobantes', comprobantes)
 router.use('/api/dinero_movimientos', dinero_movimientos)
 router.use('/api/kardex', kardex)
 router.use('/api/mesas', mesas)
-router.use('/api/comprobante_tipos', comprobante_tipos)
-router.use('/api/pago_metodos', pago_metodos)
 router.use('/api/produccion_areas', produccion_areas)
 router.use('/api/receta_insumos', receta_insumos)
 router.use('/api/salones', salones)
-router.use('/api/socios', socios)
-router.use('/api/sucursales', sucursales)
 router.use('/api/sucursal-articulos', sucursal_articulos)
 router.use('/api/sucursal-pago-metodos', sucursal_pago_metodos)
 router.use('/api/sucursal-comprobante-tipos', sucursal_comprobante_tipos)

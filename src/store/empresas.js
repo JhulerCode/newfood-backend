@@ -15,11 +15,6 @@ async function obtenerEmpresa(id) {
     const empresa = await getJson(redisKeys.empresa(id))
     if (!empresa) return null
 
-    if (Array.isArray(empresa.sucursales)) {
-        await guardarEmpresa(id, empresa)
-        return cleanEmpresa(empresa)
-    }
-
     return empresa
 }
 

@@ -371,7 +371,7 @@ export class Repository {
             const data = await this.model.findByPk(qry.id, findProps)
 
             if (tojson) {
-                return data.toJSON()
+                return data ? data.toJSON() : null
             } else {
                 return data
             }

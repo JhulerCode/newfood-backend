@@ -21,12 +21,7 @@ async function obtenerSucursalesPorEmpresa(empresa_id) {
 }
 
 async function guardarSucursal(id, values) {
-    if (!values) return await obtenerSucursal(id)
-
-    const current = (await obtenerSucursal(id)) || {}
-    const sucursal = { ...current, ...values, id: values.id || id }
-
-    await setJson(redisKeys.sucursal(id), sucursal, SUCURSAL_TTL_SECONDS)
+    await setJson(redisKeys.sucursal(id), values, SUCURSAL_TTL_SECONDS)
 
     return await obtenerSucursal(id)
 }

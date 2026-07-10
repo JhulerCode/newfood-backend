@@ -27,24 +27,24 @@ async function obtenerColaborador(id) {
 }
 
 async function guardarColaborador(id, values) {
-    if (!values) return await obtenerColaborador(id)
+    if (!values) return null
 
-    const current = cleanColaborador((await obtenerColaborador(id)) || {})
-    const colaborador = {
-        ...current,
-        ...cleanColaborador(values),
-        id: values.id || id,
-        colaborador: values.colaborador || values.id || id,
-        updated_at: new Date().toISOString(),
-    }
+    const colaborador = cleanColaborador(values)
 
     await setJson(redisKeys.colaborador(id), colaborador, COLABORADOR_TTL_SECONDS)
     return await obtenerColaborador(id)
 }
 
 async function actualizarColaborador(id, values) {
-    const colaborador = await guardarColaborador(id, values)
-    if (!colaborador) return null
+    const current = await obtenerColaborador(id)
+    if (!current || !values) return null
+
+    const colaborador = {
+        ...current,
+        ...cleanColaborador(values),
+    }
+
+    await setJson(redisKeys.colaborador(id), colaborador, COLABORADOR_TTL_SECONDS)
 
     console.log(`Empresa: ${values.empresa} | Action: colaborador updated`)
     getIO().to(colaborador.empresa).emit('colaborador-updated', colaborador)
