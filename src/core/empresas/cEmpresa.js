@@ -69,6 +69,7 @@ const permisos_base = [
     'vPedidos:ver',
     'vPedidos:editar',
     'vPedidos:addProductos',
+    'vPedidos:eliminarProductos',
     'vPedidos:editarDetalles',
     'vPedidos:anular',
     'vPedidos:eliminar',

@@ -63,6 +63,12 @@ router.patch(
     controller.addProductos
 )
 
+router.delete(
+    '/eliminar-producto/:id',
+    verifyPermiso(['vPedidos:eliminarProductos']),
+    controller.eliminarProducto,
+)
+
 router.patch(
     '/anular/:id',
     verifyPermiso([
