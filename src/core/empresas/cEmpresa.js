@@ -11,6 +11,7 @@ import {
     SucursalRepository,
 } from '#db/repositories.js'
 import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
+import { r2PutObject, r2RemoveObject } from '#infrastructure/storage/r2.js'
 import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
 import { arrayMap } from '#store/system.js'
 import { actualizarEmpresa, borrarEmpresa, guardarEmpresa } from '#store/empresas.js'
@@ -19,15 +20,7 @@ import { getSocketCountsBySession, getSocketUsers } from '#infrastructure/socket
 import { obtenerSesionesPorEmpresa } from '#store/sessions.js'
 import bcrypt from 'bcrypt'
 
-const feature_ids = [
-    'pedidos',
-    'pos',
-    'mesas',
-    'delivery',
-    'para_llevar',
-    'insumos',
-    'recetas',
-]
+const feature_ids = ['pedidos', 'pos', 'mesas', 'delivery', 'para_llevar', 'insumos', 'recetas']
 
 const vista_features = {
     vPedidos: 'pedidos',
@@ -501,7 +494,8 @@ const update = async (req, res) => {
         //--- Subir archivo ---//
         let newFile
         if (req.file) {
-            newFile = await minioPutObject(req.file)
+            // newFile = await minioPutObject(req.file)
+            newFile = await r2PutObject(req.file)
 
             if (newFile == false) {
                 res.status(500).json({ code: 1, msg: 'Error al subir el archivo' })
