@@ -324,7 +324,7 @@ export function initSocket(server) {
 async function loadEmpresaForSocket(empresa_id) {
     let empresa = await obtenerEmpresa(empresa_id)
 
-    if (!empresa) {
+    if (!empresa?.clientes_varios) {
         const qry = {
             id: empresa_id,
             incl: ['sucursales'],

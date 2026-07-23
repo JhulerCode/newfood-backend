@@ -62,7 +62,7 @@ async function loadEmpresaContext(req, res, next) {
     try {
         const colaborador = req.user
         let empresa = await obtenerEmpresa(colaborador.empresa)
-        if (!empresa) {
+        if (!empresa?.clientes_varios) {
             empresa = await loadEmpresaById(colaborador.empresa)
             if (!empresa) {
                 return res.status(401).json({ msg: 'Empresa no encontrada en sesion' })
