@@ -324,7 +324,7 @@ const findResumen = async (req, res) => {
                 send.comprobantes_aceptados_total += Number(a.monto)
 
                 send.comprobantes_aceptados.push({
-                    id: a.doc_tipo,
+                    id: a.id,
                     serie_correlativo: a.serie_correlativo,
                     tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
@@ -365,7 +365,7 @@ const findResumen = async (req, res) => {
                 send.comprobantes_anulados_total += Number(a.monto)
 
                 send.comprobantes_anulados.push({
-                    id: a.doc_tipo,
+                    id: a.id,
                     serie_correlativo: a.serie_correlativo,
                     tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
@@ -404,7 +404,7 @@ const findResumen = async (req, res) => {
             if (a.estado == 4) {
                 // --- COMPROBANTES --- //
                 send.comprobantes_canjeados.push({
-                    id: a.doc_tipo,
+                    id: a.id,
                     serie_correlativo: a.serie_correlativo,
                     tipo: a.doc_tipo1.tipo1.nombre,
                     monto: Number(a.monto),
@@ -433,7 +433,7 @@ const findResumen = async (req, res) => {
                 send.pedidos_aceptados_total += Number(a.monto)
 
                 send.pedidos_aceptados.push({
-                    id: a.venta_canal,
+                    id: a.id,
                     venta_codigo: a.venta_codigo,
                     venta_canal: venta_canalesMap[a.venta_canal].nombre,
                     monto: Number(a.monto),

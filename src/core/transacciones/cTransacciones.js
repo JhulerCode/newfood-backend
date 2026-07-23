@@ -430,6 +430,56 @@ const addProductos = async (req, res) => {
     }
 }
 
+const eliminarProducto = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
+    try {
+        const { colaborador, empresa } = req.user
+        const { id } = req.params
+        const { transaccion_item } = req.body
+
+        const item = await TransaccionItemRepository.find(
+            {
+                fltr: {
+                    id: { op: 'Es', val: transaccion_item },
+                    transaccion: { op: 'Es', val: id },
+                    empresa: { op: 'Es', val: empresa },
+                },
+                cols: ['cantidad', 'pu'],
+            },
+            true,
+        )
+
+        if (item.length == 0) {
+            await transaction.rollback()
+            return res.status(404).json({ code: -1, msg: 'Producto no encontrado en el pedido' })
+        }
+
+        console.log('item', item)
+        const monto = Number(item[0].cantidad) * Number(item[0].pu)
+
+        await KardexRepository.delete({ transaccion_item }, transaction)
+        await TransaccionItemRepository.delete({ id: transaccion_item }, transaction)
+        console.log(sequelize.literal(`COALESCE(monto, 0) - ${monto}`))
+        await TransaccionRepository.update(
+            { id, empresa },
+            {
+                monto: sequelize.literal(`COALESCE(monto, 0) - ${monto}`),
+                updatedBy: colaborador,
+            },
+            transaction,
+        )
+
+        await transaction.commit()
+
+        const data = await loadOne(id)
+        res.json({ code: 0, data })
+    } catch (error) {
+        await transaction.rollback()
+        res.status(500).json({ code: -1, msg: error.message, error })
+    }
+}
+
 const cambiarMesa = async (req, res) => {
     try {
         const { colaborador } = req.user
@@ -557,6 +607,7 @@ export default {
     delet,
 
     addProductos,
+    eliminarProducto,
     anular,
     cambiarMesa,
     entregar,
