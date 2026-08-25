@@ -41,7 +41,7 @@ const signin = async (req, res) => {
         const xEmpresa = req.headers['x-empresa']
         let empresa = await obtenerEmpresaPorSubdominio(xEmpresa)
 
-        if (!empresa) {
+        if (!empresa?.clientes_varios) {
             empresa = await loadEmpresaBySubdominio(xEmpresa)
         }
 
@@ -56,11 +56,11 @@ const signin = async (req, res) => {
 
         let sucursal = null
         let sucursales = []
-        console.log('ASD1')
+
         if (!is_admin_subdominio && colaborador.sucursal) {
             sucursal = await loadSucursalById(colaborador.sucursal, empresa.id)
         }
-        console.log('ASD2')
+
         if (!is_admin_subdominio) {
             if (shouldDeactivateSucursal(sucursal)) {
                 await SucursalRepository.update({ id: sucursal.id }, { activo: false })
