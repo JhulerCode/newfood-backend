@@ -325,7 +325,7 @@ const delet = async (req, res) => {
         await TransaccionRepository.delete({ id }, transaction)
 
         if (estado != 0 && tipo == 1) {
-            const transaccion_items = await TransaccionItemRepository.findAll({
+            const transaccion_items = await TransaccionItemRepository.find({
                 where: { transaccion: id },
                 attributes: ['id', 'articulo', 'cantidad'],
             })
