@@ -325,10 +325,13 @@ const delet = async (req, res) => {
         await TransaccionRepository.delete({ id }, transaction)
 
         if (estado != 0 && tipo == 1) {
-            const transaccion_items = await TransaccionItemRepository.find({
-                where: { transaccion: id },
-                attributes: ['id', 'articulo', 'cantidad'],
-            })
+            const transaccion_items = await TransaccionItemRepository.find(
+                {
+                    fltr: { transaccion: { op: 'Es', val: id } },
+                    cols: ['articulo', 'cantidad'],
+                },
+                true,
+            )
 
             // --- ACTUALIZAR STOCK --- //
             await actualizarStock(req.sucursal.id, transaccion_items, tipo, transaction, -1)
