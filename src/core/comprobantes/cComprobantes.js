@@ -1156,14 +1156,36 @@ async function getComprobante(id) {
 async function getImageBase64(url) {
     if (!url) return null
 
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`No se pudo obtener la imagen: ${response.status}`)
+    try {
+        const response = await fetch(url)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-    const contentType = response.headers.get('content-type') || 'image/png' // usa el tipo real
-    const arrayBuffer = await response.arrayBuffer()
-    const base64 = Buffer.from(arrayBuffer).toString('base64')
+        const buffer = Buffer.from(await response.arrayBuffer())
+        let contentType = null
 
-    return `data:${contentType};base64,${base64}`
+        // pdfmake solo admite PNG y JPEG en la propiedad `image`. No se confía
+        // en el Content-Type porque un storage/CDN puede devolver HTML o WebP.
+        if (
+            buffer.length >= 8 &&
+            buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+        ) {
+            contentType = 'image/png'
+        } else if (
+            buffer.length >= 3 &&
+            buffer[0] === 0xff &&
+            buffer[1] === 0xd8 &&
+            buffer[2] === 0xff
+        ) {
+            contentType = 'image/jpeg'
+        }
+
+        if (!contentType) throw new Error('formato no compatible o contenido inválido')
+
+        return `data:${contentType};base64,${buffer.toString('base64')}`
+    } catch (error) {
+        console.warn(`No se incluirá el logo en el PDF: ${error.message}`)
+        return null
+    }
 }
 
 async function makePdf(doc, empresa) {
@@ -1281,14 +1303,18 @@ async function makePdf(doc, empresa) {
         pageMargins: [5, 5, 5, 5],
     }
 
+    const logoNode = logoBase64
+        ? {
+              image: logoBase64,
+              fit: [65 * 2.83465, 45 * 2.83465],
+              alignment: 'center',
+              margin: [0, 0, 0, 10],
+          }
+        : null
+
     docDefinition.content = [
         // --- LOGO --- //
-        logoBase64 && {
-            image: logoBase64, // el logo en base64
-            fit: [65 * 2.83465, 45 * 2.83465], // ajusta tamaño
-            alignment: 'center', // opcional (left, center, right)
-            margin: [0, 0, 0, 10],
-        },
+        logoNode,
         // --- EMPRESA --- //
         {
             stack: [
@@ -1528,6 +1554,20 @@ async function makePdf(doc, empresa) {
         },
     }
 
+    try {
+        return await createPdfBuffer(docDefinition, fonts)
+    } catch (error) {
+        // Una imagen puede tener una cabecera válida y aun así estar truncada.
+        // En ese caso se genera el comprobante sin logo en vez de fallar por completo.
+        if (!logoNode || !String(error).includes('Invalid image')) throw error
+
+        console.warn(`No se incluirá el logo en el PDF: ${String(error)}`)
+        docDefinition.content = docDefinition.content.filter((node) => node !== logoNode)
+        return createPdfBuffer(docDefinition, fonts)
+    }
+}
+
+function createPdfBuffer(docDefinition, fonts) {
     return new Promise((resolve, reject) => {
         const printer = new PdfPrinter(fonts)
         const pdfDoc = printer.createPdfKitDocument(docDefinition)
