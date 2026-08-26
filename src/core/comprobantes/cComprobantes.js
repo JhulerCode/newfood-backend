@@ -630,7 +630,7 @@ const sendWhatsapp = async (req, res) => {
         const whatsapp_api_key = 'inst_ins-VA13BI_2026'
         const data = await getComprobante(id)
         const comprobante_numero = `${data.serie}-${data.numero}`
-        const empresa_nombre = req.empresa.nombre_comercial ?? req.empresa.razon_social
+        const empresa_nombre = req.empresa.nombre_comercial || req.empresa.razon_social
         // const empresa_nombre = data.empresa_datos.razon_social
         // const buffer = await makePdf(data, req.empresa)
         // const media = buffer.toString('base64')
