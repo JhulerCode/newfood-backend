@@ -15,6 +15,7 @@ import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
 import TransaccionControler from '#core/transacciones/cTransacciones.js'
 import axios from 'axios'
+import { randomUUID } from 'node:crypto'
 
 import PdfPrinter from 'pdfmake'
 import { numeroATexto } from '#shared/mine.js'
@@ -138,7 +139,7 @@ const create = async (req, res) => {
 
             const itemsT = []
             for (const a of comprobante_items) {
-                const randomId = crypto.randomUUID()
+                const randomId = randomUUID()
                 a.id = randomId
                 a.id1 = randomId
 
