@@ -1160,7 +1160,7 @@ async function getImageBase64(url) {
         const response = await fetch(url)
         if (!response.ok) throw new Error(`HTTP ${response.status}`)
 
-        const buffer = Buffer.from(await response.arrayBuffer())
+        let buffer = Buffer.from(await response.arrayBuffer())
         let contentType = null
 
         // pdfmake solo admite PNG y JPEG en la propiedad `image`. No se confía
@@ -1177,6 +1177,7 @@ async function getImageBase64(url) {
             buffer[2] === 0xff
         ) {
             contentType = 'image/jpeg'
+            buffer = removeEmptyJpegMetadataSegments(buffer)
         }
 
         if (!contentType) throw new Error('formato no compatible o contenido inválido')
@@ -1186,6 +1187,36 @@ async function getImageBase64(url) {
         console.warn(`No se incluirá el logo en el PDF: ${error.message}`)
         return null
     }
+}
+
+function removeEmptyJpegMetadataSegments(buffer) {
+    const chunks = [buffer.subarray(0, 2)]
+    let offset = 2
+    let chunkStart = offset
+
+    while (offset + 3 < buffer.length && buffer[offset] === 0xff) {
+        const marker = buffer[offset + 1]
+
+        // SOS marca el inicio de los datos comprimidos; desde aquí se conserva
+        // el archivo sin intentar interpretar bytes que pueden parecer marcadores.
+        if (marker === 0xda || marker === 0xd9) break
+
+        const segmentLength = buffer.readUInt16BE(offset + 2)
+        if (segmentLength < 2 || offset + 2 + segmentLength > buffer.length) break
+
+        const isMetadata = (marker >= 0xe0 && marker <= 0xef) || marker === 0xfe
+        if (isMetadata && segmentLength === 2) {
+            chunks.push(buffer.subarray(chunkStart, offset))
+            chunkStart = offset + 4
+        }
+
+        offset += 2 + segmentLength
+    }
+
+    if (chunkStart === 2) return buffer
+
+    chunks.push(buffer.subarray(chunkStart))
+    return Buffer.concat(chunks)
 }
 
 async function makePdf(doc, empresa) {
