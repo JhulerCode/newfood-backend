@@ -37,6 +37,7 @@ router.post(
     verifyPermiso([
         'vReporteComprobantes:enviarWhatsapp',
         'vCajaComprobantes:enviarWhatsapp',
+        'vCajaComprobantes:crear',
     ]),
     controller.sendWhatsapp,
 )

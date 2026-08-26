@@ -218,6 +218,7 @@ const create = async (req, res) => {
                 razon_social_nombres: cliente.nombres,
                 doc_numero: cliente.doc_numero,
                 doc_tipo: cliente.doc_tipo,
+                telefono: cliente.telefono,
                 direccion: cliente.direccion,
             },
 
@@ -626,6 +627,15 @@ const sendMail = async (req, res) => {
 const sendWhatsapp = async (req, res) => {
     try {
         const { id, phone_to_send } = req.body
+        const phone_digits = String(phone_to_send || '').replace(/\D/g, '')
+        const phone =
+            phone_digits.length == 11 && phone_digits.startsWith('51')
+                ? phone_digits.slice(2)
+                : phone_digits
+
+        if (!/^9\d{8}$/.test(phone)) {
+            return res.status(400).json({ code: 1, msg: 'Ingrese un nro celular válido' })
+        }
 
         const whatsapp_api_key = 'inst_ins-VA13BI_2026'
         const data = await getComprobante(id)
@@ -668,7 +678,7 @@ ${'```Una solución de DivergeRest.com```'}`
         const response = await axios.post(
             'https://wa.divergerest.com/send/media',
             {
-                number: `51${phone_to_send}`,
+                number: `51${phone}`,
                 type: 'document',
                 filename: file_name,
                 caption,
