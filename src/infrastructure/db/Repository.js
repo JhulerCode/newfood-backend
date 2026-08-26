@@ -254,6 +254,44 @@ const sqls1 = {
         ),
         'comprobante_pagos_monto',
     ],
+    stock_valorizado: [
+        literal(`(
+            SELECT COALESCE(SUM(
+                LEAST(
+                    capa.cantidad,
+                    GREATEST(
+                        COALESCE("sucursal_articulos"."stock", 0)::numeric
+                            - capa.cantidad_mas_reciente,
+                        0
+                    )
+                ) * capa.costo_unitario
+            ), 0)
+            FROM (
+                SELECT
+                    k.cantidad::numeric AS cantidad,
+                    CASE
+                        WHEN k.tipo = 1 THEN COALESCE(ti.pu, 0)::numeric
+                        ELSE 0::numeric
+                    END AS costo_unitario,
+                    COALESCE(
+                        SUM(k.cantidad::numeric) OVER (
+                            ORDER BY k.fecha DESC, k."createdAt" DESC, k.id DESC
+                            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                        ),
+                        0
+                    ) AS cantidad_mas_reciente
+                FROM kardexes AS k
+                LEFT JOIN transaccion_items AS ti ON ti.id = k.transaccion_item
+                WHERE k.articulo = "articulos"."id"
+                    AND k.sucursal = "sucursal_articulos"."sucursal"
+                    AND k.empresa = "articulos"."empresa"
+                    AND k.tipo IN (1, 3)
+            ) AS capa
+            WHERE capa.cantidad_mas_reciente
+                < GREATEST(COALESCE("sucursal_articulos"."stock", 0)::numeric, 0)
+        )`),
+        'stock_valorizado',
+    ],
     // sucursal_stock: [
     //     Sequelize.fn(
     //         'COALESCE',
