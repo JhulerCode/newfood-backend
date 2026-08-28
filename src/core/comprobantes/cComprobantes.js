@@ -598,8 +598,8 @@ const sendMail = async (req, res) => {
         const html = comprobanteHtml(comprobante_numero, empresa_nombre)
 
         const resend = new Resend(config.resendApiKey)
-        const result = resend.emails.send({
-            from: 'DivergeRest Invoices <invoices@divergerest.com>',
+        const result = await resend.emails.send({
+            from: `${config.mailFromName} <${config.mailFromAddress}>`,
             to: email_to_send,
             subject: `Comprobante de pago ${comprobante_numero}`,
             html,
@@ -638,7 +638,10 @@ const sendWhatsapp = async (req, res) => {
             return res.status(400).json({ code: 1, msg: 'Ingrese un nro celular válido' })
         }
 
-        const whatsapp_api_key = 'inst_ins-VA13BI_2026'
+        if (!config.whatsappApiKey) {
+            throw new Error('WHATSAPP_API_KEY no configurado')
+        }
+
         const data = await getComprobante(id)
         const comprobante_numero = `${data.serie}-${data.numero}`
         const empresa_nombre = req.empresa.nombre_comercial || req.empresa.razon_social
@@ -651,43 +654,21 @@ Enviamos el comprobante de pago *${comprobante_numero}* correspondiente a su rec
 
 Agradecemos mucho su preferencia. Esperamos haber sido parte de un buen momento 😊.
 
-${'```Una solución de DivergeRest.com```'}`
+\`\`\`${config.whatsappMessageSignature}\`\`\``
         const file_name = `${comprobante_numero}.pdf`
 
-        // const response = await axios.post(
-        //     `https://whatsapp.divergerest.com/messages/media`,
-        //     {
-        //         to: `51${phone_to_send}`,
-        //         media,
-        //         file_name,
-        //         caption,
-        //     },
-        //     {
-        //         headers: {
-        //             Authorization: `Bearer ${whatsapp_api_key}`,
-        //             'Content-Type': 'application/json',
-        //         },
-        //     },
-        // )
-
-        // if (response.data.success) {
-        //     res.json({ code: 0 })
-        // } else {
-        //     res.json({ code: 1, msg: response.data.message })
-        // }
-
         const response = await axios.post(
-            'https://wa.divergerest.com/send/media',
+            `${config.whatsappApiUrl}/send/media`,
             {
                 number: `51${phone}`,
                 type: 'document',
                 filename: file_name,
                 caption,
-                url: `https://api.divergerest.com/api/public/comprobantes/${id}/pdf`,
+                url: `${config.publicApiUrl}/api/public/comprobantes/${id}/pdf`,
             },
             {
                 headers: {
-                    apikey: '2e8a6b44-ecab-4e65-bf0a-c01423dafa17',
+                    apikey: config.whatsappApiKey,
                 },
             },
         )

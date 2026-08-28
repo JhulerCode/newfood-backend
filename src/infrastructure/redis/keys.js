@@ -1,4 +1,6 @@
-const REDIS_KEY_PREFIX = 'divergerest_'
+import config from '../../config.js'
+
+const REDIS_KEY_PREFIX = config.REDIS_KEY_PREFIX
 
 function prefixedKey(name) {
     return `${REDIS_KEY_PREFIX}${name}`

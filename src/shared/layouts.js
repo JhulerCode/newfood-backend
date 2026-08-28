@@ -1,10 +1,11 @@
 import dayjs from 'dayjs'
+import config from '../config.js'
 
 const primary_color = '#2492c2'
-const app_name = 'DivergeRest'
-const atentamente = 'Jhuler Aguirre'
-const correo = 'jhuler.aguirre@gmail.com'
-const whatsapp = '+51 987 076 972'
+const app_name = config.appName
+const atentamente = config.supportName
+const correo = config.supportEmail
+const whatsapp = config.supportWhatsapp
 const derechos = `© ${dayjs().format('YYYY')} ${app_name}, todos los derechos reservados.`
 
 function comprobanteHtml(numero, empresa_nombre) {
