@@ -10,6 +10,8 @@ export default {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: Number(process.env.PORT) || 3000,
     hostFrontend: process.env.HOST_FRONTEND || '',
+    frontendAllowedDomains: process.env.FRONTEND_ALLOWED_DOMAINS || '',
+    frontendAllowedOrigins: process.env.FRONTEND_ALLOWED_ORIGINS || '',
     APP_VERSION: process.env.APP_VERSION || '',
     tokenMyApi: process.env.TOKEN_MY_API || '',
     dbUri: process.env.DB_URI || '',

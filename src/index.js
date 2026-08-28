@@ -6,13 +6,14 @@ import routes from '#http/routes.js'
 import { initSocket } from '#infrastructure/socket.js'
 import { initSucursalAccessScheduler } from '#core/sucursales/sSucursalAccess.js'
 import { connectRedis } from '#infrastructure/redis/client.js'
+import { corsOptions } from '#http/cors.js'
 
 const app = express()
 
 // --- MIDDLEWARES --- //
 app.disable('x-powered-by')
 app.set('trust proxy', true)
-app.use(cors({ origin: JSON.parse(config.hostFrontend), credentials: true }))
+app.use(cors(corsOptions))
 app.use(cookieParser())
 app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true }))

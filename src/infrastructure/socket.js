@@ -14,6 +14,7 @@ import {
     markSucursalPrinterOnline,
     verifyPrinterToken,
 } from '#core/printer/sPrinter.js'
+import { validateCorsOrigin } from '#http/cors.js'
 
 let io = null
 const connectedSockets = {}
@@ -45,7 +46,8 @@ async function getSucursalImpresoraCaja(sucursal) {
 export function initSocket(server) {
     io = new Server(server, {
         cors: {
-            origin: '*',
+            origin: validateCorsOrigin,
+            credentials: true,
         },
         pingInterval: 25000,
         pingTimeout: 120000,
