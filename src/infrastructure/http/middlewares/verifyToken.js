@@ -178,9 +178,7 @@ async function loadEmpresaById(id) {
     if (!empresa) return null
 
     empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
-    await guardarEmpresa(empresa.id, empresa)
-
-    return empresa
+    return await guardarEmpresa(empresa.id, empresa)
 }
 
 async function loadSucursalesByEmpresa(empresa_id) {

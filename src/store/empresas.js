@@ -1,6 +1,10 @@
 import { getIO } from '#infrastructure/socket.js'
 import { getRedisClient, getJson, setJson } from '#infrastructure/redis/client.js'
 import { redisKeys } from '#infrastructure/redis/keys.js'
+import {
+    normalizeEmpresaFiles,
+    serializeEmpresaFiles,
+} from '#shared/r2Files.js'
 
 const EMPRESA_TTL_SECONDS = 60 * 60
 
@@ -8,14 +12,14 @@ function cleanEmpresa(values) {
     if (!values) return null
 
     const { sucursales, ...empresa } = values
-    return empresa
+    return normalizeEmpresaFiles(empresa)
 }
 
 async function obtenerEmpresa(id) {
     const empresa = await getJson(redisKeys.empresa(id))
     if (!empresa) return null
 
-    return empresa
+    return serializeEmpresaFiles(empresa)
 }
 
 async function obtenerEmpresaPorSubdominio(subdominio) {
@@ -48,7 +52,7 @@ async function borrarEmpresa(id) {
 }
 
 async function actualizarEmpresa(id, values) {
-    const empresa = await obtenerEmpresa(id)
+    const empresa = await getJson(redisKeys.empresa(id))
     if (!empresa || !values) return
 
     Object.entries(values).forEach(([key, value]) => {
@@ -57,12 +61,12 @@ async function actualizarEmpresa(id, values) {
         }
     })
 
-    await guardarEmpresa(id, empresa)
+    const serializedEmpresa = await guardarEmpresa(id, empresa)
 
     console.log(`Empresa: ${values.razon_social} | Action: empresa updated`)
-    getIO().to(id).emit('empresa-updated', empresa)
+    getIO().to(id).emit('empresa-updated', serializedEmpresa)
 
-    return empresa
+    return serializedEmpresa
 }
 
 export {

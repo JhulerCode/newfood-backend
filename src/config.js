@@ -35,7 +35,6 @@ export default {
     mifactApiKey: process.env.MIFACT_API_KEY || '',
 
     appName: process.env.APP_NAME || '',
-    publicAppUrl: withoutTrailingSlash(process.env.PUBLIC_APP_URL || ''),
     publicApiUrl: withoutTrailingSlash(process.env.PUBLIC_API_URL || ''),
     mailFromName: process.env.MAIL_FROM_NAME || '',
     mailFromAddress: process.env.MAIL_FROM_ADDRESS || '',

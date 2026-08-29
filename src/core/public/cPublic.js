@@ -1,6 +1,7 @@
 import { getComprobante, makePdf } from '#core/comprobantes/cComprobantes.js'
 import { EmpresaRepository } from '#db/repositories.js'
 import { guardarEmpresa, obtenerEmpresa, obtenerEmpresaPorSubdominio } from '#store/empresas.js'
+import { serializeR2File } from '#shared/r2Files.js'
 
 const getEmpresa = async (req, res) => {
     try {
@@ -21,7 +22,7 @@ const getEmpresa = async (req, res) => {
             )
 
             empresa = empresa[0]
-            if (empresa) await guardarEmpresa(empresa.id, empresa)
+            if (empresa) empresa = await guardarEmpresa(empresa.id, empresa)
         }
 
         if (!empresa) return res.status(404).json({ code: 1, msg: 'Empresa no encontrada' })
@@ -44,7 +45,7 @@ const getPdf = async (req, res) => {
         let empresa = await obtenerEmpresa(data.empresa)
         if (!empresa) {
             empresa = await EmpresaRepository.find({ id: data.empresa }, true)
-            if (empresa) await guardarEmpresa(empresa.id, empresa)
+            if (empresa) empresa = await guardarEmpresa(empresa.id, empresa)
         }
         const buffer = await makePdf(data, empresa)
 
@@ -62,12 +63,14 @@ export default {
 }
 
 function getEmpresaPublicData(empresa) {
+    const foto = serializeR2File(empresa.foto)
+
     return {
         id: empresa.id,
         subdominio: empresa.subdominio,
         razon_social: empresa.razon_social,
         nombre_comercial: empresa.nombre_comercial,
-        foto: empresa.foto,
-        logo_url: empresa.foto?.url || null,
+        foto,
+        logo_url: foto?.url || null,
     }
 }

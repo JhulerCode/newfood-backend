@@ -1,6 +1,7 @@
 import { Sequelize } from 'sequelize'
 import { Op, literal } from 'sequelize'
 import { Articulo } from '#db/models/Articulo.js'
+import { ArticuloVariant } from '#db/models/ArticuloVariant.js'
 import { ArticuloCategoria } from '#db/models/ArticuloCategoria.js'
 import { CajaApertura } from '#db/models/CajaApertura.js'
 import { Colaborador } from '#db/models/Colaborador.js'
@@ -28,6 +29,7 @@ import { sistemaData } from '#store/system.js'
 
 export const models = {
     Articulo,
+    ArticuloVariant,
     ArticuloCategoria,
     CajaApertura,
     Colaborador,
@@ -54,6 +56,19 @@ export const models = {
 }
 
 const include1 = {
+    articulo_variants: {
+        model: ArticuloVariant,
+        as: 'articulo_variants',
+        attributes: [
+            'id',
+            'articulo',
+            'sku',
+            'codigo_barras',
+            'different_price',
+            'price',
+            'activo',
+        ],
+    },
     categoria1: {
         model: ArticuloCategoria,
         as: 'categoria1',

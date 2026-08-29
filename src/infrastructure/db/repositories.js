@@ -1,6 +1,7 @@
 import { Repository } from './Repository.js'
 
 export const ArticuloRepository = new Repository('Articulo')
+export const ArticuloVariantRepository = new Repository('ArticuloVariant')
 export const ArticuloCategoriaRepository = new Repository('ArticuloCategoria')
 export const CajaAperturaRepository = new Repository('CajaApertura')
 export const ColaboradorRepository = new Repository('Colaborador')

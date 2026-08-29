@@ -336,7 +336,7 @@ async function loadEmpresaForSocket(empresa_id) {
         if (!empresa) return null
 
         empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
-        await guardarEmpresa(empresa_id, empresa)
+        empresa = await guardarEmpresa(empresa_id, empresa)
     }
 
     empresa.sucursales = await loadSucursalesForSocket(empresa.id)

@@ -10,11 +10,15 @@ import {
     SucursalPagoMetodoRepository,
     SucursalRepository,
 } from '#db/repositories.js'
-import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
 import { r2PutObject, r2RemoveObject } from '#infrastructure/storage/r2.js'
+import { normalizeR2FileReference, serializeEmpresaFiles } from '#shared/r2Files.js'
 import { resDeleteFalse, resUpdateFalse } from '#http/helpers.js'
 import { arrayMap } from '#store/system.js'
-import { actualizarEmpresa, borrarEmpresa, guardarEmpresa } from '#store/empresas.js'
+import {
+    actualizarEmpresa,
+    borrarEmpresa,
+    guardarEmpresa,
+} from '#store/empresas.js'
 import { borrarSucursal } from '#store/sucursales.js'
 import { getSocketCountsBySession, getSocketUsers } from '#infrastructure/socket.js'
 import { obtenerSesionesPorEmpresa } from '#store/sessions.js'
@@ -225,7 +229,7 @@ function getEmpresaPayload(body, include_admin_fields = false) {
         igv_porcentaje: body.igv_porcentaje,
         telefono: body.telefono,
         correo: body.correo,
-        foto: body.foto,
+        foto: body.foto === undefined ? undefined : normalizeR2FileReference(body.foto),
         sol_usuario: body.sol_usuario,
         sol_clave: body.sol_clave,
     }
@@ -353,7 +357,7 @@ async function loadOne(id) {
     data.activo1 = activo_estadosMap[data.activo]
     for (const sucursal of data.sucursales) sucursal.activo1 = activo_estadosMap[sucursal.activo]
 
-    return data
+    return serializeEmpresaFiles(data)
 }
 
 const find = async (req, res) => {
@@ -376,6 +380,7 @@ const find = async (req, res) => {
 
         const activo_estadosMap = arrayMap('activo_estados')
         for (const item of data) item.activo1 = activo_estadosMap[item.activo]
+        data = data.map(serializeEmpresaFiles)
 
         res.json({ code: 0, data })
     } catch (error) {
@@ -494,7 +499,6 @@ const update = async (req, res) => {
         //--- Subir archivo ---//
         let newFile
         if (req.file) {
-            // newFile = await minioPutObject(req.file)
             newFile = await r2PutObject(req.file)
 
             if (newFile == false) {
@@ -505,7 +509,7 @@ const update = async (req, res) => {
 
         const send = {
             ...getEmpresaPayload(req.body, can_admin),
-            foto: newFile || req.body.foto,
+            ...(newFile ? { foto: newFile } : {}),
             updatedBy: colaborador,
         }
 
@@ -514,8 +518,8 @@ const update = async (req, res) => {
 
         if (updated == false) return resUpdateFalse(res)
 
-        //--- Eliminar archivo de minio ---//
-        if (req.file && req.body.foto?.id) await minioRemoveObject(req.body.foto.id)
+        //--- Eliminar archivo ---//
+        if (req.file && req.body.foto?.id) await r2RemoveObject(req.body.foto.id)
 
         const data = await loadOne(id)
         await actualizarEmpresa(id, data)

@@ -1,6 +1,7 @@
 import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
 import config from '../../config.js'
+import { normalizeR2FileReference } from '#shared/r2Files.js'
 
 export const r2Client = new S3Client({
     region: 'auto',
@@ -12,7 +13,6 @@ export const r2Client = new S3Client({
 })
 
 export const r2Bucket = config.R2_BUCKET
-export const r2PublicDomain = config.R2_PUBLIC_DOMAIN
 
 function sanitizeFileName(fileName) {
     return fileName
@@ -39,11 +39,7 @@ export async function r2PutObject(file) {
 
         await r2Client.send(command)
 
-        return {
-            id: uniqueName,
-            name: file.originalname,
-            url: `https://${r2PublicDomain}/${uniqueName}`,
-        }
+        return normalizeR2FileReference({ id: uniqueName, name: file.originalname })
     } catch (error) {
         console.error('Error al subir archivo a R2:', error.message)
         return false

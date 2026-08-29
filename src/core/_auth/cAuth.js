@@ -215,9 +215,7 @@ async function loadEmpresaBySubdominio(subdominio) {
 
     const empresa = empresas[0]
     empresa.clientes_varios = await loadEmpresaClienteVarios(empresa.id)
-    await guardarEmpresa(empresa.id, empresa)
-
-    return empresa
+    return await guardarEmpresa(empresa.id, empresa)
 }
 
 async function loadSucursalById(id, empresa_id) {

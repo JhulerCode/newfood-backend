@@ -2,6 +2,7 @@ import sequelize from '#db/sequelize.js'
 
 import {
     ArticuloRepository,
+    ArticuloVariantRepository,
     ComboArticuloRepository,
     SucursalRepository,
     SucursalArticuloRepository,
@@ -118,6 +119,11 @@ const create = async (req, res) => {
             transaction,
         )
 
+        await ArticuloVariantRepository.create(
+            shapeDefaultVariant(nuevo, empresa, colaborador),
+            transaction,
+        )
+
         // --- COMBO ITEMS --- //
         if (is_combo == true) {
             const komboItems = combo_articulos.map((a) => ({
@@ -225,6 +231,17 @@ const update = async (req, res) => {
 
         if (updated == false) return resUpdateFalse(res)
 
+        await ArticuloVariantRepository.update(
+            { id },
+            {
+                codigo_barras: codigo_barra,
+                price: precio_venta,
+                activo,
+                updatedBy: colaborador,
+            },
+            transaction,
+        )
+
         if (is_combo == true) {
             await ComboArticuloRepository.delete({ articulo_principal: id }, transaction)
 
@@ -265,6 +282,7 @@ const delet = async (req, res) => {
         }
 
         await SucursalArticuloRepository.delete({ articulo: id }, transaction)
+        await ArticuloVariantRepository.delete({ articulo: id }, transaction)
 
         if ((await ArticuloRepository.delete({ id }, transaction)) == false)
             return resDeleteFalse(res)
@@ -312,6 +330,12 @@ const createBulk = async (req, res) => {
 
         await ArticuloRepository.createBulk(send, transaction)
 
+        const articulo_variants = send.map((articulo) =>
+            shapeDefaultVariant(articulo, empresa, colaborador),
+        )
+
+        await ArticuloVariantRepository.createBulk(articulo_variants, transaction)
+
         // --- CREAR SUCURSAL ARTICULOS --- //
         const sucursal_articulos = []
         for (const a of send) {
@@ -346,6 +370,7 @@ const deleteBulk = async (req, res) => {
         await ComboArticuloRepository.delete({ articulo_principal: ids }, transaction)
 
         await SucursalArticuloRepository.delete({ articulo: ids }, transaction)
+        await ArticuloVariantRepository.delete({ articulo: ids }, transaction)
 
         if ((await ArticuloRepository.delete({ id: ids }, transaction)) == false)
             return resDeleteFalse(res)
@@ -361,6 +386,8 @@ const deleteBulk = async (req, res) => {
 }
 
 const updateBulk = async (req, res) => {
+    const transaction = await sequelize.transaction()
+
     try {
         const { colaborador } = req.user
         const { ids, prop, val } = req.body
@@ -372,12 +399,35 @@ const updateBulk = async (req, res) => {
                 [prop]: val,
                 updatedBy: colaborador,
             },
+            transaction,
         )
 
-        if (updated == false) return resUpdateFalse(res)
+        if (updated == false) {
+            await transaction.rollback()
+            return resUpdateFalse(res)
+        }
+
+        const variantPropMap = {
+            codigo_barra: 'codigo_barras',
+            precio_venta: 'price',
+            activo: 'activo',
+        }
+        const variantProp = variantPropMap[prop]
+
+        if (variantProp) {
+            await ArticuloVariantRepository.update(
+                { id: ids },
+                { [variantProp]: val, updatedBy: colaborador },
+                transaction,
+            )
+        }
+
+        await transaction.commit()
 
         res.json({ code: 0 })
     } catch (error) {
+        await transaction.rollback()
+
         res.status(500).json({ code: -1, msg: error.message, error })
     }
 }
@@ -458,6 +508,20 @@ const syncSucursales = async (req, res) => {
 }
 
 //--- Helpers ---//
+function shapeDefaultVariant(articulo, empresa, colaborador) {
+    return {
+        id: articulo.id,
+        articulo: articulo.id,
+        sku: null,
+        codigo_barras: articulo.codigo_barra || null,
+        different_price: false,
+        price: articulo.precio_venta ?? null,
+        activo: articulo.activo ?? true,
+        empresa,
+        createdBy: colaborador,
+    }
+}
+
 async function loadOne(id) {
     const data = await ArticuloRepository.find(
         { id, incl: ['categoria1', 'produccion_area1'] },
