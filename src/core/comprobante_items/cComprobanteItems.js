@@ -5,8 +5,8 @@ import { redondear } from '#shared/mine.js'
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : {}
+        qry.fltr ||= {}
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
         const data = await ComprobanteItemRepository.find(qry, true)

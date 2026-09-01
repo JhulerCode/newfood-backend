@@ -1,12 +1,13 @@
 import sequelize from '#db/sequelize.js'
-import { KardexRepository, SucursalArticuloRepository } from '#db/repositories.js'
+import { KardexRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
+import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : {}
+        qry.fltr ||= {}
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
         const data = await KardexRepository.find(qry, true)
@@ -36,7 +37,13 @@ const create = async (req, res) => {
 
     try {
         const { colaborador, empresa } = req.user
-        const { tipo, fecha, articulo, cantidad, observacion, estado, transaccion } = req.body
+        const { tipo, fecha, articulo, articulo_variant, cantidad, observacion } = req.body
+        const [movement] = await normalizeMovementItems(
+            [{ articulo, articulo_variant, cantidad }],
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: false },
+        )
 
         // --- CREAR --- //
         await KardexRepository.create(
@@ -45,6 +52,7 @@ const create = async (req, res) => {
                 fecha,
 
                 articulo,
+                articulo_variant: movement.articulo_variant,
                 cantidad,
 
                 observacion,
@@ -60,7 +68,7 @@ const create = async (req, res) => {
             transaction,
         )
 
-        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction)
+        await updateVariantStock(req.sucursal.id, [movement], tipo, transaction, { empresa })
 
         await transaction.commit()
 
@@ -76,13 +84,26 @@ const delet = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
+        const { empresa } = req.user
         const { id } = req.params
-        const { tipo, articulo, cantidad } = req.body
+        const movementModel = await KardexRepository.model.findOne({
+            where: { id, empresa },
+            attributes: ['tipo', 'articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            transaction,
+        })
+        if (!movementModel) {
+            await transaction.rollback()
+            return res.status(404).json({ code: 1, msg: 'Movimiento no encontrado' })
+        }
+        const movement = movementModel.toJSON()
 
         // --- ELIMINAR --- //
-        await KardexRepository.delete({ id }, transaction)
+        await KardexRepository.delete({ id, empresa }, transaction)
 
-        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction, -1)
+        await updateVariantStock(movement.sucursal, [movement], movement.tipo, transaction, {
+            empresa,
+            factor: -1,
+        })
 
         await transaction.commit()
 
@@ -92,20 +113,6 @@ const delet = async (req, res) => {
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
-}
-
-// --- Helpers --- //
-async function actualizarStock(sucursal, articulo, tipo, cantidad, transaction, factor = 1) {
-    const kardex_tiposMap = arrayMap('kardex_operaciones')
-    const operacion = kardex_tiposMap[tipo].operacion
-
-    await SucursalArticuloRepository.update(
-        { sucursal, articulo },
-        {
-            stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
-        },
-        transaction,
-    )
 }
 
 export default {

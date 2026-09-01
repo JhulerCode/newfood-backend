@@ -8,6 +8,7 @@ import {
 import { arrayMap } from '#store/system.js'
 import { resUpdateFalse } from '#http/helpers.js'
 import sequelize from '#db/sequelize.js'
+import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
@@ -101,6 +102,12 @@ const create = async (req, res) => {
             venta_entregado,
             transaccion_items,
         } = req.body
+        const normalizedItems = await normalizeMovementItems(
+            transaccion_items,
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
 
         let caja_apertura = {}
 
@@ -158,9 +165,10 @@ const create = async (req, res) => {
         )
 
         // --- GUARDAR ITEMS --- //
-        const items = transaccion_items.map((a) => ({
+        const items = normalizedItems.map((a) => ({
             id: a.id,
             articulo: a.articulo,
+            articulo_variant: a.articulo_variant,
             cantidad: a.cantidad,
 
             pu: a.pu,
@@ -183,11 +191,12 @@ const create = async (req, res) => {
 
         if (tipo == 1) {
             // --- GUARAR KARDEX --- //
-            const kardexItems = transaccion_items.map((a) => ({
+            const kardexItems = normalizedItems.map((a) => ({
                 tipo,
                 fecha,
 
                 articulo: a.articulo,
+                articulo_variant: a.articulo_variant,
                 cantidad: a.cantidad,
 
                 transaccion: nuevo.id,
@@ -201,7 +210,7 @@ const create = async (req, res) => {
             await KardexRepository.createBulk(kardexItems, transaction)
 
             // --- ACTUALIZAR STOCK --- //
-            await actualizarStock(req.sucursal.id, transaccion_items, tipo, transaction)
+            await actualizarStock(req.sucursal.id, normalizedItems, tipo, transaction, 1, empresa)
         }
 
         await transaction.commit()
@@ -244,9 +253,15 @@ const update = async (req, res) => {
             transaccion_items,
             edit_type,
         } = req.body
+        const normalizedItems = await normalizeMovementItems(
+            transaccion_items || [],
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
 
         const updated = await TransaccionRepository.update(
-            { id },
+            { id, empresa },
             {
                 tipo,
                 fecha,
@@ -271,14 +286,18 @@ const update = async (req, res) => {
             transaction,
         )
 
-        if (updated == false) return resUpdateFalse(res)
+        if (updated == false) {
+            await transaction.rollback()
+            return resUpdateFalse(res)
+        }
 
         if (tipo == 2 && edit_type != 'only_detalles') {
-            await TransaccionItemRepository.delete({ transaccion: id }, transaction)
+            await TransaccionItemRepository.delete({ transaccion: id, empresa }, transaction)
 
             // --- GUARDAR ITEMS --- //
-            const items = transaccion_items.map((a) => ({
+            const items = normalizedItems.map((a) => ({
                 articulo: a.articulo,
+                articulo_variant: a.articulo_variant,
                 cantidad: a.cantidad,
 
                 pu: a.pu,
@@ -292,6 +311,7 @@ const update = async (req, res) => {
                 combo_articulos: a.combo_articulos,
 
                 transaccion: id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             }))
@@ -315,26 +335,47 @@ const delet = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
+        const { empresa } = req.user
         const { id } = req.params
-        const { tipo, estado } = req.body
+        const transactionModel = await TransaccionRepository.model.findOne({
+            where: { id, empresa },
+            attributes: ['tipo', 'estado', 'sucursal'],
+            transaction,
+        })
+        if (!transactionModel) {
+            await transaction.rollback()
+            return res.status(404).json({ code: 1, msg: 'Transacción no encontrada' })
+        }
+        const { tipo, estado, sucursal } = transactionModel.toJSON()
 
-        await KardexRepository.delete({ transaccion: id }, transaction)
-
-        await TransaccionItemRepository.delete({ transaccion: id }, transaction)
-
-        await TransaccionRepository.delete({ id }, transaction)
-
+        let transaccion_items = []
         if (estado != 0 && tipo == 1) {
-            const transaccion_items = await TransaccionItemRepository.find(
+            transaccion_items = await TransaccionItemRepository.find(
                 {
-                    fltr: { transaccion: { op: 'Es', val: id } },
-                    cols: ['articulo', 'cantidad'],
+                    fltr: {
+                        transaccion: { op: 'Es', val: id },
+                        empresa: { op: 'Es', val: empresa },
+                    },
+                    cols: ['articulo', 'articulo_variant', 'cantidad', 'empresa'],
                 },
                 true,
             )
+        }
 
+        await KardexRepository.delete({ transaccion: id, empresa }, transaction)
+        await TransaccionItemRepository.delete({ transaccion: id, empresa }, transaction)
+        await TransaccionRepository.delete({ id, empresa }, transaction)
+
+        if (transaccion_items.length > 0) {
             // --- ACTUALIZAR STOCK --- //
-            await actualizarStock(req.sucursal.id, transaccion_items, tipo, transaction, -1)
+            await actualizarStock(
+                sucursal,
+                transaccion_items,
+                tipo,
+                transaction,
+                -1,
+                empresa,
+            )
         }
 
         await transaction.commit()
@@ -350,12 +391,15 @@ const delet = async (req, res) => {
 // --- Para ventas --- //
 const anular = async (req, res) => {
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const { anulado_motivo, item } = req.body
 
         const qry = {
-            fltr: { transaccion: { op: 'Es', val: id } },
+            fltr: {
+                transaccion: { op: 'Es', val: id },
+                empresa: { op: 'Es', val: empresa },
+            },
         }
         const comprobantes = await ComprobanteRepository.find(qry)
 
@@ -365,7 +409,7 @@ const anular = async (req, res) => {
         }
 
         await TransaccionRepository.update(
-            { id },
+            { id, empresa },
             {
                 estado: 0,
                 anulado_motivo,
@@ -389,9 +433,16 @@ const addProductos = async (req, res) => {
         const { colaborador, empresa } = req.user
         const { id } = req.params
         const { monto, transaccion_items } = req.body
+        const normalizedItems = await normalizeMovementItems(
+            transaccion_items,
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
 
-        const items = transaccion_items.map((a) => ({
+        const items = normalizedItems.map((a) => ({
             articulo: a.articulo,
+            articulo_variant: a.articulo_variant,
             cantidad: a.cantidad,
 
             pu: a.pu,
@@ -413,7 +464,7 @@ const addProductos = async (req, res) => {
         await TransaccionItemRepository.createBulk(items, transaction)
 
         await TransaccionRepository.update(
-            { id },
+            { id, empresa },
             {
                 monto: sequelize.literal(`COALESCE(monto, 0) + ${monto}`),
                 updatedBy: colaborador,
@@ -579,27 +630,9 @@ async function loadOne(id) {
     return data
 }
 
-async function actualizarStock(sucursal, items, tipo, transaction, factor = 1) {
-    const kardex_tiposMap = arrayMap('kardex_operaciones')
-    const operacion = kardex_tiposMap[tipo].operacion
-
-    const cases = items
-        .map((a) => `WHEN '${a.articulo}' THEN ${Number(a.cantidad) * operacion * factor}`)
-        .join(' ')
-
-    const ids = items.map((a) => `'${a.articulo}'`).join(',')
-
-    await sequelize.query(
-        `
-            UPDATE sucursal_articulos
-            SET stock = COALESCE(stock, 0) + CASE articulo
-                ${cases}
-                ELSE 0
-            END
-            WHERE articulo IN (${ids}) AND sucursal = '${sucursal}'
-        `,
-        { transaction },
-    )
+async function actualizarStock(sucursal, items, tipo, transaction, factor = 1, empresa) {
+    empresa ||= items.find((item) => item.empresa)?.empresa
+    await updateVariantStock(sucursal, items, tipo, transaction, { empresa, factor })
 }
 
 export default {

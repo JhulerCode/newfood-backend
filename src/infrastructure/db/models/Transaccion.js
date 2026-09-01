@@ -2,6 +2,7 @@ import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
+import { ArticuloVariant } from './ArticuloVariant.js'
 import { Colaborador } from './Colaborador.js'
 import { ComprobanteTipo } from './ComprobanteTipo.js'
 import { PagoMetodo } from './PagoMetodo.js'
@@ -75,6 +76,7 @@ Transaccion.belongsTo(Colaborador, { foreignKey: 'updatedBy', as: 'updatedBy1' }
 export const TransaccionItem = sequelize.define('transaccion_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
     articulo: { type: DataTypes.STRING },
+    articulo_variant: { type: DataTypes.STRING },
     cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
     pu: { type: DataTypes.DOUBLE },
@@ -100,6 +102,16 @@ export const TransaccionItem = sequelize.define('transaccion_items', {
 
 Articulo.hasMany(TransaccionItem, { foreignKey: 'articulo', as: 'transaccion_items', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+ArticuloVariant.hasMany(TransaccionItem, {
+    foreignKey: 'articulo_variant',
+    as: 'transaccion_items',
+    onDelete: 'RESTRICT',
+})
+TransaccionItem.belongsTo(ArticuloVariant, {
+    foreignKey: 'articulo_variant',
+    as: 'articulo_variant1',
+})
 
 Transaccion.hasMany(TransaccionItem, { foreignKey: 'transaccion', as: 'transaccion_items', onDelete: 'RESTRICT' })
 TransaccionItem.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })

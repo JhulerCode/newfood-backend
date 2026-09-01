@@ -1,6 +1,7 @@
 import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Articulo } from './Articulo.js'
+import { ArticuloVariant } from './ArticuloVariant.js'
 import { Transaccion, TransaccionItem } from './Transaccion.js'
 import { Comprobante } from './Comprobante.js'
 import { Sucursal } from './Sucursal.js'
@@ -13,6 +14,7 @@ export const Kardex = sequelize.define('kardexes', {
     fecha: { type: DataTypes.DATEONLY },
 
     articulo: { type: DataTypes.STRING },
+    articulo_variant: { type: DataTypes.STRING },
     cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
     observacion: { type: DataTypes.STRING },
@@ -31,6 +33,13 @@ export const Kardex = sequelize.define('kardexes', {
 
 Articulo.hasMany(Kardex, { foreignKey: 'articulo', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+ArticuloVariant.hasMany(Kardex, {
+    foreignKey: 'articulo_variant',
+    as: 'kardexes',
+    onDelete: 'RESTRICT',
+})
+Kardex.belongsTo(ArticuloVariant, { foreignKey: 'articulo_variant', as: 'articulo_variant1' })
 
 Transaccion.hasMany(Kardex, { foreignKey: 'transaccion', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Transaccion, { foreignKey: 'transaccion', as: 'transaccion1' })

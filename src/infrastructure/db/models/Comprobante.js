@@ -2,6 +2,7 @@ import { DataTypes } from 'sequelize'
 import sequelize from '../sequelize.js'
 import { Socio } from './Socio.js'
 import { Articulo } from './Articulo.js'
+import { ArticuloVariant } from './ArticuloVariant.js'
 import { Transaccion } from './Transaccion.js'
 import { CajaApertura } from "./CajaApertura.js";
 import { ComprobanteTipo } from './ComprobanteTipo.js'
@@ -102,6 +103,7 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
     id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
 
     articulo: { type: DataTypes.STRING },
+    articulo_variant: { type: DataTypes.STRING },
     descripcion: { type: DataTypes.STRING },
     codigo: { type: DataTypes.STRING },
     codigo_sunat: { type: DataTypes.STRING },
@@ -130,6 +132,16 @@ export const ComprobanteItem = sequelize.define('comprobante_items', {
 
 Articulo.hasMany(ComprobanteItem, { foreignKey: 'articulo', as: 'comprobante_items', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
+
+ArticuloVariant.hasMany(ComprobanteItem, {
+    foreignKey: 'articulo_variant',
+    as: 'comprobante_items',
+    onDelete: 'RESTRICT',
+})
+ComprobanteItem.belongsTo(ArticuloVariant, {
+    foreignKey: 'articulo_variant',
+    as: 'articulo_variant1',
+})
 
 Comprobante.hasMany(ComprobanteItem, { foreignKey: 'comprobante', as: 'comprobante_items', onDelete: 'RESTRICT' })
 ComprobanteItem.belongsTo(Comprobante, { foreignKey: 'comprobante', as: 'comprobante1' })

@@ -36,6 +36,7 @@ import socios from '#core/socios/rSocios.js'
 import sucursales from '#core/sucursales/rSucursales.js'
 import sucursalesController from '#core/sucursales/cSucursales.js'
 import sucursal_articulos from '#core/sucursal_articulos/rSucursalArticulos.js'
+import sucursal_articulo_variants from '#core/sucursal_articulo_variants/rSucursalArticuloVariants.js'
 import sucursal_comprobante_tipos from '#core/sucursal_comprobante_tipos/rSucursalComprobanteTipos.js'
 import sucursal_pago_metodos from '#core/sucursal_pago_metodos/rSucursalPagoMetodos.js'
 import transacciones from '#core/transacciones/rTransacciones.js'
@@ -85,6 +86,7 @@ router.use('/api/produccion_areas', produccion_areas)
 router.use('/api/receta_insumos', receta_insumos)
 router.use('/api/salones', salones)
 router.use('/api/sucursal-articulos', sucursal_articulos)
+router.use('/api/sucursal-articulo-variants', sucursal_articulo_variants)
 router.use('/api/sucursal-pago-metodos', sucursal_pago_metodos)
 router.use('/api/sucursal-comprobante-tipos', sucursal_comprobante_tipos)
 router.use('/api/transacciones', transacciones)

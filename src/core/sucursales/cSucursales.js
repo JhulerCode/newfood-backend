@@ -2,9 +2,11 @@ import sequelize from '#infrastructure/db/sequelize.js'
 import {
     SucursalRepository,
     SucursalArticuloRepository,
+    SucursalArticuloVariantRepository,
     SucursalComprobanteTipoRepository,
     SucursalPagoMetodoRepository,
     ArticuloRepository,
+    ArticuloVariantRepository,
     ComprobanteTipoRepository,
     PagoMetodoRepository,
     ImpresionAreaRepository,
@@ -129,6 +131,26 @@ const create = async (req, res) => {
             await SucursalArticuloRepository.createBulk(articulos_new, transaction)
         }
 
+        const articulo_variants = await ArticuloVariantRepository.find(
+            { ...qry, cols: ['articulo'] },
+            true,
+        )
+        const articulo_variants_new = articulo_variants.map((variant) => ({
+            sucursal: nuevo.id,
+            articulo: variant.articulo,
+            articulo_variant: variant.id,
+            estado: true,
+            stock: 0,
+            empresa: empresa_id,
+            createdBy: colaborador,
+        }))
+        if (articulo_variants_new.length > 0) {
+            await SucursalArticuloVariantRepository.createBulk(
+                articulo_variants_new,
+                transaction,
+            )
+        }
+
         // --- CREAR IMPRESORA CAJA --- //
         await ImpresionAreaRepository.create(
             {
@@ -236,6 +258,10 @@ const delet = async (req, res) => {
         const empresa_id = getEmpresaId(req)
         const sucursal_id = getSucursalId(req)
 
+        await SucursalArticuloVariantRepository.delete(
+            { sucursal: sucursal_id, empresa: empresa_id },
+            transaction,
+        )
         await SucursalArticuloRepository.delete(
             { sucursal: sucursal_id, empresa: empresa_id },
             transaction,

@@ -7,13 +7,14 @@ import {
     ComprobanteTipoRepository,
     SocioRepository,
     KardexRepository,
-    ArticuloRepository,
+    RecetaInsumoRepository,
     DineroMovimientoRepository,
 } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
 import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
 import TransaccionControler from '#core/transacciones/cTransacciones.js'
+import { normalizeMovementItems } from '#core/articulos/sArticuloVariants.js'
 import axios from 'axios'
 import { randomUUID } from 'node:crypto'
 
@@ -87,11 +88,17 @@ const create = async (req, res) => {
             icbper,
             monto,
             nota,
-            comprobante_items,
+            comprobante_items: comprobanteItemsInput,
             transaccion1,
             pago_metodos,
         } = req.body
         let { transaccion } = req.body
+        const comprobante_items = await normalizeMovementItems(
+            comprobanteItemsInput,
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
 
         // --- VERIFY SI CAJA ESTÁ APERTURADA --- //
         const qry = {
@@ -146,6 +153,7 @@ const create = async (req, res) => {
                 const send = {
                     id: a.id,
                     articulo: a.articulo,
+                    articulo_variant: a.articulo_variant,
                     cantidad: a.cantidad,
 
                     pu: a.pu,
@@ -172,7 +180,7 @@ const create = async (req, res) => {
         }
 
         // --- CORRELATIVO COMPROBANTE --- //
-        const comprobante_tipo = await ComprobanteTipoRepository.find({ id: doc_tipo }, true)
+        const comprobante_tipo = await lockComprobanteTipo(doc_tipo, empresa, transaction)
 
         if (comprobante_tipo == null) {
             await transaction.rollback()
@@ -183,6 +191,13 @@ const create = async (req, res) => {
         if (comprobante_tipo.correlativo == null) {
             await transaction.rollback()
             res.json({ code: 1, msg: 'El tipo de comprobante aún no está configurado' })
+            return
+        }
+        const correlativo = Number(comprobante_tipo.correlativo)
+
+        if (!Number.isSafeInteger(correlativo) || correlativo < 0) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'El correlativo del comprobante no es válido' })
             return
         }
 
@@ -225,7 +240,7 @@ const create = async (req, res) => {
 
             doc_tipo,
             serie: comprobante_tipo.serie,
-            numero: comprobante_tipo.correlativo,
+            numero: correlativo,
             fecha_emision,
             hora_emision: dayjs().format('HH:mm:ss'),
             fecha_vencimiento: null,
@@ -268,6 +283,7 @@ const create = async (req, res) => {
         for (const a of comprobante_items) {
             items.push({
                 articulo: a.articulo,
+                articulo_variant: a.articulo_variant,
                 descripcion: a.nombre,
                 codigo: `P00${i}`,
                 codigo_sunat: null,
@@ -351,46 +367,62 @@ const create = async (req, res) => {
         }
 
         // --- ACTUALIZAR CORRELATIVO --- //
-        await ComprobanteTipoRepository.update(
-            { id: doc_tipo },
-            { correlativo: comprobante_tipo.correlativo + 1 },
-            transaction,
+        await comprobante_tipo.update(
+            { correlativo: correlativo + 1, updatedBy: colaborador },
+            { transaction },
         )
 
         // --- GUARDAR KARDEX --- //
         const kardexItems = []
-        const articulosRecetasIds = []
+        const recetaVariantIds = []
         for (const a of comprobante_items) {
             if (a.is_combo == true) {
                 for (const b of a.combo_articulos) {
                     if (b.articulo1.has_receta) {
-                        articulosRecetasIds.push(b.articulo)
+                        recetaVariantIds.push(b.articulo_variant || b.articulo)
                     }
                 }
             } else {
                 if (a.has_receta == true) {
-                    articulosRecetasIds.push(a.articulo)
+                    recetaVariantIds.push(a.articulo_variant || a.articulo)
                 }
             }
         }
-        const qry1 = {
-            fltr: { id: { op: 'Es', val: articulosRecetasIds } },
-            incl: ['receta_insumos'],
+        const recetas = await RecetaInsumoRepository.model.findAll({
+            where: {
+                articulo_principal_variant: [...new Set(recetaVariantIds)],
+                empresa,
+            },
+            attributes: [
+                'articulo_principal_variant',
+                'articulo',
+                'articulo_variant',
+                'cantidad',
+            ],
+            order: [['orden', 'ASC']],
+            transaction,
+        })
+        const recetasMap = new Map()
+        for (const model of recetas) {
+            const receta = model.toJSON()
+            if (!recetasMap.has(receta.articulo_principal_variant)) {
+                recetasMap.set(receta.articulo_principal_variant, [])
+            }
+            recetasMap.get(receta.articulo_principal_variant).push(receta)
         }
-        const articulosRecetas = await ArticuloRepository.find(qry1, true)
-        const articulosRecetasMap = articulosRecetas.reduce((obj, a) => ((obj[a.id] = a), obj), {})
 
         for (const a of comprobante_items) {
             if (a.is_combo == true) {
                 for (const b of a.combo_articulos) {
                     if (b.articulo1.has_receta) {
-                        const receta = articulosRecetasMap[b.articulo].receta_insumos
+                        const receta = recetasMap.get(b.articulo_variant || b.articulo) || []
                         for (const c of receta) {
                             kardexItems.push({
                                 tipo: 2,
                                 fecha: fecha_emision,
 
                                 articulo: c.articulo,
+                                articulo_variant: c.articulo_variant || c.articulo,
                                 cantidad: c.cantidad * b.cantidad * a.cantidad,
 
                                 transaccion,
@@ -408,6 +440,7 @@ const create = async (req, res) => {
                             fecha: fecha_emision,
 
                             articulo: b.articulo,
+                            articulo_variant: b.articulo_variant || b.articulo,
                             cantidad: b.cantidad * a.cantidad,
 
                             transaccion,
@@ -422,13 +455,14 @@ const create = async (req, res) => {
                 }
             } else {
                 if (a.has_receta == true) {
-                    const receta = articulosRecetasMap[a.articulo].receta_insumos
+                    const receta = recetasMap.get(a.articulo_variant || a.articulo) || []
                     for (const b of receta) {
                         kardexItems.push({
                             tipo: 2,
                             fecha: fecha_emision,
 
                             articulo: b.articulo,
+                            articulo_variant: b.articulo_variant || b.articulo,
                             cantidad: b.cantidad * a.cantidad,
 
                             transaccion,
@@ -446,6 +480,7 @@ const create = async (req, res) => {
                         fecha: fecha_emision,
 
                         articulo: a.articulo,
+                        articulo_variant: a.articulo_variant,
                         cantidad: a.cantidad,
 
                         transaccion,
@@ -459,26 +494,23 @@ const create = async (req, res) => {
                 }
             }
         }
-        await KardexRepository.createBulk(kardexItems, transaction)
+        const normalizedKardexItems = await normalizeMovementItems(
+            kardexItems,
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
+        await KardexRepository.createBulk(normalizedKardexItems, transaction)
 
         // --- ACTUALIZAR STOCK --- //
-        if (kardexItems.length > 0) {
-            const toUpdateMap = {}
-
-            for (const a of kardexItems) {
-                toUpdateMap[a.articulo] = (toUpdateMap[a.articulo] || 0) + Number(a.cantidad)
-            }
-
-            const itemsToUpdate = Object.entries(toUpdateMap).map(([articulo, cantidad]) => ({
-                articulo,
-                cantidad,
-            }))
-
+        if (normalizedKardexItems.length > 0) {
             await TransaccionControler.actualizarStock(
                 req.sucursal.id,
-                itemsToUpdate,
+                normalizedKardexItems,
                 2,
                 transaction,
+                1,
+                empresa,
             )
         }
 
@@ -751,9 +783,18 @@ const anular = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const { item, anulado_motivo } = req.body
+        const comprobanteActual = await ComprobanteRepository.model.findOne({
+            where: { id, empresa },
+            attributes: ['id', 'estado', 'sucursal'],
+            transaction,
+        })
+        if (!comprobanteActual) {
+            await transaction.rollback()
+            return res.status(404).json({ code: 1, msg: 'Comprobante no encontrado' })
+        }
 
         // --- ANULAR MIFACT --- //
         let res_mifact
@@ -769,7 +810,7 @@ const anular = async (req, res) => {
 
         // --- ANULAR --- //
         await ComprobanteRepository.update(
-            { id },
+            { id, empresa },
             {
                 estado: 0,
                 anulado_motivo,
@@ -787,6 +828,31 @@ const anular = async (req, res) => {
             },
             transaction,
         )
+
+        if (comprobanteActual.estado != 0) {
+            const movimientos = await KardexRepository.find(
+                {
+                    fltr: {
+                        comprobante: { op: 'Es', val: id },
+                        empresa: { op: 'Es', val: empresa },
+                    },
+                    cols: ['tipo', 'articulo', 'articulo_variant', 'cantidad', 'empresa'],
+                },
+                true,
+            )
+
+            if (movimientos.length > 0) {
+                await TransaccionControler.actualizarStock(
+                    comprobanteActual.sucursal,
+                    movimientos,
+                    2,
+                    transaction,
+                    -1,
+                    empresa,
+                )
+                await KardexRepository.delete({ comprobante: id, empresa }, transaction)
+            }
+        }
 
         await transaction.commit()
 
@@ -834,7 +900,26 @@ const canjear = async (req, res) => {
 
         // --- CREAR NUEVO COMPROBANTE --- //
         const cliente = await SocioRepository.find({ id: socio }, true)
-        const comprobante_tipo = await ComprobanteTipoRepository.find({ id: doc_tipo_nuevo }, true)
+        const comprobante_tipo = await lockComprobanteTipo(doc_tipo_nuevo, empresa, transaction)
+
+        if (comprobante_tipo == null) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'No existe el tipo de comprobante de destino' })
+            return
+        }
+
+        if (comprobante_tipo.correlativo == null) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'El tipo de comprobante de destino no está configurado' })
+            return
+        }
+        const correlativo = Number(comprobante_tipo.correlativo)
+
+        if (!Number.isSafeInteger(correlativo) || correlativo < 0) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'El correlativo del comprobante de destino no es válido' })
+            return
+        }
 
         const send = {
             socio,
@@ -854,7 +939,7 @@ const canjear = async (req, res) => {
 
             doc_tipo: doc_tipo_nuevo,
             serie: comprobante_tipo.serie,
-            numero: comprobante_tipo.correlativo,
+            numero: correlativo,
             fecha_emision,
             hora_emision: dayjs().format('HH:mm:ss'),
             fecha_vencimiento: null,
@@ -885,6 +970,7 @@ const canjear = async (req, res) => {
         for (const a of comprobante.comprobante_items) {
             items.push({
                 articulo: a.articulo,
+                articulo_variant: a.articulo_variant,
                 descripcion: a.descripcion,
                 codigo: a.codigo,
                 codigo_sunat: a.codigo_sunat,
@@ -960,10 +1046,9 @@ const canjear = async (req, res) => {
         }
 
         // --- ACTUALIZAR CORRELATIVO --- //
-        await ComprobanteTipoRepository.update(
-            { id: doc_tipo_nuevo },
-            { correlativo: comprobante_tipo.correlativo + 1 },
-            transaction,
+        await comprobante_tipo.update(
+            { correlativo: correlativo + 1, updatedBy: colaborador },
+            { transaction },
         )
 
         // --- ACTUALIZAR ESTADO CANJEADO --- //
@@ -1635,6 +1720,15 @@ async function loadOneTransaccion(id) {
     } catch (error) {
         console.log(error)
     }
+}
+
+async function lockComprobanteTipo(id, empresa, transaction) {
+    return ComprobanteTipoRepository.model.findOne({
+        where: { id, empresa },
+        attributes: ['id', 'tipo', 'serie', 'numero', 'correlativo'],
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+    })
 }
 
 function calcularUno(item) {

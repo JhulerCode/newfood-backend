@@ -20,6 +20,7 @@ import { Salon } from '#db/models/Salon.js'
 import { Socio } from '#db/models/Socio.js'
 import { Sucursal } from '#db/models/Sucursal.js'
 import { SucursalArticulo } from '#db/models/SucursalArticulo.js'
+import { SucursalArticuloVariant } from '#db/models/SucursalArticuloVariant.js'
 import { SucursalComprobanteTipo } from '#db/models/SucursalComprobanteTipo.js'
 import { SucursalPagoMetodo } from '#db/models/SucursalPagoMetodo.js'
 import { Transaccion, TransaccionItem } from '#db/models/Transaccion.js'
@@ -49,6 +50,7 @@ export const models = {
     Socio,
     Sucursal,
     SucursalArticulo,
+    SucursalArticuloVariant,
     SucursalComprobanteTipo,
     SucursalPagoMetodo,
     Transaccion,
@@ -59,12 +61,14 @@ const include1 = {
     articulo_variants: {
         model: ArticuloVariant,
         as: 'articulo_variants',
+        separate: true,
+        order: [['createdAt', 'ASC']],
         attributes: [
             'id',
             'articulo',
+            'nombre',
             'sku',
             'codigo_barras',
-            'different_price',
             'price',
             'activo',
         ],
@@ -78,6 +82,19 @@ const include1 = {
         model: Articulo,
         as: 'articulo1',
         attributes: ['id', 'nombre', 'unidad', 'has_receta'],
+    },
+    articulo_variant1: {
+        model: ArticuloVariant,
+        as: 'articulo_variant1',
+        attributes: [
+            'id',
+            'articulo',
+            'nombre',
+            'sku',
+            'codigo_barras',
+            'price',
+            'activo',
+        ],
     },
     colaborador1: {
         model: Colaborador,
@@ -97,7 +114,7 @@ const include1 = {
     combo_articulos: {
         model: ComboArticulo,
         as: 'combo_articulos',
-        attributes: ['articulo_principal', 'articulo', 'cantidad'],
+        attributes: ['id', 'articulo_principal', 'articulo', 'articulo_variant', 'cantidad', 'orden'],
     },
     comprobante1: {
         model: Comprobante,
@@ -124,6 +141,7 @@ const include1 = {
         attributes: [
             'id',
             'articulo',
+            'articulo_variant',
             'descripcion',
             'pu',
             'descuento_tipo',
@@ -191,7 +209,15 @@ const include1 = {
     receta_insumos: {
         model: RecetaInsumo,
         as: 'receta_insumos',
-        attributes: ['id', 'articulo', 'cantidad', 'orden'],
+        attributes: [
+            'id',
+            'articulo_principal',
+            'articulo_principal_variant',
+            'articulo',
+            'articulo_variant',
+            'cantidad',
+            'orden',
+        ],
     },
     salon1: {
         model: Salon,
@@ -216,7 +242,13 @@ const include1 = {
     sucursal_articulos: {
         model: SucursalArticulo,
         as: 'sucursal_articulos',
-        attributes: ['id', 'estado', 'stock', 'impresion_area'],
+        attributes: ['id', 'sucursal', 'estado', 'stock', 'impresion_area'],
+    },
+    sucursal_articulo_variants: {
+        model: SucursalArticuloVariant,
+        as: 'sucursal_articulo_variants',
+        separate: true,
+        attributes: ['id', 'sucursal', 'articulo', 'articulo_variant', 'estado', 'stock'],
     },
     sucursal_comprobante_tipos: {
         model: SucursalComprobanteTipo,
@@ -275,13 +307,14 @@ const sqls1 = {
                 LEAST(
                     capa.cantidad,
                     GREATEST(
-                        COALESCE("sucursal_articulos"."stock", 0)::numeric
+                        COALESCE(sav.stock, 0)::numeric
                             - capa.cantidad_mas_reciente,
                         0
                     )
                 ) * capa.costo_unitario
             ), 0)
-            FROM (
+            FROM sucursal_articulo_variants AS sav
+            JOIN LATERAL (
                 SELECT
                     k.cantidad::numeric AS cantidad,
                     CASE
@@ -297,13 +330,16 @@ const sqls1 = {
                     ) AS cantidad_mas_reciente
                 FROM kardexes AS k
                 LEFT JOIN transaccion_items AS ti ON ti.id = k.transaccion_item
-                WHERE k.articulo = "articulos"."id"
+                WHERE k.articulo_variant = sav.articulo_variant
                     AND k.sucursal = "sucursal_articulos"."sucursal"
                     AND k.empresa = "articulos"."empresa"
                     AND k.tipo IN (1, 3)
-            ) AS capa
-            WHERE capa.cantidad_mas_reciente
-                < GREATEST(COALESCE("sucursal_articulos"."stock", 0)::numeric, 0)
+            ) AS capa ON true
+            WHERE sav.articulo = "articulos"."id"
+                AND sav.sucursal = "sucursal_articulos"."sucursal"
+                AND sav.empresa = "articulos"."empresa"
+                AND capa.cantidad_mas_reciente
+                    < GREATEST(COALESCE(sav.stock, 0)::numeric, 0)
         )`),
         'stock_valorizado',
     ],

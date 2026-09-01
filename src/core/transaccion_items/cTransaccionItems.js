@@ -2,15 +2,15 @@ import sequelize from '#db/sequelize.js'
 import {
     TransaccionItemRepository,
     KardexRepository,
-    SucursalArticuloRepository,
 } from '#db/repositories.js'
-import { arrayMap } from '#store/system.js'
+import { resUpdateFalse } from '#http/helpers.js'
+import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
         const { empresa } = req.user
-        const qry = req.query.qry ? JSON.parse(req.query.qry) : null
-
+        const qry = req.query.qry ? JSON.parse(req.query.qry) : {}
+        qry.fltr ||= {}
         qry.fltr.empresa = { op: 'Es', val: empresa }
 
         const data = await TransaccionItemRepository.find(qry, true)
@@ -18,6 +18,9 @@ const find = async (req, res) => {
         if (data.length > 0) {
             for (const a of data) {
                 a.cantidad_anterior = a.cantidad
+                if (a.articulo1 && a.articulo_variant1?.nombre) {
+                    a.articulo1.nombre = `${a.articulo1.nombre} / ${a.articulo_variant1.nombre}`
+                }
             }
         }
 
@@ -36,6 +39,7 @@ const create = async (req, res) => {
             tipo,
             fecha,
             articulo,
+            articulo_variant,
             cantidad,
             pu,
             igv_afectacion,
@@ -43,17 +47,25 @@ const create = async (req, res) => {
             observacion,
             transaccion,
         } = req.body
+        const [movement] = await normalizeMovementItems(
+            [{ articulo, articulo_variant, cantidad }],
+            empresa,
+            transaction,
+            { sucursal: req.sucursal.id, requireAvailable: true },
+        )
 
         // --- CREAR --- //
         const nuevo = await TransaccionItemRepository.create(
             {
                 articulo,
+                articulo_variant: movement.articulo_variant,
                 cantidad,
                 pu,
                 igv_afectacion,
                 igv_porcentaje,
                 observacion,
                 transaccion,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             },
@@ -66,10 +78,12 @@ const create = async (req, res) => {
                 tipo,
                 fecha,
                 articulo,
+                articulo_variant: movement.articulo_variant,
                 cantidad,
                 observacion,
                 transaccion,
                 transaccion_item: nuevo.id,
+                sucursal: req.sucursal.id,
                 empresa,
                 createdBy: colaborador,
             },
@@ -77,7 +91,7 @@ const create = async (req, res) => {
         )
 
         // --- ACTUALIZAR STOCK --- //
-        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction)
+        await updateVariantStock(req.sucursal.id, [movement], tipo, transaction, { empresa })
 
         await transaction.commit()
 
@@ -95,65 +109,92 @@ const update = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
-        const { colaborador } = req.user
+        const { colaborador, empresa } = req.user
         const { id } = req.params
         const {
             tipo,
             fecha,
             articulo,
+            articulo_variant,
             cantidad,
-            cantidad_anterior,
             pu,
             igv_afectacion,
             igv_porcentaje,
             observacion,
             transaccion,
         } = req.body
+        const oldItemModel = await TransaccionItemRepository.model.findOne({
+            where: { id, empresa },
+            attributes: ['articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            transaction,
+        })
+        if (!oldItemModel) {
+            await transaction.rollback()
+            return res.status(404).json({ code: 1, msg: 'Ítem no encontrado' })
+        }
+        const oldItem = oldItemModel.toJSON()
+        const oldKardexModel = await KardexRepository.model.findOne({
+            where: { transaccion_item: id, empresa },
+            attributes: ['tipo', 'sucursal'],
+            transaction,
+        })
+        const oldKardex = oldKardexModel?.toJSON()
+        const movementSucursal = oldKardex?.sucursal || oldItem.sucursal || req.sucursal.id
+        const [movement] = await normalizeMovementItems(
+            [{ articulo, articulo_variant, cantidad }],
+            empresa,
+            transaction,
+            { sucursal: movementSucursal, requireAvailable: true },
+        )
 
         const updated = await TransaccionItemRepository.update(
-            { id },
+            { id, empresa },
             {
                 articulo,
+                articulo_variant: movement.articulo_variant,
                 cantidad,
                 pu,
                 igv_afectacion,
                 igv_porcentaje,
                 observacion,
                 transaccion,
+                sucursal: movementSucursal,
                 updatedBy: colaborador,
             },
             transaction,
         )
 
-        if (updated == false) return resUpdateFalse(res)
+        if (updated == false) {
+            await transaction.rollback()
+            return resUpdateFalse(res)
+        }
 
         // --- ACTUALIZAR KARDEX --- //
         await KardexRepository.update(
-            { transaccion_item: id },
+            { transaccion_item: id, empresa },
             {
                 tipo,
                 fecha,
                 articulo,
+                articulo_variant: movement.articulo_variant,
                 cantidad,
                 observacion,
                 transaccion,
+                sucursal: movementSucursal,
                 updatedBy: colaborador,
             },
             transaction,
         )
 
         // --- ACTUALIZAR STOCK --- //
-        if (cantidad_anterior != cantidad) {
-            const cantidad1 = cantidad_anterior - cantidad
-            const tipo1 = cantidad1 > 0 ? 2 : 1
-            await actualizarStock(
-                req.sucursal.id,
-                articulo,
-                tipo1,
-                Math.abs(cantidad1),
-                transaction,
-            )
-        }
+        await updateVariantStock(
+            movementSucursal,
+            [oldItem],
+            oldKardex?.tipo || tipo,
+            transaction,
+            { empresa, factor: -1 },
+        )
+        await updateVariantStock(movementSucursal, [movement], tipo, transaction, { empresa })
 
         await transaction.commit()
 
@@ -170,14 +211,37 @@ const delet = async (req, res) => {
     const transaction = await sequelize.transaction()
 
     try {
+        const { empresa } = req.user
         const { id } = req.params
-        const { tipo, articulo, cantidad } = req.body
+        const { tipo } = req.body
+        const itemModel = await TransaccionItemRepository.model.findOne({
+            where: { id, empresa },
+            attributes: ['articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            transaction,
+        })
+        if (!itemModel) {
+            await transaction.rollback()
+            return res.status(404).json({ code: 1, msg: 'Ítem no encontrado' })
+        }
+        const item = itemModel.toJSON()
+        const kardexModel = await KardexRepository.model.findOne({
+            where: { transaccion_item: id, empresa },
+            attributes: ['tipo', 'sucursal'],
+            transaction,
+        })
+        const kardex = kardexModel?.toJSON()
 
-        await KardexRepository.destroy({ transaccion_item: id }, transaction)
+        await KardexRepository.delete({ transaccion_item: id, empresa }, transaction)
 
-        await TransaccionItemRepository.destroy({ id }, transaction)
+        await TransaccionItemRepository.delete({ id, empresa }, transaction)
 
-        await actualizarStock(req.sucursal.id, articulo, tipo, cantidad, transaction, -1)
+        await updateVariantStock(
+            kardex?.sucursal || item.sucursal || req.sucursal.id,
+            [item],
+            kardex?.tipo || tipo,
+            transaction,
+            { empresa, factor: -1 },
+        )
 
         await transaction.commit()
 
@@ -187,20 +251,6 @@ const delet = async (req, res) => {
 
         res.status(500).json({ code: -1, msg: error.message, error })
     }
-}
-
-// --- Helpers --- //
-async function actualizarStock(sucursal, articulo, tipo, cantidad, transaction, factor = 1) {
-    const kardex_tiposMap = arrayMap('kardex_operaciones')
-    const operacion = kardex_tiposMap[tipo].operacion
-
-    await SucursalArticuloRepository.update(
-        { sucursal, articulo },
-        {
-            stock: sequelize.literal(`COALESCE(stock, 0) + ${cantidad * operacion * factor}`),
-        },
-        transaction,
-    )
 }
 
 async function loadOne(id) {

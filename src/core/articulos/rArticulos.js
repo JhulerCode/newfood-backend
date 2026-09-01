@@ -39,6 +39,23 @@ router.patch(
 )
 
 router.get(
+    '/variants',
+    verifyPermiso([
+        'vInsumos:listar',
+        'vProductos:listar',
+        'vPedidos:crear',
+        'vPedidos:addProductos',
+        'vCompras:crear',
+        'vCompras:editar',
+        'vInventarioProductos:ajusteStock',
+        'vInventarioInsumos:ajusteStock',
+        'vProductos:ajusteStock',
+        'vInsumos:ajusteStock',
+    ]),
+    controller.findVariants,
+)
+
+router.get(
     '/uno/:id',
     verifyPermiso([
         'vInsumos:editar', 'vInsumos:clonar',
