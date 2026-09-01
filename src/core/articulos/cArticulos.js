@@ -4,6 +4,7 @@ import { Op } from 'sequelize'
 import {
     ArticuloRepository,
     ArticuloVariantRepository,
+    ArticuloCategoriaRepository,
     ComboArticuloRepository,
     RecetaInsumoRepository,
     ImpresionAreaRepository,
@@ -109,6 +110,7 @@ const findVariants = async (req, res) => {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : {}
         const sucursal = qry.sucursal || req.sucursal.id
+        const stockValuation = variantStockValuationLiteral(sucursal)
         const articleWhere = { empresa }
         const variantWhere = { empresa }
 
@@ -147,6 +149,7 @@ const findVariants = async (req, res) => {
                 'codigo_barras',
                 'price',
                 'activo',
+                [stockValuation, 'stock_valorizado'],
             ],
             include: [
                 {
@@ -160,13 +163,21 @@ const findVariants = async (req, res) => {
                         'activo',
                         'unidad',
                         'precio_venta',
+                        'variants_different_prices',
                         'precios_semana',
                         'igv_afectacion',
                         'has_receta',
                         'is_combo',
                         'categoria',
+                        'has_variants',
                     ],
                     include: [
+                        {
+                            model: ArticuloCategoriaRepository.model,
+                            as: 'categoria1',
+                            attributes: ['id', 'nombre'],
+                            required: false,
+                        },
                         {
                             model: SucursalArticuloRepository.model,
                             as: 'sucursal_articulos',
@@ -271,12 +282,16 @@ const findVariants = async (req, res) => {
             subQuery: false,
         })
 
+        const igvAfectacionesMap = arrayMap('igv_afectaciones')
+        const estadosMap = arrayMap('estados')
         const data = variants.map((model) => {
             const variant = model.toJSON()
             const article = variant.articulo1
             const branchVariant = variant.sucursal_articulo_variants[0]
             const branchArticle = article.sucursal_articulos[0]
-            const price = variant.price ?? article.precio_venta
+            const price = article.variants_different_prices
+                ? variant.price
+                : article.precio_venta
             const baseName = variant.nombre
                 ? `${article.nombre} / ${variant.nombre}`
                 : article.nombre
@@ -294,19 +309,25 @@ const findVariants = async (req, res) => {
                 articulo_nombre: article.nombre,
                 variant_nombre: variant.nombre,
                 variant_price: variant.price,
+                stock_valorizado: variant.stock_valorizado,
                 activo: variant.activo,
                 disponible: available,
                 sku: variant.sku,
+                codigo_barras: variant.codigo_barras,
                 codigo_barra: variant.codigo_barras,
                 unidad: article.unidad,
                 precio_venta: price,
                 precios_semana: article.precios_semana,
                 igv_afectacion: article.igv_afectacion,
+                igv_afectacion1: igvAfectacionesMap[article.igv_afectacion],
                 has_receta: article.has_receta,
+                has_receta1: estadosMap[article.has_receta],
+                has_variants: article.has_variants,
                 is_combo: article.is_combo,
                 categoria: article.categoria,
+                categoria1: article.categoria1,
                 stock: branchVariant.stock,
-                sucursal1: branchArticle,
+                sucursal1: { ...branchArticle, stock: branchVariant.stock },
                 receta_insumos: variant.receta_insumos || [],
                 combo_articulos: article.combo_articulos || [],
             }
@@ -337,13 +358,23 @@ const create = async (req, res) => {
             has_receta,
             is_combo,
             has_variants = false,
+            variants_different_prices = false,
             articulo_variants = [],
             combo_articulos,
             igv_afectacion,
             precio_venta,
         } = req.body
         const hasVariants = has_variants === true
+        const variantsDifferentPrices =
+            hasVariants && tipo == 2 && variants_different_prices === true
+        const precioVenta = variantsDifferentPrices ? null : precio_venta
         const codigo_barra = getArticleBarcode(codigoBarraInput, hasVariants, articulo_variants)
+
+        if (tipo == 2 && !variantsDifferentPrices && !isValidPrice(precioVenta)) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'Ingrese un precio de venta válido' })
+            return
+        }
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await ArticuloRepository.existe({ nombre, empresa }, res)) == true) {
@@ -379,9 +410,10 @@ const create = async (req, res) => {
                 has_receta,
                 is_combo,
                 has_variants: hasVariants,
+                variants_different_prices: variantsDifferentPrices,
                 combo_articulos,
                 igv_afectacion,
-                precio_venta,
+                precio_venta: precioVenta,
                 empresa,
                 createdBy: colaborador,
             },
@@ -391,12 +423,22 @@ const create = async (req, res) => {
         const variants = buildVariants({
             articulo: nuevo,
             hasVariants,
+            differentPrices: variantsDifferentPrices,
             input: articulo_variants,
             empresa,
             colaborador,
         })
 
-        if ((await validateVariants(variants, hasVariants, empresa, res, transaction)) == false) {
+        if (
+            (await validateVariants(
+                variants,
+                hasVariants,
+                variantsDifferentPrices,
+                empresa,
+                res,
+                transaction,
+            )) == false
+        ) {
             await transaction.rollback()
             return
         }
@@ -478,6 +520,7 @@ const update = async (req, res) => {
             has_receta,
             is_combo,
             has_variants = false,
+            variants_different_prices = false,
             articulo_variants = [],
             combo_articulos,
             igv_afectacion,
@@ -485,12 +528,21 @@ const update = async (req, res) => {
             precios_semana,
         } = req.body
         const hasVariants = has_variants === true
+        const variantsDifferentPrices =
+            hasVariants && tipo == 2 && variants_different_prices === true
+        const precioVenta = variantsDifferentPrices ? null : precio_venta
         const codigo_barra = getArticleBarcode(
             codigoBarraInput,
             hasVariants,
             articulo_variants,
             id,
         )
+
+        if (tipo == 2 && !variantsDifferentPrices && !isValidPrice(precioVenta)) {
+            await transaction.rollback()
+            res.json({ code: 1, msg: 'Ingrese un precio de venta válido' })
+            return
+        }
 
         // --- VERIFY SI EXISTE NOMBRE --- //
         if ((await ArticuloRepository.existe({ nombre, id, empresa }, res)) == true) {
@@ -527,9 +579,10 @@ const update = async (req, res) => {
                 has_receta,
                 is_combo,
                 has_variants: hasVariants,
+                variants_different_prices: variantsDifferentPrices,
                 combo_articulos,
                 igv_afectacion,
-                precio_venta,
+                precio_venta: precioVenta,
                 precios_semana,
                 updatedBy: colaborador,
             },
@@ -550,7 +603,7 @@ const update = async (req, res) => {
         const articulo = {
             id,
             codigo_barra,
-            precio_venta,
+            precio_venta: precioVenta,
             activo,
         }
 
@@ -568,6 +621,7 @@ const update = async (req, res) => {
         const variants = buildVariants({
             articulo,
             hasVariants,
+            differentPrices: variantsDifferentPrices,
             input: articulo_variants,
             existing: existingVariants,
             empresa,
@@ -578,6 +632,7 @@ const update = async (req, res) => {
             (await validateVariants(
                 variants,
                 hasVariants,
+                variantsDifferentPrices,
                 empresa,
                 res,
                 transaction,
@@ -951,7 +1006,15 @@ function shapeDefaultVariant(articulo, empresa, colaborador) {
     }
 }
 
-function buildVariants({ articulo, hasVariants, input, existing = [], empresa, colaborador }) {
+function buildVariants({
+    articulo,
+    hasVariants,
+    differentPrices = false,
+    input,
+    existing = [],
+    empresa,
+    colaborador,
+}) {
     if (hasVariants != true) {
         return [shapeDefaultVariant(articulo, empresa, colaborador)]
     }
@@ -976,7 +1039,7 @@ function buildVariants({ articulo, hasVariants, input, existing = [], empresa, c
             nombre: cleanText(variant.nombre),
             sku: cleanText(variant.sku),
             codigo_barras: cleanText(variant.codigo_barras),
-            price: normalizeVariantPrice(variant.price),
+            price: differentPrices ? normalizeVariantPrice(variant.price) : null,
             activo: variant.activo ?? true,
             empresa,
             createdBy: existingIds.has(id) ? undefined : colaborador,
@@ -988,6 +1051,7 @@ function buildVariants({ articulo, hasVariants, input, existing = [], empresa, c
 async function validateVariants(
     variants,
     hasVariants,
+    differentPrices,
     empresa,
     res,
     transaction,
@@ -1005,6 +1069,15 @@ async function validateVariants(
 
     if (hasVariants == true && variants.some((variant) => !variant.nombre)) {
         res.json({ code: 1, msg: 'Todas las variantes deben tener un nombre' })
+        return false
+    }
+
+    if (
+        hasVariants == true &&
+        differentPrices == true &&
+        variants.some((variant) => variant.price === null)
+    ) {
+        res.json({ code: 1, msg: 'Ingrese el precio de todas las variantes' })
         return false
     }
 
@@ -1187,6 +1260,56 @@ function cleanText(value) {
 function normalizeVariantPrice(value) {
     if (value === null || value === undefined || value === '') return null
     return Number(value)
+}
+
+function isValidPrice(value) {
+    return (
+        value !== null &&
+        value !== undefined &&
+        value !== '' &&
+        Number.isFinite(Number(value)) &&
+        Number(value) >= 0
+    )
+}
+
+function variantStockValuationLiteral(sucursal) {
+    const branch = sequelize.escape(sucursal)
+
+    return sequelize.literal(`(
+        SELECT COALESCE(SUM(
+            LEAST(
+                capa.cantidad,
+                GREATEST(COALESCE(sav.stock, 0)::numeric - capa.cantidad_mas_reciente, 0)
+            ) * capa.costo_unitario
+        ), 0)
+        FROM sucursal_articulo_variants AS sav
+        JOIN LATERAL (
+            SELECT
+                k.cantidad::numeric AS cantidad,
+                CASE
+                    WHEN k.tipo = 1 THEN COALESCE(ti.pu, 0)::numeric
+                    ELSE 0::numeric
+                END AS costo_unitario,
+                COALESCE(
+                    SUM(k.cantidad::numeric) OVER (
+                        ORDER BY k.fecha DESC, k."createdAt" DESC, k.id DESC
+                        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
+                    ),
+                    0
+                ) AS cantidad_mas_reciente
+            FROM kardexes AS k
+            LEFT JOIN transaccion_items AS ti ON ti.id = k.transaccion_item
+            WHERE k.articulo_variant = sav.articulo_variant
+                AND k.sucursal = sav.sucursal
+                AND k.empresa = sav.empresa
+                AND k.tipo IN (1, 3)
+        ) AS capa ON true
+        WHERE sav.articulo_variant = "articulo_variants"."id"
+            AND sav.sucursal = ${branch}
+            AND sav.empresa = "articulo_variants"."empresa"
+            AND capa.cantidad_mas_reciente
+                < GREATEST(COALESCE(sav.stock, 0)::numeric, 0)
+    )`)
 }
 
 function getArticleBarcode(currentBarcode, hasVariants, variants, articleId) {

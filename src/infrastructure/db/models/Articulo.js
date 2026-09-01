@@ -30,6 +30,11 @@ export const Articulo = sequelize.define('articulos', {
     has_receta: { type: DataTypes.BOOLEAN, defaultValue: false },
     is_combo: { type: DataTypes.BOOLEAN, defaultValue: false },
     has_variants: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
+    variants_different_prices: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
 
     igv_afectacion: { type: DataTypes.STRING },
     precio_venta: { type: DataTypes.DOUBLE },
