@@ -39,7 +39,6 @@ export const Articulo = sequelize.define('articulos', {
     igv_afectacion: { type: DataTypes.STRING },
     precio_venta: { type: DataTypes.DOUBLE },
     precios_semana: { type: DataTypes.JSON, defaultValue: precios_semana_default },
-    stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
 
     empresa: { type: DataTypes.STRING },
     createdBy: { type: DataTypes.STRING },

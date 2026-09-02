@@ -1,7 +1,7 @@
 import sequelize from '#db/sequelize.js'
 import { KardexRepository } from '#db/repositories.js'
 import { arrayMap } from '#store/system.js'
-import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
+import { normalizeMovementItems } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
@@ -68,8 +68,6 @@ const create = async (req, res) => {
             transaction,
         )
 
-        await updateVariantStock(req.sucursal.id, [movement], tipo, transaction, { empresa })
-
         await transaction.commit()
 
         res.json({ code: 0 })
@@ -88,22 +86,15 @@ const delet = async (req, res) => {
         const { id } = req.params
         const movementModel = await KardexRepository.model.findOne({
             where: { id, empresa },
-            attributes: ['tipo', 'articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            attributes: ['id'],
             transaction,
         })
         if (!movementModel) {
             await transaction.rollback()
             return res.status(404).json({ code: 1, msg: 'Movimiento no encontrado' })
         }
-        const movement = movementModel.toJSON()
-
         // --- ELIMINAR --- //
         await KardexRepository.delete({ id, empresa }, transaction)
-
-        await updateVariantStock(movement.sucursal, [movement], movement.tipo, transaction, {
-            empresa,
-            factor: -1,
-        })
 
         await transaction.commit()
 

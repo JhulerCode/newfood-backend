@@ -11,7 +11,6 @@ export const SucursalArticulo = sequelize.define('sucursal_articulos', {
     sucursal: { type: DataTypes.STRING },
     articulo: { type: DataTypes.STRING },
     estado: { type: DataTypes.BOOLEAN, defaultValue: true },
-    stock: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
     impresion_area: { type: DataTypes.STRING },
 
     empresa: { type: DataTypes.STRING },

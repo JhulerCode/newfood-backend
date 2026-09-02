@@ -14,7 +14,6 @@ export const SucursalArticuloVariant = sequelize.define(
         articulo: { type: DataTypes.STRING, allowNull: false },
         articulo_variant: { type: DataTypes.STRING, allowNull: false },
         estado: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
-        stock: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
 
         empresa: { type: DataTypes.STRING, allowNull: false },
         createdBy: { type: DataTypes.STRING },

@@ -13,7 +13,6 @@ import {
 import { arrayMap } from '#store/system.js'
 import dayjs from '#shared/dayjs.js'
 import sequelize from '#db/sequelize.js'
-import TransaccionControler from '#core/transacciones/cTransacciones.js'
 import { normalizeMovementItems } from '#core/articulos/sArticuloVariants.js'
 import axios from 'axios'
 import { randomUUID } from 'node:crypto'
@@ -502,18 +501,6 @@ const create = async (req, res) => {
         )
         await KardexRepository.createBulk(normalizedKardexItems, transaction)
 
-        // --- ACTUALIZAR STOCK --- //
-        if (normalizedKardexItems.length > 0) {
-            await TransaccionControler.actualizarStock(
-                req.sucursal.id,
-                normalizedKardexItems,
-                2,
-                transaction,
-                1,
-                empresa,
-            )
-        }
-
         // --- ACTUALIZAR PEDIDO ITEMS --- //
         if (transaccion1.venta_canal != '4') {
             const acumulado = {}
@@ -830,28 +817,7 @@ const anular = async (req, res) => {
         )
 
         if (comprobanteActual.estado != 0) {
-            const movimientos = await KardexRepository.find(
-                {
-                    fltr: {
-                        comprobante: { op: 'Es', val: id },
-                        empresa: { op: 'Es', val: empresa },
-                    },
-                    cols: ['tipo', 'articulo', 'articulo_variant', 'cantidad', 'empresa'],
-                },
-                true,
-            )
-
-            if (movimientos.length > 0) {
-                await TransaccionControler.actualizarStock(
-                    comprobanteActual.sucursal,
-                    movimientos,
-                    2,
-                    transaction,
-                    -1,
-                    empresa,
-                )
-                await KardexRepository.delete({ comprobante: id, empresa }, transaction)
-            }
+            await KardexRepository.delete({ comprobante: id, empresa }, transaction)
         }
 
         await transaction.commit()

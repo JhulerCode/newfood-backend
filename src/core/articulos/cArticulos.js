@@ -19,6 +19,7 @@ import { buildBranchVariantRows, normalizeMovementItems } from './sArticuloVaria
 import { arrayMap } from '#store/system.js'
 import { minioPutObject, minioRemoveObject } from '#infrastructure/minioClient.js'
 import { resUpdateFalse, resDeleteFalse } from '#http/helpers.js'
+import { getSqlAttribute } from '#db/Repository.js'
 
 const find = async (req, res) => {
     try {
@@ -58,29 +59,6 @@ const find = async (req, res) => {
                         : 'Sin variantes'
                 }
 
-                if (
-                    qry?.incl?.includes('articulo_variants') &&
-                    qry?.incl?.includes('sucursal_articulo_variants')
-                ) {
-                    const branch = a.sucursal_articulos?.[0]?.sucursal
-                    const stocks = new Map(
-                        a.sucursal_articulo_variants
-                            .filter((row) => !branch || row.sucursal == branch)
-                            .map((row) => [row.articulo_variant, row]),
-                    )
-                    for (const variant of a.articulo_variants) {
-                        const row = stocks.get(variant.id)
-                        variant.stock = row?.stock ?? 0
-                        variant.sucursal_estado = row?.estado ?? false
-                    }
-                    a.variants_stock_summary = a.articulo_variants
-                        .map((variant) => {
-                            const name = variant.nombre || 'Principal'
-                            return `${name}: ${variant.stock}`
-                        })
-                        .join(', ')
-                }
-
                 if (qry?.incl?.includes('sucursal_articulos')) {
                     a.sucursal1 = a.sucursal_articulos[0]
                 }
@@ -110,7 +88,19 @@ const findVariants = async (req, res) => {
         const { empresa } = req.user
         const qry = req.query.qry ? JSON.parse(req.query.qry) : {}
         const sucursal = qry.sucursal || req.sucursal.id
-        const stockValuation = variantStockValuationLiteral(sucursal)
+        const stockAttribute = getSqlAttribute('articulo_variant_stock', {
+            sequelize,
+            sucursal,
+            tableAlias: 'articulo_variants',
+        })
+        const stockValuationAttribute = getSqlAttribute(
+            'articulo_variant_stock_valorizado',
+            {
+                sequelize,
+                sucursal,
+                tableAlias: 'articulo_variants',
+            },
+        )
         const articleWhere = { empresa }
         const variantWhere = { empresa }
 
@@ -149,7 +139,8 @@ const findVariants = async (req, res) => {
                 'codigo_barras',
                 'price',
                 'activo',
-                [stockValuation, 'stock_valorizado'],
+                stockAttribute,
+                stockValuationAttribute,
             ],
             include: [
                 {
@@ -203,34 +194,49 @@ const findVariants = async (req, res) => {
                                 },
                             ],
                         },
-                        {
-                            model: ComboArticuloRepository.model,
-                            as: 'combo_articulos',
-                            separate: true,
-                            attributes: [
-                                'id',
-                                'articulo_principal',
-                                'articulo',
-                                'articulo_variant',
-                                'cantidad',
-                                'orden',
-                            ],
-                            required: false,
-                            include: [
-                                {
-                                    model: ArticuloRepository.model,
-                                    as: 'articulo1',
-                                    attributes: ['id', 'nombre', 'unidad', 'has_receta'],
-                                    required: false,
-                                },
-                                {
-                                    model: ArticuloVariantRepository.model,
-                                    as: 'articulo_variant1',
-                                    attributes: ['id', 'articulo', 'nombre', 'sku', 'codigo_barras'],
-                                    required: false,
-                                },
-                            ],
-                        },
+                        ...(qry.include_components == false
+                            ? []
+                            : [
+                                  {
+                                      model: ComboArticuloRepository.model,
+                                      as: 'combo_articulos',
+                                      separate: true,
+                                      attributes: [
+                                          'id',
+                                          'articulo_principal',
+                                          'articulo',
+                                          'articulo_variant',
+                                          'cantidad',
+                                          'orden',
+                                      ],
+                                      required: false,
+                                      include: [
+                                          {
+                                              model: ArticuloRepository.model,
+                                              as: 'articulo1',
+                                              attributes: [
+                                                  'id',
+                                                  'nombre',
+                                                  'unidad',
+                                                  'has_receta',
+                                              ],
+                                              required: false,
+                                          },
+                                          {
+                                              model: ArticuloVariantRepository.model,
+                                              as: 'articulo_variant1',
+                                              attributes: [
+                                                  'id',
+                                                  'articulo',
+                                                  'nombre',
+                                                  'sku',
+                                                  'codigo_barras',
+                                              ],
+                                              required: false,
+                                          },
+                                      ],
+                                  },
+                              ]),
                     ],
                 },
                 {
@@ -241,38 +247,42 @@ const findVariants = async (req, res) => {
                         empresa,
                         ...(qry.include_disabled_branch == true ? {} : { estado: true }),
                     },
-                    attributes: ['id', 'estado', 'stock'],
+                    attributes: ['id', 'estado'],
                     required: true,
                 },
-                {
-                    model: RecetaInsumoRepository.model,
-                    as: 'receta_insumos',
-                    separate: true,
-                    attributes: [
-                        'id',
-                        'articulo_principal',
-                        'articulo_principal_variant',
-                        'articulo',
-                        'articulo_variant',
-                        'cantidad',
-                        'orden',
-                    ],
-                    required: false,
-                    include: [
-                        {
-                            model: ArticuloRepository.model,
-                            as: 'articulo1',
-                            attributes: ['id', 'nombre', 'unidad'],
-                            required: false,
-                        },
-                        {
-                            model: ArticuloVariantRepository.model,
-                            as: 'articulo_variant1',
-                            attributes: ['id', 'articulo', 'nombre'],
-                            required: false,
-                        },
-                    ],
-                },
+                ...(qry.include_components == false
+                    ? []
+                    : [
+                          {
+                              model: RecetaInsumoRepository.model,
+                              as: 'receta_insumos',
+                              separate: true,
+                              attributes: [
+                                  'id',
+                                  'articulo_principal',
+                                  'articulo_principal_variant',
+                                  'articulo',
+                                  'articulo_variant',
+                                  'cantidad',
+                                  'orden',
+                              ],
+                              required: false,
+                              include: [
+                                  {
+                                      model: ArticuloRepository.model,
+                                      as: 'articulo1',
+                                      attributes: ['id', 'nombre', 'unidad'],
+                                      required: false,
+                                  },
+                                  {
+                                      model: ArticuloVariantRepository.model,
+                                      as: 'articulo_variant1',
+                                      attributes: ['id', 'articulo', 'nombre'],
+                                      required: false,
+                                  },
+                              ],
+                          },
+                      ]),
             ],
             order: [
                 [{ model: ArticuloRepository.model, as: 'articulo1' }, 'nombre', 'ASC'],
@@ -309,7 +319,9 @@ const findVariants = async (req, res) => {
                 articulo_nombre: article.nombre,
                 variant_nombre: variant.nombre,
                 variant_price: variant.price,
-                stock_valorizado: variant.stock_valorizado,
+                articulo_variant_stock: variant.articulo_variant_stock,
+                articulo_variant_stock_valorizado:
+                    variant.articulo_variant_stock_valorizado,
                 activo: variant.activo,
                 disponible: available,
                 sku: variant.sku,
@@ -326,8 +338,7 @@ const findVariants = async (req, res) => {
                 is_combo: article.is_combo,
                 categoria: article.categoria,
                 categoria1: article.categoria1,
-                stock: branchVariant.stock,
-                sucursal1: { ...branchArticle, stock: branchVariant.stock },
+                sucursal1: branchArticle,
                 receta_insumos: variant.receta_insumos || [],
                 combo_articulos: article.combo_articulos || [],
             }
@@ -959,7 +970,6 @@ const syncSucursales = async (req, res) => {
                     articulo: variant.articulo,
                     articulo_variant: variant.id,
                     estado: true,
-                    stock: 0,
                     empresa,
                     createdBy: colaborador,
                 })
@@ -1201,22 +1211,6 @@ async function validateRemovedVariants(articulo, variants, existing, res, transa
 
     if (removedIds.length == 0) return true
 
-    const variantsWithStock = await SucursalArticuloVariantRepository.model.count({
-        where: {
-            articulo_variant: { [Op.in]: removedIds },
-            stock: { [Op.ne]: 0 },
-        },
-        transaction,
-    })
-
-    if (variantsWithStock > 0) {
-        res.json({
-            code: 1,
-            msg: 'No se puede eliminar una variante con stock. Ajústela a cero o desactívela.',
-        })
-        return false
-    }
-
     const references = await Promise.all(
         [
             TransaccionItemRepository,
@@ -1270,46 +1264,6 @@ function isValidPrice(value) {
         Number.isFinite(Number(value)) &&
         Number(value) >= 0
     )
-}
-
-function variantStockValuationLiteral(sucursal) {
-    const branch = sequelize.escape(sucursal)
-
-    return sequelize.literal(`(
-        SELECT COALESCE(SUM(
-            LEAST(
-                capa.cantidad,
-                GREATEST(COALESCE(sav.stock, 0)::numeric - capa.cantidad_mas_reciente, 0)
-            ) * capa.costo_unitario
-        ), 0)
-        FROM sucursal_articulo_variants AS sav
-        JOIN LATERAL (
-            SELECT
-                k.cantidad::numeric AS cantidad,
-                CASE
-                    WHEN k.tipo = 1 THEN COALESCE(ti.pu, 0)::numeric
-                    ELSE 0::numeric
-                END AS costo_unitario,
-                COALESCE(
-                    SUM(k.cantidad::numeric) OVER (
-                        ORDER BY k.fecha DESC, k."createdAt" DESC, k.id DESC
-                        ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                    ),
-                    0
-                ) AS cantidad_mas_reciente
-            FROM kardexes AS k
-            LEFT JOIN transaccion_items AS ti ON ti.id = k.transaccion_item
-            WHERE k.articulo_variant = sav.articulo_variant
-                AND k.sucursal = sav.sucursal
-                AND k.empresa = sav.empresa
-                AND k.tipo IN (1, 3)
-        ) AS capa ON true
-        WHERE sav.articulo_variant = "articulo_variants"."id"
-            AND sav.sucursal = ${branch}
-            AND sav.empresa = "articulo_variants"."empresa"
-            AND capa.cantidad_mas_reciente
-                < GREATEST(COALESCE(sav.stock, 0)::numeric, 0)
-    )`)
 }
 
 function getArticleBarcode(currentBarcode, hasVariants, variants, articleId) {

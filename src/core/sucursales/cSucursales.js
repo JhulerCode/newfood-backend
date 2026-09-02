@@ -140,7 +140,6 @@ const create = async (req, res) => {
             articulo: variant.articulo,
             articulo_variant: variant.id,
             estado: true,
-            stock: 0,
             empresa: empresa_id,
             createdBy: colaborador,
         }))

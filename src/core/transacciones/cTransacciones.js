@@ -8,7 +8,7 @@ import {
 import { arrayMap } from '#store/system.js'
 import { resUpdateFalse } from '#http/helpers.js'
 import sequelize from '#db/sequelize.js'
-import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
+import { normalizeMovementItems } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
@@ -209,8 +209,6 @@ const create = async (req, res) => {
 
             await KardexRepository.createBulk(kardexItems, transaction)
 
-            // --- ACTUALIZAR STOCK --- //
-            await actualizarStock(req.sucursal.id, normalizedItems, tipo, transaction, 1, empresa)
         }
 
         await transaction.commit()
@@ -339,44 +337,16 @@ const delet = async (req, res) => {
         const { id } = req.params
         const transactionModel = await TransaccionRepository.model.findOne({
             where: { id, empresa },
-            attributes: ['tipo', 'estado', 'sucursal'],
+            attributes: ['id'],
             transaction,
         })
         if (!transactionModel) {
             await transaction.rollback()
             return res.status(404).json({ code: 1, msg: 'Transacción no encontrada' })
         }
-        const { tipo, estado, sucursal } = transactionModel.toJSON()
-
-        let transaccion_items = []
-        if (estado != 0 && tipo == 1) {
-            transaccion_items = await TransaccionItemRepository.find(
-                {
-                    fltr: {
-                        transaccion: { op: 'Es', val: id },
-                        empresa: { op: 'Es', val: empresa },
-                    },
-                    cols: ['articulo', 'articulo_variant', 'cantidad', 'empresa'],
-                },
-                true,
-            )
-        }
-
         await KardexRepository.delete({ transaccion: id, empresa }, transaction)
         await TransaccionItemRepository.delete({ transaccion: id, empresa }, transaction)
         await TransaccionRepository.delete({ id, empresa }, transaction)
-
-        if (transaccion_items.length > 0) {
-            // --- ACTUALIZAR STOCK --- //
-            await actualizarStock(
-                sucursal,
-                transaccion_items,
-                tipo,
-                transaction,
-                -1,
-                empresa,
-            )
-        }
 
         await transaction.commit()
 
@@ -630,11 +600,6 @@ async function loadOne(id) {
     return data
 }
 
-async function actualizarStock(sucursal, items, tipo, transaction, factor = 1, empresa) {
-    empresa ||= items.find((item) => item.empresa)?.empresa
-    await updateVariantStock(sucursal, items, tipo, transaction, { empresa, factor })
-}
-
 export default {
     create,
     update,
@@ -648,5 +613,4 @@ export default {
     cambiarMesa,
     entregar,
     entregarBulk,
-    actualizarStock,
 }

@@ -1,4 +1,3 @@
-import { Sequelize } from 'sequelize'
 import { Op, literal } from 'sequelize'
 import { Articulo } from '#db/models/Articulo.js'
 import { ArticuloVariant } from '#db/models/ArticuloVariant.js'
@@ -242,13 +241,13 @@ const include1 = {
     sucursal_articulos: {
         model: SucursalArticulo,
         as: 'sucursal_articulos',
-        attributes: ['id', 'sucursal', 'estado', 'stock', 'impresion_area'],
+        attributes: ['id', 'sucursal', 'estado', 'impresion_area'],
     },
     sucursal_articulo_variants: {
         model: SucursalArticuloVariant,
         as: 'sucursal_articulo_variants',
         separate: true,
-        attributes: ['id', 'sucursal', 'articulo', 'articulo_variant', 'estado', 'stock'],
+        attributes: ['id', 'sucursal', 'articulo', 'articulo_variant', 'estado'],
     },
     sucursal_comprobante_tipos: {
         model: SucursalComprobanteTipo,
@@ -282,6 +281,27 @@ const include1 = {
     },
 }
 
+function requireSqlContext({ sequelize, sucursal, tableAlias }) {
+    if (!sequelize) throw new Error('No se pudo preparar la consulta SQL calculada')
+    if (sucursal === undefined || sucursal === null || sucursal === '') {
+        throw new Error('Se requiere una sucursal para calcular el stock')
+    }
+
+    return {
+        sucursal: sequelize.escape(sucursal),
+        tableAlias: tableAlias || 'articulo_variants',
+    }
+}
+
+function kardexOperationCase(sequelize, kardexAlias = 'k') {
+    return sistemaData.kardex_operaciones
+        .map(
+            (operation) =>
+                `WHEN ${kardexAlias}.tipo = ${sequelize.escape(operation.id)} THEN ${Number(operation.operacion)}`,
+        )
+        .join(' ')
+}
+
 const sqls1 = {
     comprobantes_monto: [
         literal(
@@ -301,71 +321,69 @@ const sqls1 = {
         ),
         'comprobante_pagos_monto',
     ],
-    stock_valorizado: [
-        literal(`(
-            SELECT COALESCE(SUM(
-                LEAST(
-                    capa.cantidad,
-                    GREATEST(
-                        COALESCE(sav.stock, 0)::numeric
-                            - capa.cantidad_mas_reciente,
-                        0
+    articulo_variant_stock: (context) => {
+        const { sequelize } = context
+        const { sucursal, tableAlias } = requireSqlContext(context)
+        const operationCase = kardexOperationCase(sequelize)
+
+        return [
+            literal(`(
+                SELECT COALESCE(SUM(
+                    k.cantidad::numeric * (
+                        CASE ${operationCase} ELSE 0 END
                     )
-                ) * capa.costo_unitario
-            ), 0)
-            FROM sucursal_articulo_variants AS sav
-            JOIN LATERAL (
-                SELECT
-                    k.cantidad::numeric AS cantidad,
-                    CASE
-                        WHEN k.tipo = 1 THEN COALESCE(ti.pu, 0)::numeric
-                        ELSE 0::numeric
-                    END AS costo_unitario,
-                    COALESCE(
-                        SUM(k.cantidad::numeric) OVER (
-                            ORDER BY k.fecha DESC, k."createdAt" DESC, k.id DESC
-                            ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING
-                        ),
-                        0
-                    ) AS cantidad_mas_reciente
+                ), 0)
                 FROM kardexes AS k
-                LEFT JOIN transaccion_items AS ti ON ti.id = k.transaccion_item
-                WHERE k.articulo_variant = sav.articulo_variant
-                    AND k.sucursal = "sucursal_articulos"."sucursal"
-                    AND k.empresa = "articulos"."empresa"
-                    AND k.tipo IN (1, 3)
-            ) AS capa ON true
-            WHERE sav.articulo = "articulos"."id"
-                AND sav.sucursal = "sucursal_articulos"."sucursal"
-                AND sav.empresa = "articulos"."empresa"
-                AND capa.cantidad_mas_reciente
-                    < GREATEST(COALESCE(sav.stock, 0)::numeric, 0)
-        )`),
-        'stock_valorizado',
-    ],
-    // sucursal_stock: [
-    //     Sequelize.fn(
-    //         'COALESCE',
-    //         Sequelize.fn(
-    //             'SUM',
-    //             Sequelize.literal(`
-    //             CASE
-    //                 ${sistemaData.kardex_operaciones
-    //                 .map(
-    //                     (t) => `
-    //                     WHEN kardexes.tipo = ${t.id} AND kardexes.sucursal = '1'
-    //                     THEN kardexes.cantidad * ${t.operacion}
-    //                 `,
-    //                 )
-    //                 .join('')}
-    //             ELSE 0
-    //             END
-    //         `),
-    //         ),
-    //         0,
-    //     ),
-    //     'sucursal_stock',
-    // ],
+                WHERE k.articulo_variant = "${tableAlias}"."id"
+                    AND k.sucursal = ${sucursal}
+                    AND k.empresa = "${tableAlias}"."empresa"
+            )`),
+            'articulo_variant_stock',
+        ]
+    },
+    articulo_variant_stock_valorizado: (context) => {
+        const { sequelize } = context
+        const { sucursal, tableAlias } = requireSqlContext(context)
+        const operationCase = kardexOperationCase(sequelize)
+
+        return [
+            literal(`(
+                SELECT
+                    GREATEST(COALESCE(SUM(
+                        k.cantidad::numeric * (
+                            CASE ${operationCase} ELSE 0 END
+                        )
+                    ), 0), 0)
+                    * COALESCE((
+                        SELECT ti.pu::numeric
+                        FROM kardexes AS ultima_compra
+                        INNER JOIN transaccion_items AS ti
+                            ON ti.id = ultima_compra.transaccion_item
+                        WHERE ultima_compra.articulo_variant = "${tableAlias}"."id"
+                            AND ultima_compra.sucursal = ${sucursal}
+                            AND ultima_compra.empresa = "${tableAlias}"."empresa"
+                            AND ultima_compra.tipo = 1
+                            AND ti.pu IS NOT NULL
+                        ORDER BY
+                            ultima_compra.fecha DESC,
+                            ultima_compra."createdAt" DESC,
+                            ultima_compra.id DESC
+                        LIMIT 1
+                    ), 0)
+                FROM kardexes AS k
+                WHERE k.articulo_variant = "${tableAlias}"."id"
+                    AND k.sucursal = ${sucursal}
+                    AND k.empresa = "${tableAlias}"."empresa"
+            )`),
+            'articulo_variant_stock_valorizado',
+        ]
+    },
+}
+
+export function getSqlAttribute(name, context = {}) {
+    const sql = sqls1[name]
+    if (!sql) throw new Error(`Consulta SQL calculada no registrada: ${name}`)
+    return typeof sql === 'function' ? sql(context) : sql
 }
 
 export class Repository {
@@ -425,7 +443,13 @@ export class Repository {
 
         if (qry?.sqls) {
             for (const a of qry.sqls) {
-                findProps.attributes.push(sqls1[a])
+                findProps.attributes.push(
+                    getSqlAttribute(a, {
+                        sequelize: this.model.sequelize,
+                        sucursal: qry.sucursal || qry.sql_params?.sucursal,
+                        tableAlias: this.model.tableName,
+                    }),
+                )
             }
         }
 

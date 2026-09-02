@@ -4,7 +4,7 @@ import {
     KardexRepository,
 } from '#db/repositories.js'
 import { resUpdateFalse } from '#http/helpers.js'
-import { normalizeMovementItems, updateVariantStock } from '#core/articulos/sArticuloVariants.js'
+import { normalizeMovementItems } from '#core/articulos/sArticuloVariants.js'
 
 const find = async (req, res) => {
     try {
@@ -90,9 +90,6 @@ const create = async (req, res) => {
             transaction,
         )
 
-        // --- ACTUALIZAR STOCK --- //
-        await updateVariantStock(req.sucursal.id, [movement], tipo, transaction, { empresa })
-
         await transaction.commit()
 
         // --- DEVOLVER --- //
@@ -125,7 +122,7 @@ const update = async (req, res) => {
         } = req.body
         const oldItemModel = await TransaccionItemRepository.model.findOne({
             where: { id, empresa },
-            attributes: ['articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            attributes: ['sucursal'],
             transaction,
         })
         if (!oldItemModel) {
@@ -135,7 +132,7 @@ const update = async (req, res) => {
         const oldItem = oldItemModel.toJSON()
         const oldKardexModel = await KardexRepository.model.findOne({
             where: { transaccion_item: id, empresa },
-            attributes: ['tipo', 'sucursal'],
+            attributes: ['sucursal'],
             transaction,
         })
         const oldKardex = oldKardexModel?.toJSON()
@@ -186,16 +183,6 @@ const update = async (req, res) => {
             transaction,
         )
 
-        // --- ACTUALIZAR STOCK --- //
-        await updateVariantStock(
-            movementSucursal,
-            [oldItem],
-            oldKardex?.tipo || tipo,
-            transaction,
-            { empresa, factor: -1 },
-        )
-        await updateVariantStock(movementSucursal, [movement], tipo, transaction, { empresa })
-
         await transaction.commit()
 
         const data = await loadOne(id)
@@ -213,35 +200,18 @@ const delet = async (req, res) => {
     try {
         const { empresa } = req.user
         const { id } = req.params
-        const { tipo } = req.body
         const itemModel = await TransaccionItemRepository.model.findOne({
             where: { id, empresa },
-            attributes: ['articulo', 'articulo_variant', 'cantidad', 'sucursal'],
+            attributes: ['id'],
             transaction,
         })
         if (!itemModel) {
             await transaction.rollback()
             return res.status(404).json({ code: 1, msg: 'Ítem no encontrado' })
         }
-        const item = itemModel.toJSON()
-        const kardexModel = await KardexRepository.model.findOne({
-            where: { transaccion_item: id, empresa },
-            attributes: ['tipo', 'sucursal'],
-            transaction,
-        })
-        const kardex = kardexModel?.toJSON()
-
         await KardexRepository.delete({ transaccion_item: id, empresa }, transaction)
 
         await TransaccionItemRepository.delete({ id, empresa }, transaction)
-
-        await updateVariantStock(
-            kardex?.sucursal || item.sucursal || req.sucursal.id,
-            [item],
-            kardex?.tipo || tipo,
-            transaction,
-            { empresa, factor: -1 },
-        )
 
         await transaction.commit()
 

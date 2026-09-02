@@ -8,28 +8,39 @@ import { Sucursal } from './Sucursal.js'
 import { Empresa } from './Empresa.js'
 import { Colaborador } from './Colaborador.js'
 
-export const Kardex = sequelize.define('kardexes', {
-    id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-    tipo: { type: DataTypes.SMALLINT },
-    fecha: { type: DataTypes.DATEONLY },
+export const Kardex = sequelize.define(
+    'kardexes',
+    {
+        id: { type: DataTypes.STRING, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+        tipo: { type: DataTypes.SMALLINT },
+        fecha: { type: DataTypes.DATEONLY },
 
-    articulo: { type: DataTypes.STRING },
-    articulo_variant: { type: DataTypes.STRING },
-    cantidad: { type: DataTypes.DECIMAL(10, 2) },
+        articulo: { type: DataTypes.STRING },
+        articulo_variant: { type: DataTypes.STRING },
+        cantidad: { type: DataTypes.DECIMAL(10, 2) },
 
-    observacion: { type: DataTypes.STRING },
+        observacion: { type: DataTypes.STRING },
 
-    transaccion: { type: DataTypes.STRING },
-    transaccion_item: { type: DataTypes.STRING },
-    comprobante: { type: DataTypes.STRING },
+        transaccion: { type: DataTypes.STRING },
+        transaccion_item: { type: DataTypes.STRING },
+        comprobante: { type: DataTypes.STRING },
 
-    sucursal: { type: DataTypes.STRING },
-    empresa: { type: DataTypes.STRING },
-    createdBy: { type: DataTypes.STRING },
-    updatedBy: { type: DataTypes.STRING },
+        sucursal: { type: DataTypes.STRING },
+        empresa: { type: DataTypes.STRING },
+        createdBy: { type: DataTypes.STRING },
+        updatedBy: { type: DataTypes.STRING },
 
-    estado: { type: DataTypes.STRING }, //eliminar
-})
+        estado: { type: DataTypes.STRING }, //eliminar
+    },
+    {
+        indexes: [
+            {
+                name: 'kardexes_empresa_sucursal_variant_idx',
+                fields: ['empresa', 'sucursal', 'articulo_variant'],
+            },
+        ],
+    },
+)
 
 Articulo.hasMany(Kardex, { foreignKey: 'articulo', as: 'kardexes', onDelete: 'RESTRICT' })
 Kardex.belongsTo(Articulo, { foreignKey: 'articulo', as: 'articulo1' })
