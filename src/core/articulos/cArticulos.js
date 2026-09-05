@@ -677,7 +677,12 @@ const update = async (req, res) => {
             transaction,
         )
 
-        await ComboArticuloRepository.delete({ articulo_principal: id, empresa }, transaction)
+        // El artículo ya fue actualizado con { id, empresa }, validando su pertenencia.
+        // Versiones anteriores guardaban empresa.id y dejaban componentes sin empresa.
+        await ComboArticuloRepository.delete(
+            { articulo_principal: id, [Op.or]: [{ empresa }, { empresa: null }] },
+            transaction,
+        )
 
         if (is_combo == true) {
             const normalizedComboItems = await normalizeComboItems(
